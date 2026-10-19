@@ -8,6 +8,11 @@
  * into a single column, and v0.3.5 still flipped a wide-but-short workbench into
  * the tall-and-narrow chrome. Run it before and after changing the thresholds.
  *
+ * Both faces are swept: the default face (变更 + commit box) and, through the
+ * rail's branch button, the explorer (branch tree | commit list | commit
+ * detail) — the chrome decision is shared, but each face draws different panes,
+ * and a height-driven compact hid behind the changes pane once already.
+ *
  *   node scripts/layout-probe.mjs "http://127.0.0.1:3099/?token=…" [out-dir]
  *
  * Playwright is loaded from the DSH checkout (DSH_CHECKOUT overrides the path).
@@ -150,7 +155,7 @@ async function chromeOf() {
   for (const name of CHROMES) {
     if (await page.locator('.dig-root:visible .' + name).count() > 0) found.push(name.replace('dig-body-', ''))
   }
-  const rail = await page.locator('.dig-rail-vertical').count() > 0 ? 'vertical' : 'horizontal'
+  const rail = await page.locator('.dig-root:visible .dig-rail-vertical').count() > 0 ? 'vertical' : 'horizontal'
   return {
     width: root === null ? 0 : Math.round(root.width),
     height: root === null ? 0 : Math.round(root.height),
@@ -192,6 +197,47 @@ try {
       String(row.actual).padStart(6) + ' | ' +
       row.state.chrome.padEnd(17) + ' | ' + row.state.rail,
     )
+  }
+
+  /* ---------- the explorer face ---------- */
+
+  /* Same sweep, other face: the rail's branch button opens the explorer tab in
+     this same column (user request 2026-10-19), and its tree + log + detail
+     column must follow the same width-only chrome rule. On a host with no door
+     the button is not rendered at all — then there is nothing to sweep. */
+  const branchButton = page.locator('.dig-root:visible [data-action="tree"]').first()
+  if (await branchButton.count() > 0) {
+    try { await branchButton.click({ timeout: 8000 }) } catch (error) { log('branch button click failed: ' + String(error && error.message ? error.message : error).slice(0, 120)) }
+    await settle(4000)
+    if (await page.locator('.dig-root:visible [data-pane="tree"]').count() === 0) {
+      log('WARNING: the branch button did not open the explorer tab')
+      process.exitCode = 1
+    } else {
+      const explorerRows = []
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width: width, height: 1000 })
+        await settle(900)
+        const state = await chromeOf()
+        explorerRows.push({ requested: width, actual: state.width, state: state })
+        await page.locator('.dig-root:visible').first().screenshot({ path: join(outDir, 'explore-w' + String(width).padStart(4, '0') + '.png') })
+        log('explorer: viewport ' + width + ' → panel ' + state.width + 'px, chrome=' + state.chrome + ', rail=' + state.rail)
+      }
+      console.log('\nexplorer | panel | chrome            | rail')
+      console.log('---------|-------|-------------------|----------')
+      for (const row of explorerRows) {
+        console.log(
+          String(row.requested).padStart(8) + ' |' +
+          String(row.actual).padStart(6) + ' | ' +
+          row.state.chrome.padEnd(17) + ' | ' + row.state.rail,
+        )
+      }
+      if (new Set(explorerRows.map((row) => row.actual)).size === 1) {
+        log('WARNING: the explorer panel width never changed — the dock ignored the viewport sweep')
+        process.exitCode = 1
+      }
+    }
+  } else {
+    log('rail branch button absent — skipping the explorer sweep')
   }
   const widths = rows.map((row) => row.actual)
   if (new Set(widths).size === 1) {

@@ -13,11 +13,17 @@
  *   5. Backspace opens the grouped discard confirm (cancelled — nothing is
  *      destroyed);
  *   6. Ctrl+C copies the selected paths (clipboard read-back);
- *   7. the branch tree: Ctrl+click picks two branches, Ctrl+C copies their
+ *   7. the selected change row wears the accent edge, and the dir-grouping
+ *      toggle reads as a real tree;
+ *   8. the branch tree: Ctrl+click picks two branches, Ctrl+C copies their
  *      names, the right-click menu offers the grouped delete (cancelled);
- *   8. the history: Ctrl+click picks two commits, the menu offers copy +
+ *   9. the history: Ctrl+click picks two commits, the menu offers copy +
  *      cherry-pick, Ctrl+C copies full hashes;
- *   9. zero uncaught page errors throughout.
+ *  10. zero uncaught page errors throughout.
+ *
+ * Steps 1-7 run on the DEFAULT face (变更 + commit box); the tree, the commit
+ * list and the detail live in the EXPLORER tab (user request 2026-10-19), so
+ * the rail's branch button opens it once, right before step 8.
  *
  *   node scripts/selection-probe.mjs "http://127.0.0.1:3099/?token=…" [out-dir]
  *
@@ -339,7 +345,67 @@ try {
   await page.keyboard.press('Escape')
   await settle(300)
 
-  /* ---- 8. branch tree: pick two, copy names, grouped-delete menu ---- */
+  /* ---- 9c. selected rows are actually visible (v0.18.5) ----
+     The old selected background equalled the hover background — invisible.
+     The accent edge (inset box-shadow) must now differ from plain rows. */
+  await changeRows().nth(0).click()
+  await settle(400)
+  const selShadow = await page.locator('.dig-changes-list .dig-row-file.dig-row-selected').first()
+    .evaluate((el) => getComputedStyle(el).boxShadow)
+  check(selShadow !== 'none' && selShadow !== '', 'selected change row wears the accent edge (' + selShadow + ')')
+  await page.locator('.dig-changes-list').focus()
+  await page.keyboard.press('Escape')
+  await settle(300)
+
+  /* ---- 9d. dir grouping reads as a REAL tree (v0.18.6) ----
+     Rows under a folder head are indented, no longer repeat the directory,
+     heads nest (src → src/ui), and a single chain with no direct files
+     compresses into ONE head. */
+  const moreBtn = page.locator('.dig-changes-head button[data-action="more"]')
+  await moreBtn.click({ timeout: 4000 })
+  await settle(500)
+  const toDir = page.getByRole('button', { name: /按目录|By directory/ }).first()
+  if (await toDir.count() > 0) {
+    await toDir.click({ timeout: 4000 })
+    await settle(900)
+    const nested = await page.locator('.dig-changes-list .dig-row-nested').count()
+    check(nested >= 1, 'dir grouping nests rows under folder heads (saw ' + nested + ')')
+    const headNames = await page.locator('.dig-changes-list .dig-folder-head .dig-folder-name').allTextContents()
+    /* "src" only ever holds a subfolder in the demo repo, so it compresses
+       into "src/ui" (single-chain rule); "docs" has a direct file AND a child
+       and must keep BOTH levels. */
+    check(headNames.indexOf('src/ui') >= 0 && headNames.indexOf('src') < 0,
+      'file-less single-child folders compress (src → src/ui; saw ' + JSON.stringify(headNames) + ')')
+    check(headNames.indexOf('docs') >= 0 && headNames.indexOf('docs/guide') >= 0,
+      'forked folders keep both tree levels (docs → docs/guide; saw ' + JSON.stringify(headNames) + ')')
+    check(headNames.indexOf('lib/deep/nested') >= 0 && headNames.indexOf('lib') < 0 && headNames.indexOf('deep') < 0,
+      'single-chain folders compress into one head (saw ' + JSON.stringify(headNames) + ')')
+    const indents = await page.locator('.dig-changes-list .dig-row-nested').evaluateAll((rows) => Array.from(new Set(rows.map((el) => getComputedStyle(el).paddingLeft))))
+    check(indents.length >= 2, 'tree rows indent by depth (saw ' + JSON.stringify(indents) + ')')
+    await moreBtn.click({ timeout: 4000 })
+    await settle(500)
+    await page.getByRole('button', { name: /平铺|Flat list/ }).first().click({ timeout: 4000 })
+    await settle(900)
+    check(await page.locator('.dig-changes-list .dig-row-nested').count() === 0, 'flat grouping drops the nesting')
+  } else {
+    check(false, 'group-by menu offers the dir toggle')
+  }
+
+  /* ---- 8. branch tree: pick two, copy names, grouped-delete menu ----
+     The steps from here on live in the EXPLORER tab: the branch tree, the
+     commit list and the commit detail moved out of the default face (user
+     request 2026-10-19: 变更 + 提交框 only), and the rail's branch button is
+     the door the user clicks. The changes-face steps above run first so the
+     probe crosses the face boundary exactly once. */
+  const branchButton = page.locator('.dig-root:visible [data-action="tree"]').first()
+  if (await branchButton.count() > 0) {
+    try { await branchButton.click({ timeout: 8000 }) } catch (error) { void error }
+    await settle(4000)
+    check(await page.locator('.dig-root:visible [data-pane="tree"]').count() > 0,
+      'the rail branch button opens the explorer (branch tree mounted)')
+  } else {
+    check(false, 'the changes face offers the explorer (the rail branch button)')
+  }
   const branchRows = page.locator('.dig-tree .dig-row-local:not(.dig-row-head)')
   const branchCount = await branchRows.count()
   check(branchCount >= 2, 'tree offers local branches to multi-select (saw ' + branchCount + ')')
@@ -421,10 +487,21 @@ try {
     await commitRows.nth(0).dblclick()
     await settle(1200)
     check(await page.locator('.dig-detail:visible').count() === 1, 'double-click opens the commit detail')
-    const back = page.getByRole('button', { name: /返回历史|Back/ }).first()
-    if (await back.count() > 0) await back.click({ timeout: 4000 }).catch(() => {})
-    await settle(800)
-    check(await page.locator('.dig-detail:visible').count() === 0, 'detail closes back to history')
+    const explorerChrome = await page.evaluate(() => {
+      const body = document.querySelector('.dig-root:visible .dig-body')
+      return body === null ? 'none' : (body.className.match(/dig-body-(columns|stack|compact)/) || [])[1] || 'unknown'
+    })
+    if (explorerChrome === 'columns') {
+      /* The IDE shape: the log and the detail sit side by side, so there is
+         nothing to go "back" to — the list never left the screen. */
+      check(await page.locator('.dig-root:visible .dig-history-scroll .dig-commit').count() > 0,
+        'the columns explorer keeps the commit list beside the detail')
+    } else {
+      const back = page.getByRole('button', { name: /返回历史|Back/ }).first()
+      if (await back.count() > 0) await back.click({ timeout: 4000 }).catch(() => {})
+      await settle(800)
+      check(await page.locator('.dig-detail:visible').count() === 0, 'detail closes back to history')
+    }
   }
 
   /* ---- 9b. selection-aware rail actions + favorite star (v0.18.5) ----
@@ -463,52 +540,6 @@ try {
     check(false, 'tree offers a local branch for the rail-selection assertions')
   }
 
-  /* ---- 9c. selected rows are actually visible (v0.18.5) ----
-     The old selected background equalled the hover background — invisible.
-     The accent edge (inset box-shadow) must now differ from plain rows. */
-  await changeRows().nth(0).click()
-  await settle(400)
-  const selShadow = await page.locator('.dig-changes-list .dig-row-file.dig-row-selected').first()
-    .evaluate((el) => getComputedStyle(el).boxShadow)
-  check(selShadow !== 'none' && selShadow !== '', 'selected change row wears the accent edge (' + selShadow + ')')
-  await page.locator('.dig-changes-list').focus()
-  await page.keyboard.press('Escape')
-  await settle(300)
-
-  /* ---- 9d. dir grouping reads as a REAL tree (v0.18.6) ----
-     Rows under a folder head are indented, no longer repeat the directory,
-     heads nest (src → src/ui), and a single chain with no direct files
-     compresses into ONE head. */
-  const moreBtn = page.locator('.dig-changes-head button[data-action="more"]')
-  await moreBtn.click({ timeout: 4000 })
-  await settle(500)
-  const toDir = page.getByRole('button', { name: /按目录|By directory/ }).first()
-  if (await toDir.count() > 0) {
-    await toDir.click({ timeout: 4000 })
-    await settle(900)
-    const nested = await page.locator('.dig-changes-list .dig-row-nested').count()
-    check(nested >= 1, 'dir grouping nests rows under folder heads (saw ' + nested + ')')
-    const headNames = await page.locator('.dig-changes-list .dig-folder-head .dig-folder-name').allTextContents()
-    /* "src" only ever holds a subfolder in the demo repo, so it compresses
-       into "src/ui" (single-chain rule); "docs" has a direct file AND a child
-       and must keep BOTH levels. */
-    check(headNames.indexOf('src/ui') >= 0 && headNames.indexOf('src') < 0,
-      'file-less single-child folders compress (src → src/ui; saw ' + JSON.stringify(headNames) + ')')
-    check(headNames.indexOf('docs') >= 0 && headNames.indexOf('docs/guide') >= 0,
-      'forked folders keep both tree levels (docs → docs/guide; saw ' + JSON.stringify(headNames) + ')')
-    check(headNames.indexOf('lib/deep/nested') >= 0 && headNames.indexOf('lib') < 0 && headNames.indexOf('deep') < 0,
-      'single-chain folders compress into one head (saw ' + JSON.stringify(headNames) + ')')
-    const indents = await page.locator('.dig-changes-list .dig-row-nested').evaluateAll((rows) => Array.from(new Set(rows.map((el) => getComputedStyle(el).paddingLeft))))
-    check(indents.length >= 2, 'tree rows indent by depth (saw ' + JSON.stringify(indents) + ')')
-    await moreBtn.click({ timeout: 4000 })
-    await settle(500)
-    await page.getByRole('button', { name: /平铺|Flat list/ }).first().click({ timeout: 4000 })
-    await settle(900)
-    check(await page.locator('.dig-changes-list .dig-row-nested').count() === 0, 'flat grouping drops the nesting')
-  } else {
-    check(false, 'group-by menu offers the dir toggle')
-  }
-
   /* ---- 9e. OUTSIDE commits reach the history on their own (v0.18.7) ----
      The 12s poll used to be summary-only: a commit made in a terminal never
      showed up until a manual refresh. Every summary now carries HEAD, and
@@ -536,9 +567,19 @@ try {
   /* ---- 10. DOUBLE-click opens the diff (v0.18.3 click model) ----
      The diff lands in the external better-sidebar preview tab when the base
      offers the seat channel (the modern reality), or the in-panel diff pane
-     on an older base — accept either. */
-  await rows.nth(0).dblclick()
+     on an older base — accept either. The gesture is the same one the changes
+     list uses; the file it acts on now comes from the commit detail (the pane
+     this face draws), where a plain click only highlights and the DOUBLE-click
+     opens the diff. */
+  await commitRows.nth(0).dblclick()
   await settle(1200)
+  const detailFile = page.locator('.dig-root:visible .dig-detail-files .dig-row-file').first()
+  if (await detailFile.count() > 0) {
+    try { await detailFile.dblclick({ timeout: 8000 }) } catch (error) { void error }
+    await settle(2000)
+  } else {
+    console.log('the opened commit shows no file list — the diff step has nothing to open')
+  }
   /* The diff lands in the external better-sidebar preview tab when the base
      offers the seat channel — which SWAPS the right-column away from the Git
      panel (the panel tab is replaced, not stacked). Accept the swap as the

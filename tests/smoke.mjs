@@ -449,10 +449,13 @@ test('the diff pane context menu reads the selection before the menu opens (v0.1
     'a chip that landed reads as sent even when the text leg lost its race')
 
   // The pane context rides the patch state and clears wherever the patch does
-  // (pickRepo, selectCommit, onBack, pane close, view switch).
+  // (pickRepo, selectCommit, the detail's back button, the pane close). The one
+  // that used to come from the changes/history switch went with that switch
+  // (the two faces are separate tabs now), so the count is 4 — the assertion
+  // still fails LOUDLY if a clear site is dropped rather than moved.
   assert.match(client, /const \[diffContext, setDiffContext\] = useState\(null\)/)
   const clears = (client.match(/setDiffContext\(null\)/g) || []).length
-  assert.ok(clears >= 5, 'the diff context must clear wherever the patch clears (saw ' + clears + ')')
+  assert.ok(clears >= 4, 'the diff context must clear wherever the patch clears (saw ' + clears + ')')
   // v0.14: the open verbs moved into ONE funnel, showDiff (external preview
   // first, inline pane as the fallback). The context contract survives
   // verbatim inside the funnel's inline legs.
@@ -734,18 +737,26 @@ test('client half has three doors: better-sidebar, native right sidebar, convers
   // The seat follows the setting live through the rail-config watchers.
   assert.match(client, /const unsubscribe = subscribeRailConfig\(sync\)/)
   const registrations = client.match(/registerTab\(/g) || []
-  assert.equal(registrations.length, 1)
+  assert.equal(registrations.length, 2, 'two better-sidebar tabs: the panel and the explorer')
+  // The explorer is a companion tab, not a destination: `hidden` keeps it out
+  // of the base's + menu and out of DSH's native guide list (the base skips the
+  // guide for hidden descriptors), so the start page keeps one Git card.
+  const explorerTab = client.slice(client.indexOf('const offExploreTab = betterSidebar.registerTab({'), client.indexOf('/* The base can go away at RUNTIME'))
+  assert.match(explorerTab, /id: TAB_EXPLORE_ID,/, 'the explorer registers under its own id')
+  assert.match(explorerTab, /hidden: true,/, 'and stays out of the + menu / guide list')
+  assert.match(explorerTab, /mode: 'explore',/, 'its component mounts the explorer face')
   // v0.14: TWO native tab types — the main panel (with its guide entry) and
   // the preview tab (guide-less by design: it opens itself from a diff verb,
-  // it is not a start-page destination).
+  // it is not a start-page destination). v0.20 adds the explorer, also
+  // guide-less: the changes panel's branch button opens it.
   const nativeTypes = client.match(/tabs\.register\(\{/g) || []
-  assert.equal(nativeTypes.length, 2, 'two native tab types: the main panel and the preview tab')
+  assert.equal(nativeTypes.length, 3, 'three native tab types: panel, preview and explorer')
   assert.match(client, /const NATIVE_PREVIEW_ID = 'dsh-ide-git-preview'/)
   assert.match(client, /keepMounted: true/, 'the preview tab keeps its body across tab switches')
   assert.doesNotMatch(client, /NATIVE_PREVIEW_ID,\n\s*kind: NATIVE_PREVIEW_KIND,\n\s*title: \(\) => t\('preview\.title'\),\n\s*keepMounted: true,\n\s*guide:/,
     'the preview tab carries no guide entry (it is not a start-page destination)')
   const slotSeats = client.match(/slots\.register\(/g) || []
-  assert.equal(slotSeats.length, 4, 'four keyed-slot seats: native pane, preview pane, settings card, conversation view')
+  assert.equal(slotSeats.length, 5, 'five keyed-slot seats: native pane, explorer pane, preview pane, settings card, conversation view')
 })
 
 test('host half is an ESM cordis plugin with argv-only git calls', () => {
@@ -1008,8 +1019,10 @@ function paneCore() {
   assert.ok(start >= 0 && end > start, 'the pane sizing core must keep its markers')
   const exported = 'return { PANES_KEY: PANES_KEY, PANE_LIMITS: PANE_LIMITS, PANE_DEFAULTS: PANE_DEFAULTS,'
     + ' PANE_CHROME_KEYS: PANE_CHROME_KEYS, PANE_BUCKETS: PANE_BUCKETS, PANE_GUTTER_PX: PANE_GUTTER_PX,'
-    + ' PANE_MAIN_FLOOR_PX: PANE_MAIN_FLOOR_PX,'
-    + ' panBucket: panBucket, normalizePanes: normalizePanes, withPaneRatio: withPaneRatio, paneGeometry: paneGeometry }'
+    + ' PANE_MAIN_FLOOR_PX: PANE_MAIN_FLOOR_PX, COMMIT_BOX_KEY: COMMIT_BOX_KEY,'
+    + ' COMMIT_BOX_MIN_PX: COMMIT_BOX_MIN_PX, COMMIT_BOX_LIST_MIN_PX: COMMIT_BOX_LIST_MIN_PX,'
+    + ' panBucket: panBucket, normalizePanes: normalizePanes, withPaneRatio: withPaneRatio,'
+    + ' withCommitBoxPx: withCommitBoxPx, commitBoxPx: commitBoxPx, paneGeometry: paneGeometry }'
   return new Function(client.slice(start, end) + '\n' + exported)()
 }
 
@@ -1070,21 +1083,20 @@ test('the pane clamps hold at both ends and never shrink a pane below its own bo
   assert.equal(fresh.bucket, 'stack:tall')
 
   // Stored ratios become px, and every one of them obeys its own limits. With
-  // 0.9 asked for all three, the two stacked panes stop exactly where the middle
-  // pane's hard floor begins: 900 - 16 (gutters) - 120 = 764 for tree + changes.
+  // 0.9 asked for every key the stacked chrome has, the tree stops at its own
+  // ceiling and the diff takes exactly what the log above it can spare.
   const stored = core.normalizePanes({ panes: { 'stack:tall': { tree: 0.9, changes: 0.9, diff: 0.9 } } })
   const geo = core.paneGeometry('stack', tall, stored)
-  assert.equal(geo.overrides.changes, 440, 'the changes pane stops where the middle pane begins')
-  assert.equal(geo.overrides.tree, 324, 'the tree gives way to the pane it shares the column with')
-  assert.equal(geo.overrides.diff, 120, 'the diff can never eat the history list')
-  assert.equal(geo.limits.diff.max, 120)
-  assert.equal(tall.height - geo.overrides.tree - geo.overrides.changes - 2 * core.PANE_GUTTER_PX, core.PANE_MAIN_FLOOR_PX,
-    'the middle pane keeps exactly its hard floor when both stacked panes are maxed')
+  assert.equal(geo.overrides.tree, 420, 'the tree stops at its own ceiling')
+  assert.equal(geo.overrides.diff, 344, 'the diff is handed what the log above it does not need')
+  assert.equal(geo.limits.diff.max, 344)
+  assert.ok(tall.height - geo.overrides.tree - geo.overrides.diff - core.PANE_GUTTER_PX >= core.PANE_MAIN_FLOOR_PX,
+    'the middle pane keeps at least its hard floor when the stacked panes are maxed')
 
   // Tiny stored ratios clamp UP to the minimums, never to 0.
   const tiny = core.paneGeometry('stack', tall, core.normalizePanes({ panes: { 'stack:tall': { tree: 0.001, changes: 0.001 } } }))
   assert.equal(tiny.overrides.tree, core.PANE_LIMITS['stack:tree'].min)
-  assert.equal(tiny.overrides.changes, core.PANE_LIMITS['stack:changes'].min)
+  assert.equal(tiny.overrides.changes, undefined, 'no stacked chrome draws a changes pane, so no size is kept for one')
 
   // A huge container still stops at the absolute maxima...
   const roomy = core.paneGeometry('columns', { width: 3000, height: 400 },
@@ -1112,9 +1124,10 @@ test('the pane clamps hold at both ends and never shrink a pane below its own bo
     'the relaxed tier still keeps the middle pane its floor')
 
   // A folded tree frees its room instead of reserving it, and has no override.
-  const folded = core.paneGeometry('stack', tall, core.normalizePanes({ treeOpen: false, panes: { 'stack:tall': { changes: 1 } } }))
+  const folded = core.paneGeometry('stack', tall, core.normalizePanes({ treeOpen: false, panes: { 'stack:tall': { tree: 1, diff: 0.5 } } }))
   assert.equal(folded.overrides.tree, undefined)
-  assert.equal(folded.overrides.changes, core.PANE_LIMITS['stack:changes'].max)
+  assert.equal(folded.limits.tree, undefined, 'a folded pane has no divider to drag')
+  assert.equal(folded.overrides.diff, 450, 'and the diff takes the freed room')
 })
 
 test('the pane dividers are draggable, touch-safe and keyboard reachable', () => {
@@ -1610,7 +1623,7 @@ test('every overlay is clamped to the panel it lives in', () => {
 test('every pane name a divider announces exists in every dictionary', () => {  const mapped = client.match(/const PANE_NAME_KEYS = \{([^}]*)\}/)
   assert.ok(mapped !== null, 'the pane name map must stay greppable')
   const keys = [...mapped[1].matchAll(/'([^']+)'/g)].map((match) => match[1])
-  assert.deepEqual(keys, ['toolbar.tree', 'changes.title', 'pane.diff'])
+  assert.deepEqual(keys, ['toolbar.tree', 'changes.title', 'pane.diff', 'pane.commitBox'])
   const zh = client.slice(client.indexOf('const ZH = {'), client.indexOf('const EN = {'))
   const en = client.slice(client.indexOf('const EN = {'), client.indexOf('const LOCALES = {'))
   for (const key of keys) {
@@ -1676,7 +1689,7 @@ test('block separators paint on border-l2, not the hairline token (v0.13.1 style
   // block structure. These eleven are the BLOCK borders; dialog innards and
   // menu separators deliberately keep the hairline.
   for (const selector of ['.dig-topbar', '.dig-rail', '.dig-rail-row', '.dig-pane-tree', '.dig-pane-tree-stack',
-    '.dig-pane-changes', '.dig-pane-changes-stack', '.dig-compact-tree', '.dig-filters', '.dig-commit-box', '.dig-diff-pane']) {
+    '.dig-pane-changes', '.dig-compact-tree', '.dig-filters', '.dig-commit-box', '.dig-diff-pane']) {
     const rule = cssRule(selector)
     assert.match(rule, /var\(--dsw-alias-border-l2\)/, selector + ' must draw its block border on border-l2')
   }
@@ -1746,4 +1759,197 @@ test('split + wrap rows share one source, and the preview carries a render bound
   assert.match(client, /E\(RenderBoundary, \{ message: t\('preview\.boundary'\) \}, E\(LineDiff, \{/,
     'the preview body renders LineDiff inside the boundary with a localized fallback')
   assert.match(cssRule('.dig-preview-boundary'), /var\(--dsw-alias-label-secondary\)/, 'the fallback line stays quiet, not alarm-red')
+})
+
+test('the composer repo pill opens the Git panel seat (user request)', () => {
+  // The repository name in the input bar doubles as the door into the tool
+  // window: clicking it opens the panel in the right column and focuses it
+  // (user request). Which seat draws that column is the host's call, so the
+  // order mirrors the registration rule — better-sidebar first (once loaded it
+  // OWNS the tab and our native seats are gone), the native right sidebar
+  // second. A host with neither leaves the click inert instead of throwing.
+  const helper = client.slice(client.indexOf('function gitSeatHost('), client.indexOf('const COMPOSER_POLL_MS'))
+  assert.ok(helper.length > 0, 'the seat-door helper must exist')
+  const better = helper.indexOf("door.service.openTab({ type: explorer ? TAB_EXPLORE_ID : TAB_ID, target: 'right' }")
+  const native = helper.indexOf('door.service.openTab(explorer ? NATIVE_EXPLORE_KIND : NATIVE_KIND)')
+  assert.ok(better >= 0, 'the better-sidebar path must name the registered tab ids and the right column')
+  assert.ok(native > better, 'better-sidebar is asked first, the native seat second')
+  assert.match(helper, /typeof betterSidebar\.openTab === 'function'/, 'the better-sidebar path is capability-gated')
+  assert.match(helper, /typeof sidebarRight\.openTab === 'function'/, 'the native path is capability-gated too')
+  assert.match(client, /openGitSeat\(ctx, 'panel', sessionId, cwd\)/, 'the pill asks for the changes panel')
+
+  // The name button opens the panel; the caret keeps the checkout picker. A
+  // single-repo workspace has nothing to pick, so the caret is dropped and the
+  // whole pill is the door — the old `disabled: singleRepo === true` spelling
+  // made that click dead (which is what the request was about).
+  const pill = client.slice(client.indexOf("className: 'dig-cs-pill dig-cs-repo'"), client.indexOf("menu === 'repo' ? E('div'"))
+  assert.match(pill, /onClick: openPanel/, 'the repository name opens the panel')
+  assert.match(pill, /title: t\('composer\.openPanel'\)/, 'and says so in its tooltip')
+  assert.match(pill, /className: 'dig-cs-pill dig-cs-caret'/, 'the caret is its own button')
+  assert.match(pill, /setMenu\(menu === 'repo' \? null : 'repo'\)/, 'the caret still opens the checkout picker')
+  assert.match(pill, /singleRepo === true \? null : E\('button', \{\s*type: 'button',\s*className: 'dig-cs-pill dig-cs-caret'/,
+    'one checkout means no caret at all')
+  assert.doesNotMatch(pill, /disabled: singleRepo === true/, 'a single-repo pill is a live button now')
+  assert.ok((client.split("'composer.openPanel'").length - 1) >= 21,
+    'the new tooltip ships in ZH + EN + every LOCALES entry')
+})
+
+test('the panel is two faces: 变更+提交框, and an IDE explorer in its own tab (user request)', () => {
+  // The default face keeps only the changes list and the commit box; the branch
+  // tree, the commit list and the commit details moved into a second tab that
+  // the rail's branch button opens (IDE shape: tree | log | detail at once).
+  assert.match(client, /const explore = props\.mode === 'explore'/,
+    'Panel switches faces on a mode prop')
+  assert.match(client, /const TAB_EXPLORE_ID = 'dsh-ide-git:explore'/, 'the explorer tab has its own id')
+  assert.match(client, /const NATIVE_EXPLORE_KIND = 'ide-git-explore'/, 'and its own native kind')
+
+  // The default face renders ONE column — the changes pane — and no branch tree
+  // or history, in every chrome. The chrome class still rides along so the
+  // layout probes keep reporting the real chrome.
+  const changesFace = client.slice(client.indexOf('} else if (explore !== true) {'), client.indexOf('} else if (compact) {'))
+  assert.ok(changesFace.length > 0, 'the changes-face body must exist')
+  assert.match(changesFace, /'dig-body dig-body-' \+ chrome \+ ' dig-body-changes'/, 'it keeps the chrome class and marks itself')
+  assert.match(changesFace, /changesPane, diffGutter, diffPane/, 'it draws the changes list, the commit box and the diff fallback')
+  assert.doesNotMatch(changesFace, /BranchTree|logPane|historyPane/, 'no branch tree and no history in the default face')
+
+  // The explorer draws the log AND the detail side by side in the columns
+  // chrome, and the swapping pane everywhere else.
+  const explorerColumnsStart = client.indexOf("'dig-body dig-body-columns'")
+  const explorerColumns = client.slice(explorerColumnsStart, client.indexOf('} else {', explorerColumnsStart))
+  assert.match(explorerColumns, /logPane, diffGutter, diffPane/, 'the middle column is the commit list')
+  assert.match(explorerColumns, /detailColumn\)\)/, 'the right column is the commit detail')
+  assert.match(client, /const historyPane = view === 'detail' \? detailPane\(true\) : logPane/,
+    'the narrow chromes keep one swapping pane')
+  assert.match(client, /t\('detail\.pickHint'\)/, 'an empty detail column says what it is for')
+  assert.match(client, /typeof props\.onBack === 'function'/, 'the detail column can drop its back button')
+
+  // The rail's branch button carries both faces: it opens the explorer in the
+  // changes face (when the host has a door) and folds the tree in the explorer.
+  const railTree = client.slice(client.indexOf("else if (spec.id === 'tree') {"), client.indexOf("else if (spec.id === 'float')"))
+  assert.match(railTree, /if \(explore === true\) \{ entry\.active = treeOpen; entry\.run = \(\) => foldTree\(!treeOpen\) \}/,
+    'in the explorer the button folds the tree column')
+  assert.match(railTree, /entry\.available = typeof props\.openExplore === 'function'/,
+    'in the changes face it needs a door, or it is not rendered at all')
+  assert.match(railTree, /entry\.label = t\('rail\.explore'\)/, 'and it says what it does')
+  assert.match(client, /openGitSeat\(props\.ctx, 'explore', scope\.sessionId, scope\.cwd\)/,
+    'the seat wires that door to the explorer tab')
+
+  // Both channels register the explorer BESIDE the panel: better-sidebar keeps
+  // it out of the + menu and the guide list, the native type carries no guide —
+  // the start page keeps its single Git card (user request).
+  assert.match(client, /id: TAB_EXPLORE_ID,[\s\S]{0,400}?hidden: true,/, 'better-sidebar registers it hidden')
+  const nativeExplore = client.slice(client.indexOf('const offExploreType = tabs.register({'), client.indexOf('const offExploreBody'))
+  assert.match(nativeExplore, /id: NATIVE_EXPLORE_ID,/, 'the native explorer has its own type')
+  assert.doesNotMatch(nativeExplore, /guide:/, 'and no guide entry')
+  assert.match(client, /key: NATIVE_EXPLORE_ID \},\s*\(tabProps\) => E\(NativePanel, Object\.assign\(\{\}, tabProps, \{ t: t, ctx: ctx, mode: 'explore' \}\)\)/,
+    'its body mounts the panel in explorer mode')
+
+  // The removed chrome vocabulary must not creep back: no segmented switch (the
+  // default face has nothing to switch to) and no stacked changes pane.
+  assert.doesNotMatch(client, /dig-seg/, 'the changes/history segmented control is gone')
+  assert.doesNotMatch(client, /dig-pane-changes-stack/, 'no stacked changes pane is left')
+  assert.match(client, /stack: \['tree', 'diff'\]/, 'the stacked chrome draws the tree and the log only')
+  for (const key of ['rail.explore', 'explore.title', 'explore.description', 'detail.pickHint']) {
+    assert.ok((client.split("'" + key + "'").length - 1) >= 21,
+      key + ' ships in ZH + EN + every LOCALES entry')
+  }
+})
+
+test('the commit box is IDEA-shaped: Amend + AI above the message, buttons left (user request)', () => {
+  // The mock-up the user sent: one row ABOVE the message carries the --amend
+  // toggle (first, so the git term leads) and the AI writer; the message is a
+  // textarea you can drag taller; 提交 / 提交并推送 keep the bottom row and sit
+  // at its LEFT edge. The narrow chrome used to be a one-line <input>, which
+  // cannot be resized at all — that is what the complaint was about.
+  const boxes = {
+    compact: [client.indexOf("? E('div', { className: 'dig-commit-box dig-commit-box-compact'"), client.indexOf(": E('div', { className: 'dig-commit-box', ref: commitBoxRef")],
+    wide: [client.indexOf(": E('div', { className: 'dig-commit-box', ref: commitBoxRef"), client.indexOf('// Folding hides the FILE LIST only')],
+  }
+  for (const face of Object.keys(boxes)) {
+    const span = boxes[face]
+    assert.ok(span[0] >= 0 && span[1] > span[0], 'the ' + face + ' commit box must exist')
+    const box = client.slice(span[0], span[1])
+    const toolbar = box.indexOf("className: 'dig-commit-ai'")
+    const message = box.indexOf("className: 'dig-textarea")
+    /* The bottom row is the shared helper call — the class itself is written
+       once, where commitButtons is defined (asserted below). */
+    const actions = box.indexOf('commitButtons(')
+    assert.ok(toolbar >= 0 && message > toolbar, 'the ' + face + ' box puts the Amend/AI row above the message')
+    assert.ok(actions > message, 'and the commit buttons below it')
+    assert.ok(box.indexOf('amendToggle') > toolbar && box.indexOf('amendToggle') < box.indexOf('aiWriteButton'),
+      'Amend leads that row (' + face + ')')
+  }
+  assert.match(client, /const commitButtons = \(small\) => E\('div', \{ className: 'dig-commit-actions' \}/,
+    'one helper draws the bottom row for both chromes')
+  assert.doesNotMatch(client, /className: 'dig-input dig-input-compact', value: message/,
+    'the message is no longer a one-line input (it could not be resized)')
+  assert.match(client, /ref: commitBoxRef, style: commitStyle/,
+    'the box takes whatever height the divider gave it (see the divider test)')
+  assert.match(client, /\.dig-commit-actions \.dig-btn-primary\{margin-left:0\}/,
+    'the commit buttons stay at the left edge instead of being pushed right')
+  assert.match(client, /'changes\.amend': 'Amend'/, 'the ZH label uses the git term the user asked for')
+})
+
+test('the commit box height is stored per surface, in px, beside the panes', () => {
+  const core = paneCore()
+  const box = core.normalizePanes({ panes: { 'compact:tall': { tree: 0.4, commitBox: 320 } } })
+  assert.deepEqual(box.panes['compact:tall'], { tree: 0.4, commitBox: 320 },
+    'the box keeps its own px next to the ratio-sized panes')
+  assert.equal(core.commitBoxPx(box, 'compact:tall'), 320)
+  assert.equal(core.commitBoxPx(box, 'stack:wide'), null, 'another surface has its own box, or none')
+
+  const junk = core.normalizePanes({ panes: {
+    'compact:tall': { commitBox: 12 },
+    'compact:wide': { commitBox: '300' },
+    'stack:tall': { commitBox: Number.NaN },
+    'stack:wide': { commitBox: 4000 },
+  } })
+  assert.deepEqual(junk.panes, {}, 'a box outside the clamp is a corrupt store, not a size')
+
+  const dragged = core.withCommitBoxPx(box, 'compact:tall', 244.6)
+  assert.deepEqual(dragged.panes['compact:tall'], { tree: 0.4, commitBox: 245 },
+    'the stored px is rounded and the panes beside it survive')
+  assert.deepEqual(core.withCommitBoxPx(dragged, 'compact:tall', null).panes['compact:tall'], { tree: 0.4 },
+    'a double-click reset removes it (the box goes back to its content height)')
+  assert.deepEqual(box.panes['compact:tall'], { tree: 0.4, commitBox: 320 }, 'the update must not mutate its input')
+
+  // One record, two dividers: neither may drop the other's value.
+  const both = core.withPaneRatio(box, 'compact:tall', 'diff', 0.3)
+  assert.equal(both.panes['compact:tall'].commitBox, 320, 'a pane drag keeps the box size')
+  assert.equal(core.withCommitBoxPx(both, 'compact:tall', 200).panes['compact:tall'].diff, 0.3,
+    'and a box drag keeps the pane sizes')
+})
+
+test('the commit box is resizable from its own top edge (user request)', () => {
+  // The divider above the box IS the box's top border: its next sibling is the
+  // box, so dragging it moves that edge — the gesture the mock-up asked for.
+  const panel = client.slice(client.indexOf('function ChangesPanel(props)'),
+    client.indexOf('/* ============================== history =============================='))
+  assert.ok(panel.length > 0, 'the changes panel must stay sliceable')
+  assert.match(panel, /className: 'dig-changes-body', ref: commitHostRef/,
+    'the room is measured on the element that holds list + divider + box')
+  assert.match(panel, /commitDivider,\s*\n\s*composer\)/, 'the divider sits directly above the commit box')
+  assert.match(panel, /side: 'next'/, 'and resizes that next sibling')
+  assert.match(panel, /vertical: false/, 'it moves the height in every chrome, even the columns one')
+  assert.match(panel, /nameKey: 'pane\.commitBox'/)
+  assert.match(panel, /const commitMax = Math\.max\(COMMIT_BOX_MIN_PX, commitBodyH - COMMIT_BOX_LIST_MIN_PX\)/,
+    'the list keeps its own minimum')
+  assert.match(panel, /commitReady === false \? null : E\(Gutter/, 'no travel, no divider — and no tab stop')
+  assert.match(panel, /const commitHeight = commitStored === null \|\| commitReady === false \? null : clampCommit\(commitStored\)/,
+    'a stored height is clamped by the room of the surface it is drawn on, and dropped when there is none')
+  assert.match(panel, /ref: commitBoxRef, style: commitStyle/, 'the box takes that height')
+  assert.match(panel, /props\.commitHeight === undefined \? null : props\.commitHeight/,
+    'the stored px comes from the panel')
+
+  // One record, two dividers, one storage key: the box rides along.
+  assert.match(client, /const COMMIT_BOX_KEY = 'commitBox'/)
+  assert.match(client, /const PANE_NAME_KEYS = \{[^}]*commitBox: 'pane\.commitBox' \}/,
+    'the divider announces itself through the shared pane-name map')
+  assert.match(client, /\.dig-commit-box\{[^}]*overflow:hidden/,
+    'a squeezed box clips instead of pushing its own buttons out of the pane')
+  assert.match(client, /\.dig-changes-body \.dig-gutter \+ \.dig-commit-box\{border-top:none\}/,
+    'the divider paints the hairline, so the box drops its own border')
+  assert.match(client, /\.dig-textarea\{[^}]*resize:none/,
+    'the corner grip is gone: one gesture, one axis')
+  assert.match(client, /\.dig-textarea\{[^}]*flex:1 1 auto/, 'the message absorbs whatever the box was given')
 })

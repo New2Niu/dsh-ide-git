@@ -8,14 +8,25 @@
  *   2. clicking it mounts the panel (.dig-root) with repository data — the
  *      session's own cwd is the repository, resolved through the sessions
  *      service, not the sidebar props;
- *   3. the settings card's placement switch takes the tab down and puts it
+ *   3. the seat draws the CHANGES face (变更 + 提交框, no branch tree — user
+ *      request 2026-10-19), keeps the `columns` chrome as that content
+ *      settles, and leaves the shared scrollport with NO residual wheel
+ *      scroll (scrollHeight - clientHeight <= 1px — the seat's convergence
+ *      invariant, v0.13.1 report + v0.13.3 follow-up);
+ *   3a. that commit box is resizable from its own TOP EDGE: the divider above
+ *      it moves the box (the change list gives way, the panel does not grow)
+ *      and pointerup stores the height; a double-click drops it again;
+ *   3b. the rail's branch button opens the EXPLORER tab (branch tree + commit
+ *      list + commit detail) — the only place the tree/graph live now — and,
+ *      when the host leaves the patch inline, selecting diff lines and
+ *      right-clicking offers 「发送选中行 / 发送选中片段」 and lands the
+ *      line-anchored reference in the composer (a host with its own diff tab
+ *      takes the patch away, which the step reports and skips);
+ *   4. the settings card's placement switch takes the tab down and puts it
  *      back LIVE — no reload (the row Config field `conversationTab`);
- *   4. with the direct plugin route fenced off (403, the remote pairing
+ *   5. with the direct plugin route fenced off (403, the remote pairing
  *      client's reality), the panel still loads: the transport retries through
  *      the /remote proxy path (issue #9);
- *   5. after opening a commit detail, the conversation scrollport keeps NO
- *      residual wheel scroll (scrollHeight - clientHeight <= 1px — the seat's
- *      convergence invariant, v0.13.3 follow-up);
  *   6. zero uncaught page errors throughout.
  *
  *   node scripts/conversation-probe.mjs "http://127.0.0.1:3099/?token=…" [out-dir]
@@ -291,6 +302,42 @@ const panelState = () => page.evaluate(() => {
   return { roots: roots.length, visible: visible.length, text: text.replace(/\s+/g, ' ').slice(0, 160) }
 })
 
+/** The commit box and the divider on its top edge. The divider is the only
+ *  `.dig-gutter` inside `.dig-changes-body`, and its NEXT SIBLING is the box —
+ *  that adjacency is what makes it the box's top edge rather than a pane's. */
+const readCommitBox = () => page.evaluate(() => {
+  const root = [...document.querySelectorAll('.dig-root')].find((el) => el.getBoundingClientRect().height > 40)
+  if (root === undefined) return { visible: false }
+  const body = root.querySelector('.dig-changes-body')
+  const box = root.querySelector('.dig-commit-box')
+  if (body === null || box === null) return { visible: false }
+  const gutter = body.querySelector('.dig-gutter')
+  const rect = gutter === null ? null : gutter.getBoundingClientRect()
+  return {
+    visible: true,
+    boxH: Math.round(box.getBoundingClientRect().height),
+    bodyH: Math.round(body.getBoundingClientRect().height),
+    above: gutter === null ? null : gutter.nextElementSibling === box,
+    divider: gutter === null ? null : {
+      min: Number(gutter.getAttribute('aria-valuemin')),
+      max: Number(gutter.getAttribute('aria-valuemax')),
+      now: Number(gutter.getAttribute('aria-valuenow')),
+      x: Math.round(rect.x + rect.width / 2),
+      y: Math.round(rect.y + rect.height / 2),
+    },
+  }
+})
+
+const storedCommitBoxes = () => page.evaluate(() => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem('dsh-ide-git.panes.v1') || '{}')
+    const panes = parsed.panes === null || typeof parsed.panes !== 'object' ? {} : parsed.panes
+    return Object.keys(panes)
+      .filter((bucket) => typeof panes[bucket].commitBox === 'number')
+      .map((bucket) => bucket + ':' + panes[bucket].commitBox)
+  } catch (error) { return ['parse-error'] }
+})
+
 try {
   await enterSession()
 
@@ -374,125 +421,187 @@ try {
       check(state.visible >= 1 && /main|master|branch|分支/i.test(state.text) === true,
         'a same-workspace session switch paints the panel from the first-paint cache')
       await page.screenshot({ path: join(outDir, 'conversation-git-tab-switched.png') })
-      /* 2c — the detail flip (v0.13.1 report): opening a commit's detail (and
-         from there a file diff) used to grow the panel with its content, and
-         the width-vs-height chrome test flipped the wide seat into the stacked
-         sidebar layout, shifting everything down. The seat is now pinned to
-         the scrollport's visible height, so the chrome must stay `columns` and
-         the panel must not grow past the viewport. */
-      /* The newest demo commit is a MERGE — git show on a merge is empty by
-         default, which hides the diff pane legitimately. Probe a regular
-         commit instead (second row). */
-      const commitRow = page.locator('.dig-root:visible .dig-commit').nth(1)
-      if (await commitRow.count() > 0) {
-        await commitRow.click({ timeout: 6000 })
-        await settle(4000)
-        /* The user's exact path: click a changed FILE inside the detail — the
-           diff is the tallest content that used to trigger the flip. */
-        const fileRow = page.locator('.dig-root:visible .dig-detail-files .dig-row-file').first()
-        if (await fileRow.count() > 0) {
-          try { await fileRow.click({ timeout: 5000 }) } catch (error) { log('file click failed: ' + String(error && error.message ? error.message : error).slice(0, 120)) }
-          await settle(3500)
+      /* 2c — the changes face is what this seat shows now (user request
+         2026-10-19): 变更 + 提交框, no branch tree and no commit list — both
+         moved into the explorer tab, step 2d below. The v0.13.1 detail-flip
+         report still guards this step: with the commit loop on screen the
+         CHANGES list + commit box ARE the tallest content of the seat, and
+         growing them used to flip the wide seat into the stacked layout (the
+         width-vs-height test read the panel's own growth). The chrome must
+         stay `columns` and the panel must not grow past the viewport. */
+      check(await page.locator('.dig-root:visible .dig-commit-box').count() > 0,
+        'the default face shows the commit box (变更 + 提交框)')
+      check(await page.locator('.dig-root:visible [data-pane="tree"]').count() === 0,
+        'the default face carries no branch tree (it lives in the explorer tab)')
+      const chrome = await page.evaluate(() => {
+        const root = [...document.querySelectorAll('.dig-root')].find((el) => el.getBoundingClientRect().height > 40)
+        if (root === undefined) return null
+        const body = root.querySelector('.dig-body')
+        const rect = root.getBoundingClientRect()
+        const scroll = root.closest('[data-conversation-scroll]')
+        return {
+          chrome: body === null ? 'none' : (body.className.match(/dig-body-(columns|stack|compact)/) || [])[1] || 'unknown',
+          rootHeight: Math.round(rect.height),
+          viewport: scroll === null ? window.innerHeight : Math.round(scroll.clientHeight),
         }
-        const chrome = await page.evaluate(() => {
-          const root = [...document.querySelectorAll('.dig-root')].find((el) => el.getBoundingClientRect().height > 40)
-          if (root === undefined) return null
-          const body = root.querySelector('.dig-body')
-          const rect = root.getBoundingClientRect()
-          const scroll = root.closest('[data-conversation-scroll]')
-          return {
-            chrome: body === null ? 'none' : (body.className.match(/dig-body-(columns|stack|compact)/) || [])[1] || 'unknown',
-            rootHeight: Math.round(rect.height),
-            viewport: scroll === null ? window.innerHeight : Math.round(scroll.clientHeight),
-          }
-        })
-        if (chrome === null) check(false, 'the panel vanished while the detail was open')
-        else {
-          check(chrome.chrome === 'columns', 'opening a commit detail keeps the columns chrome (saw ' + chrome.chrome + ')')
-          check(chrome.rootHeight <= chrome.viewport + 40,
-            'the panel stays within the visible area (root ' + chrome.rootHeight + 'px vs viewport ' + chrome.viewport + 'px)')
-        }
-        /* v0.13.3 follow-up: pinning the seat still left a residual WHEEL
-           scroll on the real host — the sticky composer's flow space, plus
-           content that mounts after the first convergence pass. The seat's
-           controlled convergence must leave the shared scrollport with NO
-           scrollable margin at all: scrollHeight - clientHeight <= 1px, with
-           the detail (the tallest content) wide open. */
-        const scrollGap = await page.evaluate(() => {
-          const scroll = document.querySelector('[data-conversation-scroll]')
-          if (scroll === null) return null
-          return Math.round(scroll.scrollHeight - scroll.clientHeight)
-        })
-        check(scrollGap !== null && scrollGap <= 1,
-          'the scrollport has no residual wheel scroll after convergence (gap ' + String(scrollGap) + 'px)')
-        await page.screenshot({ path: join(outDir, 'conversation-git-detail.png') })
-        /* 2c-b — diff selection → right-click → send (v0.13.5): select a few
-           rendered diff lines programmatically, open the context menu, and
-           assert the two send items appear; clicking one must land a
-           line-anchored reference in the session composer. */
-        const sel = await page.evaluate(() => {
-          const root = [...document.querySelectorAll('.dig-root')].find((el) => el.getBoundingClientRect().height > 40)
-          if (root === undefined) return { lines: 0 }
-          const lines = [...root.querySelectorAll('[data-diff] div[class*="line"], [data-diff] > div')].filter((el) => {
-            const r = el.getBoundingClientRect()
-            return r.height > 0 && (el.textContent || '').length > 0
-          })
-          if (lines.length < 5) {
-            /* Diagnostic payload returned to Node — page context has no logger. */
-            return {
-              lines: lines.length,
-              diag: {
-                dataDiff: document.querySelectorAll('[data-diff]').length,
-                dataDiffChildren: document.querySelectorAll('[data-diff] > div').length,
-                lineClass: document.querySelectorAll('[class*="line"]').length,
-                detailFiles: document.querySelectorAll('.dig-detail-files .dig-row-file').length,
-                patchPre: document.querySelectorAll('.dig-root pre, .dig-root [class*="diff"]').length,
-                diffPane: document.querySelectorAll('.dig-diff-pane').length,
-                selectedRow: document.querySelectorAll('.dig-row-selected').length,
-              },
+      })
+      if (chrome === null) check(false, 'the panel vanished while the changes face settled')
+      else {
+        check(chrome.chrome === 'columns', 'the changes face keeps the columns chrome (saw ' + chrome.chrome + ')')
+        check(chrome.rootHeight <= chrome.viewport + 40,
+          'the panel stays within the visible area (root ' + chrome.rootHeight + 'px vs viewport ' + chrome.viewport + 'px)')
+      }
+      /* v0.13.3 follow-up: pinning the seat still left a residual WHEEL scroll
+         on the real host — the sticky composer's flow space, plus content that
+         mounts after the first convergence pass. The seat's controlled
+         convergence must leave the shared scrollport with NO scrollable margin
+         at all: scrollHeight - clientHeight <= 1px. */
+      const scrollGap = await page.evaluate(() => {
+        const scroll = document.querySelector('[data-conversation-scroll]')
+        if (scroll === null) return null
+        return Math.round(scroll.scrollHeight - scroll.clientHeight)
+      })
+      check(scrollGap !== null && scrollGap <= 1,
+        'the scrollport has no residual wheel scroll after convergence (gap ' + String(scrollGap) + 'px)')
+      await page.screenshot({ path: join(outDir, 'conversation-git-changes-face.png') })
+      /* 2c-bis — the commit box is resizable from its own TOP EDGE (user
+         request 2026-10-19): the divider right above the box IS that edge, and
+         dragging it moves the box while the change list gives way. This seat is
+         the guaranteed changes face (the explorer opens in its own tab), so the
+         gesture is verified here — one drag up, then a double-click to put the
+         box back to its content height. */
+      const box0 = await readCommitBox()
+      const boxesBefore = await storedCommitBoxes()
+      if (check(box0.visible === true && box0.boxH > 0, 'the changes face draws a commit box to resize')) {
+        if (check(box0.divider !== null && box0.above === true,
+          'and the box has a divider on its top edge (the box is its next sibling)')) {
+          const grow = Math.min(70, box0.divider.max - box0.boxH)
+          if (check(grow >= 20, 'the divider has room to grow the box (box ' + box0.boxH + 'px, window '
+            + box0.divider.min + '..' + box0.divider.max + ')')) {
+            await page.mouse.move(box0.divider.x, box0.divider.y)
+            await page.mouse.down()
+            await page.mouse.move(box0.divider.x, box0.divider.y - grow, { steps: 12 })
+            await settle(150)
+            await page.mouse.up()
+            await settle(700)
+            const box1 = await readCommitBox()
+            const boxesAfter = await storedCommitBoxes()
+            check(box1.boxH - box0.boxH >= grow - 6,
+              'dragging the box top edge up ' + grow + 'px grew the box by ' + (box1.boxH - box0.boxH) + 'px')
+            check(Math.abs(box1.bodyH - box0.bodyH) <= 2,
+              'and the list gave way instead of the panel growing (body ' + box0.bodyH + 'px -> ' + box1.bodyH + 'px)')
+            check(boxesAfter.length === boxesBefore.length + 1,
+              'pointerup stored the box height under its own surface (' + boxesAfter.join(', ') + ')')
+            const gutter = page.locator('.dig-root:visible .dig-changes-body .dig-gutter').first()
+            if (await gutter.count() > 0) {
+              await gutter.dblclick({ timeout: 6000 })
+              await settle(700)
+              const box2 = await readCommitBox()
+              check(box2.boxH < box1.boxH, 'double-clicking the divider returns the box to its content height ('
+                + box1.boxH + 'px -> ' + box2.boxH + 'px)')
+              check((await storedCommitBoxes()).join('|') === boxesBefore.join('|'), 'and drops the stored height')
             }
           }
-          const range = document.createRange()
-          range.selectNodeContents(lines[2])
-          if (lines[4] !== undefined) range.setEnd(lines[4], 0)
-          const selection = window.getSelection()
-          selection.removeAllRanges()
-          selection.addRange(range)
-          const target = lines[3]
-          const r = target.getBoundingClientRect()
-          return { lines: lines.length, x: r.x + Math.min(40, r.width / 2), y: r.y + r.height / 2, file: (root.querySelector('.dig-detail-files .dig-row-selected, .dig-detail-files .dig-row-file') || {}).textContent || '' }
-        })
-        if (sel === null || sel.lines < 5) {
-          log('selection diagnostics: ' + JSON.stringify(sel))
-        } else {
-          await page.mouse.click(sel.x, sel.y, { button: 'right' })
-          await settle(1200)
-          const items = await page.evaluate(() => {
-            const menus = [...document.querySelectorAll('.dig-root [class*="menu"], .dig-root .dig-menu')]
-            const text = menus.map((m) => m.textContent || '').join('|')
-            return { hasLines: text.indexOf('发送选中行') >= 0, hasSnippet: text.indexOf('发送选中片段') >= 0 }
-          })
-          check(items.hasLines === true || items.hasSnippet === true,
-            'selecting diff lines offers the send-to-chat menu items (lines=' + String(items.hasLines) + ' snippet=' + String(items.hasSnippet) + ')')
-          if (items.hasLines === true || items.hasSnippet === true) {
-            const sendItem = page.locator('.dig-root button, .dig-root [role="menuitem"]')
-              .filter({ hasText: items.hasLines === true ? '发送选中行' : '发送选中片段' }).first()
-            await sendItem.click({ timeout: 5000 })
-            await settle(2500)
-            const composerText = await page.evaluate(() => {
-              const areas = [...document.querySelectorAll('[contenteditable="true"]')]
-              return areas.map((a) => (a.textContent || '').trim() + ' ||HTML ' + a.innerHTML.slice(0, 400)).join(' :: ')
-            })
-            check(/第\s*\d+/.test(composerText) === true || /行/.test(composerText) === true,
-              'the composer receives the line-anchored reference: ' + composerText.slice(0, 80))
-          }
-          await page.evaluate(() => { const s = window.getSelection(); if (s !== null) s.removeAllRanges() })
         }
-        /* Back to the history so the later steps start from a known surface. */
-        const back = page.locator('.dig-root:visible button', { hasText: '返回历史' }).first()
-        if (await back.count() > 0) { try { await back.click({ timeout: 4000 }) } catch (error) { void error } await settle(2000) }
+      }
+      /* 2d — the rail's branch button opens the EXPLORER (the IDE face: branch
+         tree | commit list | commit detail) in its OWN tab (user request
+         2026-10-19): the tree and the graph live there and nowhere else. The
+         door belongs to the host (better-sidebar's openTab / the native
+         sidebarRight.openTab), so the probe asserts what the user sees — a
+         panel appearing that carries the tree and the commit list. */
+      const branchButton = page.locator('.dig-root:visible [data-action="tree"]').first()
+      if (await branchButton.count() > 0) {
+        try { await branchButton.click({ timeout: 6000 }) } catch (error) { log('branch button click failed: ' + String(error && error.message ? error.message : error).slice(0, 120)) }
+        await settle(5000)
+        const explored = await page.evaluate(() => {
+          const roots = [...document.querySelectorAll('.dig-root')].filter((el) => el.getBoundingClientRect().height > 40)
+          return {
+            roots: roots.length,
+            tree: document.querySelectorAll('.dig-root [data-pane="tree"]').length,
+            commits: document.querySelectorAll('.dig-root .dig-commit').length,
+            explorerRoot: roots.filter((el) => el.querySelector('[data-pane="tree"]') !== null).length,
+          }
+        })
+        check(explored.explorerRoot >= 1 && explored.commits > 0,
+          'the rail branch button opens the explorer tab (tree + commit list, saw ' + JSON.stringify(explored) + ')')
+        await page.screenshot({ path: join(outDir, 'conversation-git-explorer-tab.png') })
+        /* 2e — diff selection → right-click → send (v0.13.5, moved here in
+           v0.20.0): the diff now opens from the explorer's commit detail, and
+           whether the LINES land in this panel depends on the host — a base
+           with a diff tab of its own takes the patch to that tab (then there
+           is nothing to select inside .dig-root and the step reports and
+           moves on). When the inline pane does render, select a few lines,
+           open the context menu and send: the two menu items must appear and
+           the click must land a line-anchored reference in the composer. */
+        const commit = page.locator('.dig-root:visible .dig-commit').nth(1)
+        if (await commit.count() > 0) {
+          await commit.click({ timeout: 6000 })
+          await settle(3000)
+          const file = page.locator('.dig-root:visible .dig-detail-files .dig-row-file').first()
+          if (await file.count() > 0) {
+            try { await file.dblclick({ timeout: 5000 }) } catch (error) { log('file double-click failed: ' + String(error && error.message ? error.message : error).slice(0, 120)) }
+            await settle(3500)
+          }
+          const sel = await page.evaluate(() => {
+            const root = [...document.querySelectorAll('.dig-root')].find((el) => el.getBoundingClientRect().height > 40)
+            if (root === undefined) return { lines: 0 }
+            const lines = [...root.querySelectorAll('[data-diff] div[class*="line"], [data-diff] > div')].filter((el) => {
+              const r = el.getBoundingClientRect()
+              return r.height > 0 && (el.textContent || '').length > 0
+            })
+            if (lines.length < 5) {
+              /* Diagnostic payload returned to Node — page context has no logger. */
+              return {
+                lines: lines.length,
+                diag: {
+                  dataDiff: document.querySelectorAll('[data-diff]').length,
+                  detailFiles: document.querySelectorAll('.dig-detail-files .dig-row-file').length,
+                  diffPane: document.querySelectorAll('.dig-diff-pane').length,
+                },
+              }
+            }
+            const range = document.createRange()
+            range.selectNodeContents(lines[2])
+            if (lines[4] !== undefined) range.setEnd(lines[4], 0)
+            const selection = window.getSelection()
+            selection.removeAllRanges()
+            selection.addRange(range)
+            const target = lines[3]
+            const r = target.getBoundingClientRect()
+            return { lines: lines.length, x: r.x + Math.min(40, r.width / 2), y: r.y + r.height / 2 }
+          })
+          if (sel === null || sel.lines < 5) {
+            log('the host took the diff to its own tab — no inline lines to select (' + JSON.stringify(sel) + ')')
+          } else {
+            await page.mouse.click(sel.x, sel.y, { button: 'right' })
+            await settle(1200)
+            const items = await page.evaluate(() => {
+              const menus = [...document.querySelectorAll('.dig-root [class*="menu"], .dig-root .dig-menu')]
+              const text = menus.map((m) => m.textContent || '').join('|')
+              return { hasLines: text.indexOf('发送选中行') >= 0, hasSnippet: text.indexOf('发送选中片段') >= 0 }
+            })
+            check(items.hasLines === true || items.hasSnippet === true,
+              'selecting diff lines offers the send-to-chat menu items (lines=' + String(items.hasLines) + ' snippet=' + String(items.hasSnippet) + ')')
+            if (items.hasLines === true || items.hasSnippet === true) {
+              const sendItem = page.locator('.dig-root button, .dig-root [role="menuitem"]')
+                .filter({ hasText: items.hasLines === true ? '发送选中行' : '发送选中片段' }).first()
+              await sendItem.click({ timeout: 5000 })
+              await settle(2500)
+              const composerText = await page.evaluate(() => {
+                const areas = [...document.querySelectorAll('[contenteditable="true"]')]
+                return areas.map((a) => (a.textContent || '').trim()).join(' :: ')
+              })
+              check(/第\s*\d+/.test(composerText) === true || /行/.test(composerText) === true,
+                'the composer receives the line-anchored reference: ' + composerText.slice(0, 80))
+            }
+            await page.evaluate(() => { const s = window.getSelection(); if (s !== null) s.removeAllRanges() })
+          }
+        } else {
+          log('explorer commit rows not found — skipping the diff-selection check')
+        }
       } else {
-        log('commit rows not found — skipping the detail-flip check')
+        check(false, 'the changes face offers the explorer (the rail branch button)')
       }
     } else {
       check(false, 'the Git tab is present on the fresh session')

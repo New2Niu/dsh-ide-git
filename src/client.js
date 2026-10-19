@@ -57,6 +57,13 @@ window.__ModuleLoader__.load({
        would escape the mount and 404 behind any strict proxy. */
     const API_BASE = 'dsh-ide-git/api'
     const TAB_ID = 'dsh-ide-git:panel'
+    /* Two faces, two tabs (user request 2026-10-19). The panel — the tab every
+       entry point opens — is the CHANGES face: repository/branch bar, action
+       rail, 变更 list, commit box. Everything that browses the repository (branch
+       tree, commit list, commit details) moved into a SECOND tab, the EXPLORER,
+       which the rail's branch button opens beside it. It is IDE-shaped by
+       request: tree | log | detail side by side. */
+    const TAB_EXPLORE_ID = 'dsh-ide-git:explore'
     /* The bundle's package name: the key the Plugins page uses for a bundle's own
        page and its `plugins.bundle.config` slot. */
     const SETTINGS_BUNDLE = 'dsh-ide-git'
@@ -93,8 +100,6 @@ window.__ModuleLoader__.load({
       'repo.empty': '这个工作区下没有找到 Git 仓库',
       'repo.switch': '切换仓库',
       'branch.switch': '切换分支',
-      'seg.changes': '变更 {n}',
-      'seg.history': '历史',
       'branches.local': '本地',
       'branches.remote': '远程',
       'branches.tags': '标签',
@@ -122,7 +127,10 @@ window.__ModuleLoader__.load({
       'changes.empty': '没有未提交的变更',
       'changes.commitPlaceholder': '提交信息(Ctrl+Enter 提交)',
       'changes.commit': '提交',
-      'changes.amend': '修补',
+      /* The git term, on purpose (user request 2026-10-19): 修补 read as a vague
+         "patch it up" — this is exactly `git commit --amend`, so the label is
+         the flag's own name and nothing else (the user cut the local gloss). */
+      'changes.amend': 'Amend',
       'changes.stageAll': '全部暂存',
       'selection.count': '已选 {n} 项',
       'selection.copied': '已复制 {n} 项',
@@ -196,10 +204,12 @@ window.__ModuleLoader__.load({
       'history.filter': '文本或哈希',
       'detail.files': '变更文件',
       'detail.back': '返回历史',
+      'detail.pickHint': '选择一条提交查看详情',
       'detail.noFiles': '没有文件变更',
       'diff.empty': '没有可显示的文本差异',
       'pane.diff': '差异视图',
       'pane.resize': '拖动调整{name}尺寸,双击复位,方向键微调',
+      'pane.commitBox': '提交框',
       'diff.binary': '二进制文件',
       'diff.loading': '正在加载差异...',
       'diff.codeLabel': '差异',
@@ -283,7 +293,10 @@ window.__ModuleLoader__.load({
       'toolbar.push': '推送(Push)',
       'toolbar.tree': '分支栏',
       'rail.more': '更多操作',
+      'rail.explore': '分支与提交(另开标签页)',
       'rail.settings': '动作条设置',
+      'explore.title': '分支与提交',
+      'explore.description': '分支树、提交列表与提交详情(IDE 风格)',
       'rail.openSettings': '打开插件设置',
       'settings.card.title': 'Git 工具窗口设置',
       'settings.card.desc': '面板放置、动作条按钮与 AI 提交信息',
@@ -299,6 +312,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '本地待推送提交',
       'composer.inWorktree': '已被其他工作树签出',
       'composer.busy': 'Git 操作进行中…',
+      'composer.openPanel': '打开 Git 面板',
       'settings.placement.tabHint': '关闭后仍可从右侧栏或底部面板打开。',
       'settings.placement.immersive': '沉浸模式(占满全高,隐藏输入框)',
       'settings.placement.immersiveHint': '开启后 Git 标签页占满整个会话区高度,输入框自动收起;审批与提问仍会正常显示。',
@@ -421,8 +435,6 @@ window.__ModuleLoader__.load({
       'repo.empty': 'No Git repository found in this workspace',
       'repo.switch': 'Switch repository',
       'branch.switch': 'Switch branch',
-      'seg.changes': 'Changes {n}',
-      'seg.history': 'History',
       'branches.local': 'Local',
       'branches.remote': 'Remote',
       'branches.tags': 'Tags',
@@ -524,10 +536,12 @@ window.__ModuleLoader__.load({
       'history.filter': 'Text or hash',
       'detail.files': 'Changed files',
       'detail.back': 'Back to history',
+      'detail.pickHint': 'Select a commit to see its details',
       'detail.noFiles': 'No file changes',
       'diff.empty': 'No textual diff to show',
       'pane.diff': 'diff view',
       'pane.resize': 'Drag to resize {name}: double-click resets, arrow keys nudge',
+      'pane.commitBox': 'Commit box',
       'diff.binary': 'Binary file',
       'diff.loading': 'Loading diff...',
       'diff.codeLabel': 'Diff',
@@ -611,7 +625,10 @@ window.__ModuleLoader__.load({
       'toolbar.push': 'Push',
       'toolbar.tree': 'Branch pane',
       'rail.more': 'More actions',
+      'rail.explore': 'Branches & commits (new tab)',
       'rail.settings': 'Action bar settings',
+      'explore.title': 'Branches & commits',
+      'explore.description': 'Branch tree, commit list and commit details (IDE style)',
       'rail.openSettings': 'Open plugin settings',
       'settings.card.title': 'Git tool window settings',
       'settings.card.desc': 'Placement, action rail buttons and AI commit message',
@@ -627,6 +644,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Local commits waiting to push',
       'composer.inWorktree': 'Checked out in another worktree',
       'composer.busy': 'Git operation in progress…',
+      'composer.openPanel': 'Open the Git panel',
       'settings.placement.tabHint': 'Off, the panel stays reachable from the right sidebar and the bottom panel.',
       'settings.placement.immersive': 'Immersive mode (full height, hidden composer)',
       'settings.placement.immersiveHint': 'On, the Git tab fills the whole conversation area and the composer steps aside; approvals and questions still show.',
@@ -757,8 +775,6 @@ window.__ModuleLoader__.load({
         'repo.empty': '呢個工作區搵唔到 Git 存放庫',
         'repo.switch': '切換存放庫',
         'branch.switch': '切換分支',
-        'seg.changes': '變更 {n}',
-        'seg.history': '歷史',
         'branches.local': '本地',
         'branches.remote': '遠端',
         'branches.tags': '標籤',
@@ -786,7 +802,7 @@ window.__ModuleLoader__.load({
         'changes.empty': '冇待處理嘅變更',
         'changes.commitPlaceholder': '提交訊息(Ctrl+Enter)',
         'changes.commit': '提交',
-        'changes.amend': '修訂上次提交',
+        'changes.amend': 'Amend',
         'changes.stageAll': '全部暫存',
         'selection.count': '已選 {n} 項',
         'selection.copied': '已複製 {n} 項',
@@ -860,10 +876,12 @@ window.__ModuleLoader__.load({
         'history.filter': '文字或雜湊',
         'detail.files': '變更嘅檔案',
         'detail.back': '返回歷史',
+        'detail.pickHint': '揀一個提交睇詳情',
         'detail.noFiles': '冇檔案變更',
         'diff.empty': '冇文字差異可以顯示',
         'pane.diff': '差異檢視',
         'pane.resize': '拖動調整{name}尺寸,雙擊復位,方向鍵微調',
+        'pane.commitBox': '提交框',
         'diff.binary': '二進位檔案',
         'diff.loading': '正在載入差異...',
         'diff.codeLabel': '差異',
@@ -947,7 +965,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': '推送',
         'toolbar.tree': '分支面板',
         'rail.more': '更多操作',
+        'rail.explore': '分支與提交(另開分頁)',
         'rail.settings': '動作列設定',
+        'explore.title': '分支與提交',
+        'explore.description': '分支樹、提交清單與提交詳情(IDE 風格)',
         'rail.openSettings': '開啟外掛設定',
         'settings.card.title': 'Git 工具視窗設定',
         'settings.card.desc': '面板放置、動作列按鈕與 AI 提交訊息',
@@ -963,6 +984,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '本地等待推送提交',
       'composer.inWorktree': '已經喺其他工作樹簽出',
       'composer.busy': 'Git 操作進行中…',
+      'composer.openPanel': '開啟 Git 面板',
         'settings.placement.tabHint': '關閉之後仍可從右側欄或底部面板開啟。',
         'settings.placement.immersive': '沉浸模式(佔滿全高,隱藏輸入框)',
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個會話區高度,輸入框自動收起;審批與提問仍會正常顯示。',
@@ -1085,8 +1107,6 @@ window.__ModuleLoader__.load({
         'repo.empty': '這個工作區找不到 Git 版本庫',
         'repo.switch': '切換版本庫',
         'branch.switch': '切換分支',
-        'seg.changes': '變更 {n}',
-        'seg.history': '歷史',
         'branches.local': '本機',
         'branches.remote': '遠端',
         'branches.tags': '標籤',
@@ -1114,7 +1134,7 @@ window.__ModuleLoader__.load({
         'changes.empty': '沒有待處理的變更',
         'changes.commitPlaceholder': '提交訊息(Ctrl+Enter)',
         'changes.commit': '提交',
-        'changes.amend': '修訂上次提交',
+        'changes.amend': 'Amend',
         'changes.stageAll': '全部暫存',
         'selection.count': '已選 {n} 項',
         'selection.copied': '已複製 {n} 項',
@@ -1188,10 +1208,12 @@ window.__ModuleLoader__.load({
         'history.filter': '文字或雜湊',
         'detail.files': '變更的檔案',
         'detail.back': '返回歷史',
+        'detail.pickHint': '選擇一個提交查看詳情',
         'detail.noFiles': '沒有檔案變更',
         'diff.empty': '沒有文字差異可顯示',
         'pane.diff': '差異檢視',
         'pane.resize': '拖曳調整{name}尺寸,雙擊重設,方向鍵微調',
+        'pane.commitBox': '提交框',
         'diff.binary': '二進位檔案',
         'diff.loading': '正在載入差異...',
         'diff.codeLabel': '差異',
@@ -1275,7 +1297,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': '推送',
         'toolbar.tree': '分支面板',
         'rail.more': '更多操作',
+        'rail.explore': '分支與提交(另開分頁)',
         'rail.settings': '動作列設定',
+        'explore.title': '分支與提交',
+        'explore.description': '分支樹、提交清單與提交詳情(IDE 風格)',
         'rail.openSettings': '開啟外掛設定',
         'settings.card.title': 'Git 工具視窗設定',
         'settings.card.desc': '面板放置、動作列按鈕與 AI 提交訊息',
@@ -1291,6 +1316,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '本地待推送提交',
       'composer.inWorktree': '已被其他工作樹簽出',
       'composer.busy': 'Git 操作進行中…',
+      'composer.openPanel': '開啟 Git 面板',
         'settings.placement.tabHint': '關閉之後仍可從右側欄或底部面板開啟。',
         'settings.placement.immersive': '沉浸模式(佔滿全高,隱藏輸入框)',
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個對話區高度,輸入框自動收起;審核與提問仍會正常顯示。',
@@ -1413,8 +1439,6 @@ window.__ModuleLoader__.load({
         'repo.empty': '呢個工作區搵唔到 Git 存放庫',
         'repo.switch': '切換存放庫',
         'branch.switch': '切換分支',
-        'seg.changes': '變更 {n}',
-        'seg.history': '歷史',
         'branches.local': '本地',
         'branches.remote': '遠端',
         'branches.tags': '標籤',
@@ -1442,7 +1466,7 @@ window.__ModuleLoader__.load({
         'changes.empty': '冇待處理嘅變更',
         'changes.commitPlaceholder': '提交訊息(Ctrl+Enter)',
         'changes.commit': '提交',
-        'changes.amend': '修訂上次提交',
+        'changes.amend': 'Amend',
         'changes.stageAll': '全部暫存',
         'selection.count': '已選 {n} 項',
         'selection.copied': '已複製 {n} 項',
@@ -1516,10 +1540,12 @@ window.__ModuleLoader__.load({
         'history.filter': '文字或雜湊',
         'detail.files': '變更嘅檔案',
         'detail.back': '返回歷史',
+        'detail.pickHint': '揀一個提交睇詳情',
         'detail.noFiles': '冇檔案變更',
         'diff.empty': '冇文字差異可以顯示',
         'pane.diff': '差異檢視',
         'pane.resize': '拖動調整{name}尺寸,雙擊復位,方向鍵微調',
+        'pane.commitBox': '提交框',
         'diff.binary': '二進位檔案',
         'diff.loading': '正在載入差異...',
         'diff.codeLabel': '差異',
@@ -1603,7 +1629,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': '推送',
         'toolbar.tree': '分支面板',
         'rail.more': '更多操作',
+        'rail.explore': '分支與提交(另開分頁)',
         'rail.settings': '動作列設定',
+        'explore.title': '分支與提交',
+        'explore.description': '分支樹、提交清單與提交詳情(IDE 風格)',
         'rail.openSettings': '開啟外掛設定',
         'settings.card.title': 'Git 工具視窗設定',
         'settings.card.desc': '面板放置、動作列按鈕與 AI 提交訊息',
@@ -1619,6 +1648,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '本地等待推送提交',
       'composer.inWorktree': '已經喺其他工作樹簽出',
       'composer.busy': 'Git 操作進行中…',
+      'composer.openPanel': '開啟 Git 面板',
         'settings.placement.tabHint': '關閉之後仍可從右側欄或底部面板開啟。',
         'settings.placement.immersive': '沉浸模式(佔滿全高,隱藏輸入框)',
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個會話區高度,輸入框自動收起;審批與提問仍會正常顯示。',
@@ -1741,8 +1771,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'このワークスペースに Git リポジトリが見つかりません',
         'repo.switch': 'リポジトリを切り替え',
         'branch.switch': 'ブランチを切り替え',
-        'seg.changes': '変更 {n}',
-        'seg.history': '履歴',
         'branches.local': 'ローカル',
         'branches.remote': 'リモート',
         'branches.tags': 'タグ',
@@ -1844,10 +1872,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'テキストまたはハッシュ',
         'detail.files': '変更されたファイル',
         'detail.back': '履歴に戻る',
+        'detail.pickHint': 'コミットを選ぶと詳細が表示されます',
         'detail.noFiles': 'ファイルの変更はありません',
         'diff.empty': '表示できるテキスト差分がありません',
         'pane.diff': '差分ビュー',
         'pane.resize': '{name}のサイズをドラッグで調整(ダブルクリックでリセット、矢印キーで微調整)',
+        'pane.commitBox': 'コミット欄',
         'diff.binary': 'バイナリファイル',
         'diff.loading': '差分を読み込み中...',
         'diff.codeLabel': '差分',
@@ -1931,7 +1961,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'プッシュ',
         'toolbar.tree': 'ブランチペイン',
         'rail.more': 'その他の操作',
+        'rail.explore': 'ブランチとコミット(新しいタブ)',
         'rail.settings': 'アクションバーの設定',
+        'explore.title': 'ブランチとコミット',
+        'explore.description': 'ブランチツリー・コミット一覧・コミット詳細(IDE 風)',
         'rail.openSettings': 'プラグイン設定を開く',
         'settings.card.title': 'Gitツールウィンドウの設定',
         'settings.card.desc': 'パネル配置、アクションレールのボタンと AI コミットメッセージ',
@@ -1947,6 +1980,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'プッシュ待ちのローカルコミット',
       'composer.inWorktree': '別のワークツリーでチェックアウト中',
       'composer.busy': 'Git 操作を実行中…',
+      'composer.openPanel': 'Git パネルを開く',
         'settings.placement.tabHint': 'オフにしても右サイドバーと下部パネルから開けます。',
         'settings.placement.immersive': '没入モード(全高表示・入力欄を非表示)',
         'settings.placement.immersiveHint': 'オンにすると Git タブが会話エリアの高さいっぱいに広がり、入力欄は引っ込みます。承認や質問は通常どおり表示されます。',
@@ -2069,8 +2103,6 @@ window.__ModuleLoader__.load({
         'repo.empty': '이 워크스페이스에서 Git 저장소를 찾을 수 없습니다',
         'repo.switch': '저장소 전환',
         'branch.switch': '브랜치 전환',
-        'seg.changes': '변경 {n}',
-        'seg.history': '기록',
         'branches.local': '로컬',
         'branches.remote': '원격',
         'branches.tags': '태그',
@@ -2172,10 +2204,12 @@ window.__ModuleLoader__.load({
         'history.filter': '텍스트 또는 해시',
         'detail.files': '변경된 파일',
         'detail.back': '기록으로 돌아가기',
+        'detail.pickHint': '커밋을 선택하면 상세 정보가 표시됩니다',
         'detail.noFiles': '파일 변경 없음',
         'diff.empty': '표시할 텍스트 차이가 없습니다',
         'pane.diff': '차이 보기',
         'pane.resize': '{name} 크기를 드래그해 조절(더블클릭 초기화, 화살표 키 미세 조정)',
+        'pane.commitBox': '커밋 상자',
         'diff.binary': '바이너리 파일',
         'diff.loading': '차이 불러오는 중...',
         'diff.codeLabel': '차이',
@@ -2259,7 +2293,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': '푸시',
         'toolbar.tree': '브랜치 창',
         'rail.more': '추가 작업',
+        'rail.explore': '브랜치 및 커밋(새 탭)',
         'rail.settings': '작업 표시줄 설정',
+        'explore.title': '브랜치 및 커밋',
+        'explore.description': '브랜치 트리, 커밋 목록, 커밋 상세(IDE 스타일)',
         'rail.openSettings': '플러그인 설정 열기',
         'settings.card.title': 'Git 도구 창 설정',
         'settings.card.desc': '패널 배치, 액션 레일 버튼 및 AI 커밋 메시지',
@@ -2275,6 +2312,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '푸시 대기 중인 로컬 커밋',
       'composer.inWorktree': '다른 작업 트리에서 체크아웃됨',
       'composer.busy': 'Git 작업 진행 중…',
+      'composer.openPanel': 'Git 패널 열기',
         'settings.placement.tabHint': '꺼도 오른쪽 사이드바와 하단 패널에서 열 수 있습니다.',
         'settings.placement.immersive': '몰입 모드(전체 높이, 입력창 숨김)',
         'settings.placement.immersiveHint': '켜면 Git 탭이 대화 영역 전체 높이를 차지하고 입력창은 숨겨집니다. 승인과 질문은 정상적으로 표시됩니다.',
@@ -2397,8 +2435,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'In diesem Arbeitsbereich wurde kein Git-Repository gefunden',
         'repo.switch': 'Repository wechseln',
         'branch.switch': 'Branch wechseln',
-        'seg.changes': 'Änderungen {n}',
-        'seg.history': 'Verlauf',
         'branches.local': 'Lokal',
         'branches.remote': 'Remote',
         'branches.tags': 'Tags',
@@ -2500,10 +2536,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Text oder Hash',
         'detail.files': 'Geänderte Dateien',
         'detail.back': 'Zurück zum Verlauf',
+        'detail.pickHint': 'Commit auswählen, um die Details zu sehen',
         'detail.noFiles': 'Keine Dateiänderungen',
         'diff.empty': 'Kein textueller Diff vorhanden',
         'pane.diff': 'Diff-Ansicht',
         'pane.resize': 'Größe von {name} per Ziehen ändern (Doppelklick setzt zurück, Pfeiltasten justieren)',
+        'pane.commitBox': 'Commit-Feld',
         'diff.binary': 'Binärdatei',
         'diff.loading': 'Diff wird geladen...',
         'diff.codeLabel': 'Diff',
@@ -2587,7 +2625,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Push',
         'toolbar.tree': 'Branch-Bereich',
         'rail.more': 'Weitere Aktionen',
+        'rail.explore': 'Branches & Commits (neuer Tab)',
         'rail.settings': 'Einstellungen der Aktionsleiste',
+        'explore.title': 'Branches & Commits',
+        'explore.description': 'Branch-Baum, Commit-Liste und Commit-Details (IDE-Stil)',
         'rail.openSettings': 'Plugin-Einstellungen öffnen',
         'settings.card.title': 'Git-Werkzeugfenster-Einstellungen',
         'settings.card.desc': 'Panel-Platzierung, Aktionsleisten-Schaltflächen und KI-Commit-Nachricht',
@@ -2603,6 +2644,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Lokale Commits zum Pushen',
       'composer.inWorktree': 'In anderem Worktree ausgecheckt',
       'composer.busy': 'Git-Aktion läuft…',
+      'composer.openPanel': 'Git-Panel öffnen',
         'settings.placement.tabHint': 'Ausgeschaltet bleibt das Panel über rechte Seitenleiste und unteres Panel erreichbar.',
         'settings.placement.immersive': 'Immersiver Modus (volle Höhe, ausgeblendetes Eingabefeld)',
         'settings.placement.immersiveHint': 'Eingeschaltet füllt der Git-Tab die gesamte Gesprächshöhe und das Eingabefeld weicht zurück; Freigaben und Rückfragen bleiben sichtbar.',
@@ -2725,8 +2767,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'Aucun dépôt Git trouvé dans cet espace de travail',
         'repo.switch': 'Changer de dépôt',
         'branch.switch': 'Changer de branche',
-        'seg.changes': 'Modifications {n}',
-        'seg.history': 'Historique',
         'branches.local': 'Locales',
         'branches.remote': 'Distantes',
         'branches.tags': 'Étiquettes',
@@ -2828,10 +2868,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Texte ou empreinte',
         'detail.files': 'Fichiers modifiés',
         'detail.back': 'Retour à l\'historique',
+        'detail.pickHint': 'Sélectionnez un commit pour voir ses détails',
         'detail.noFiles': 'Aucune modification de fichier',
         'diff.empty': 'Aucun diff textuel à afficher',
         'pane.diff': 'vue du diff',
         'pane.resize': 'Glisser pour redimensionner {name} (double-clic pour réinitialiser, flèches pour ajuster)',
+        'pane.commitBox': 'Zone de commit',
         'diff.binary': 'Fichier binaire',
         'diff.loading': 'Chargement du diff...',
         'diff.codeLabel': 'Diff',
@@ -2915,7 +2957,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Pousser',
         'toolbar.tree': 'Volet des branches',
         'rail.more': 'Plus d\'actions',
+        'rail.explore': 'Branches et commits (nouvel onglet)',
         'rail.settings': 'Réglages de la barre d\'actions',
+        'explore.title': 'Branches et commits',
+        'explore.description': 'Arborescence des branches, liste des commits et détails (style IDE)',
         'rail.openSettings': 'Ouvrir les réglages du plugin',
         'settings.card.title': 'Paramètres de la fenêtre d’outils Git',
         'settings.card.desc': 'Placement du panneau, boutons de la barre d’actions et message de commit par IA',
@@ -2931,6 +2976,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commits locaux en attente d’envoi',
       'composer.inWorktree': 'Extrait dans un autre arbre de travail',
       'composer.busy': 'Opération Git en cours…',
+      'composer.openPanel': 'Ouvrir le panneau Git',
         'settings.placement.tabHint': 'Désactivé, le panneau reste accessible depuis la barre latérale droite et le panneau inférieur.',
         'settings.placement.immersive': 'Mode immersif (pleine hauteur, zone de saisie masquée)',
         'settings.placement.immersiveHint': 'Activé, l’onglet Git occupe toute la hauteur de la conversation et la zone de saisie s’efface ; approbations et questions restent visibles.',
@@ -3053,8 +3099,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'В этой рабочей области репозиторий Git не найден',
         'repo.switch': 'Сменить репозиторий',
         'branch.switch': 'Сменить ветку',
-        'seg.changes': 'Изменения {n}',
-        'seg.history': 'История',
         'branches.local': 'Локальные',
         'branches.remote': 'Удалённые',
         'branches.tags': 'Теги',
@@ -3156,10 +3200,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Текст или хеш',
         'detail.files': 'Изменённые файлы',
         'detail.back': 'Назад к истории',
+        'detail.pickHint': 'Выберите коммит, чтобы увидеть подробности',
         'detail.noFiles': 'Файлы не изменялись',
         'diff.empty': 'Нет текстовых различий для показа',
         'pane.diff': 'просмотр diff',
         'pane.resize': 'Перетащите, чтобы изменить размер {name} (двойной клик — сброс, стрелки — точная настройка)',
+        'pane.commitBox': 'Поле коммита',
         'diff.binary': 'Двоичный файл',
         'diff.loading': 'Загрузка различий...',
         'diff.codeLabel': 'Различия',
@@ -3243,7 +3289,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Отправить',
         'toolbar.tree': 'Панель веток',
         'rail.more': 'Другие действия',
+        'rail.explore': 'Ветки и коммиты (новая вкладка)',
         'rail.settings': 'Настройки панели действий',
+        'explore.title': 'Ветки и коммиты',
+        'explore.description': 'Дерево веток, список коммитов и подробности (стиль IDE)',
         'rail.openSettings': 'Открыть настройки плагина',
         'settings.card.title': 'Настройки окна инструментов Git',
         'settings.card.desc': 'Размещение панели, кнопки панели действий и сообщение коммита от ИИ',
@@ -3259,6 +3308,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Локальные коммиты, ожидающие отправки',
       'composer.inWorktree': 'Выверен в другом worktree',
       'composer.busy': 'Операция Git выполняется…',
+      'composer.openPanel': 'Открыть панель Git',
         'settings.placement.tabHint': 'В выключенном виде панель доступна из правой боковой панели и нижней панели.',
         'settings.placement.immersive': 'Полноэкранный режим (во всю высоту, без поля ввода)',
         'settings.placement.immersiveHint': 'Во включённом виде вкладка Git занимает всю высоту области диалога, поле ввода скрывается; подтверждения и вопросы остаются на виду.',
@@ -3381,8 +3431,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'Nenhum repositório Git encontrado nesta área de trabalho',
         'repo.switch': 'Trocar de repositório',
         'branch.switch': 'Trocar de branch',
-        'seg.changes': 'Alterações {n}',
-        'seg.history': 'Histórico',
         'branches.local': 'Locais',
         'branches.remote': 'Remotas',
         'branches.tags': 'Tags',
@@ -3484,10 +3532,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Texto ou hash',
         'detail.files': 'Arquivos alterados',
         'detail.back': 'Voltar ao histórico',
+        'detail.pickHint': 'Selecione um commit para ver os detalhes',
         'detail.noFiles': 'Nenhuma alteração de arquivo',
         'diff.empty': 'Nenhum diff textual para mostrar',
         'pane.diff': 'visualização do diff',
         'pane.resize': 'Arraste para redimensionar {name} (duplo clique restaura, setas ajustam)',
+        'pane.commitBox': 'Caixa de commit',
         'diff.binary': 'Arquivo binário',
         'diff.loading': 'Carregando diff...',
         'diff.codeLabel': 'Diff',
@@ -3571,7 +3621,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Enviar',
         'toolbar.tree': 'Painel de branches',
         'rail.more': 'Mais ações',
+        'rail.explore': 'Branches e commits (nova aba)',
         'rail.settings': 'Configurações da barra de ações',
+        'explore.title': 'Branches e commits',
+        'explore.description': 'Árvore de branches, lista de commits e detalhes (estilo IDE)',
         'rail.openSettings': 'Abrir configurações do plugin',
         'settings.card.title': 'Configurações da janela de ferramentas Git',
         'settings.card.desc': 'Posição do painel, botões da barra de ações e mensagem de commit por IA',
@@ -3587,6 +3640,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commits locais aguardando push',
       'composer.inWorktree': 'Em checkout em outra worktree',
       'composer.busy': 'Operação Git em andamento…',
+      'composer.openPanel': 'Abrir o painel Git',
         'settings.placement.tabHint': 'Desligado, o painel continua disponível na barra lateral direita e no painel inferior.',
         'settings.placement.immersive': 'Modo imersivo (altura total, campo de entrada oculto)',
         'settings.placement.immersiveHint': 'Ativado, a aba Git ocupa toda a altura da conversa e o campo de entrada fica de lado; aprovações e perguntas continuam visíveis.',
@@ -3709,8 +3763,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'Nessun repository Git trovato in questa area di lavoro',
         'repo.switch': 'Cambia repository',
         'branch.switch': 'Cambia branch',
-        'seg.changes': 'Modifiche {n}',
-        'seg.history': 'Cronologia',
         'branches.local': 'Locali',
         'branches.remote': 'Remoti',
         'branches.tags': 'Tag',
@@ -3812,10 +3864,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Testo o hash',
         'detail.files': 'File modificati',
         'detail.back': 'Torna alla cronologia',
+        'detail.pickHint': 'Seleziona un commit per vedere i dettagli',
         'detail.noFiles': 'Nessuna modifica ai file',
         'diff.empty': 'Nessun diff testuale da mostrare',
         'pane.diff': 'vista diff',
         'pane.resize': 'Trascina per ridimensionare {name} (doppio clic ripristina, frecce per regolare)',
+        'pane.commitBox': 'Casella di commit',
         'diff.binary': 'File binario',
         'diff.loading': 'Caricamento del diff...',
         'diff.codeLabel': 'Diff',
@@ -3899,7 +3953,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Push',
         'toolbar.tree': 'Riquadro dei branch',
         'rail.more': 'Altre azioni',
+        'rail.explore': 'Branch e commit (nuova scheda)',
         'rail.settings': 'Impostazioni della barra delle azioni',
+        'explore.title': 'Branch e commit',
+        'explore.description': 'Albero dei branch, elenco dei commit e dettagli (stile IDE)',
         'rail.openSettings': 'Apri le impostazioni del plugin',
         'settings.card.title': 'Impostazioni della finestra strumenti Git',
         'settings.card.desc': 'Posizione del pannello, pulsanti della barra azioni e messaggio di commit con IA',
@@ -3915,6 +3972,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commit locali in attesa di push',
       'composer.inWorktree': 'Estratto in un altro worktree',
       'composer.busy': 'Operazione Git in corso…',
+      'composer.openPanel': 'Apri il pannello Git',
         'settings.placement.tabHint': 'Da spento, il pannello resta raggiungibile dalla barra laterale destra e dal pannello inferiore.',
         'settings.placement.immersive': 'Modalità immersiva (altezza piena, input nascosto)',
         'settings.placement.immersiveHint': 'Attiva, la scheda Git occupa tutta l’altezza della conversazione e la barra di input resta nascosta; approvazioni e domande restano visibili.',
@@ -4037,8 +4095,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'Geen Git-repository gevonden in deze werkruimte',
         'repo.switch': 'Wissel van repository',
         'branch.switch': 'Wissel van branch',
-        'seg.changes': 'Wijzigingen {n}',
-        'seg.history': 'Geschiedenis',
         'branches.local': 'Lokaal',
         'branches.remote': 'Extern',
         'branches.tags': 'Tags',
@@ -4140,10 +4196,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Tekst of hash',
         'detail.files': 'Gewijzigde bestanden',
         'detail.back': 'Terug naar geschiedenis',
+        'detail.pickHint': 'Selecteer een commit om de details te zien',
         'detail.noFiles': 'Geen bestandswijzigingen',
         'diff.empty': 'Geen tekstuele diff om te tonen',
         'pane.diff': 'diff-weergave',
         'pane.resize': 'Sleep om {name} te vergroten (dubbelklik herstelt, pijltjes stellen fijn af)',
+        'pane.commitBox': 'Commitvak',
         'diff.binary': 'Binair bestand',
         'diff.loading': 'Diff laden...',
         'diff.codeLabel': 'Diff',
@@ -4227,7 +4285,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Push',
         'toolbar.tree': 'Branchpaneel',
         'rail.more': 'Meer acties',
+        'rail.explore': 'Branches en commits (nieuw tabblad)',
         'rail.settings': 'Instellingen van de actiebalk',
+        'explore.title': 'Branches en commits',
+        'explore.description': 'Branch-boom, commitlijst en commitdetails (IDE-stijl)',
         'rail.openSettings': 'Plugin-instellingen openen',
         'settings.card.title': 'Instellingen van het Git-werkvenster',
         'settings.card.desc': 'Paneelplaatsing, knoppen van de actiebalk en AI-commitbericht',
@@ -4243,6 +4304,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Lokale commits die wachten op push',
       'composer.inWorktree': 'Uitgecheckt in een andere worktree',
       'composer.busy': 'Git-actie gaande…',
+      'composer.openPanel': 'Git-paneel openen',
         'settings.placement.tabHint': 'Uitgeschakeld blijft het paneel bereikbaar via de rechterzijbalk en het onderpaneel.',
         'settings.placement.immersive': 'Meeslepende modus (volledige hoogte, verborgen invoerveld)',
         'settings.placement.immersiveHint': 'Aan: het Git-tabblad vult de hele gespreksruimte en het invoerveld wijkt; goedkeuringen en vragen blijven zichtbaar.',
@@ -4365,8 +4427,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'W tym obszarze roboczym nie znaleziono repozytorium Git',
         'repo.switch': 'Zmień repozytorium',
         'branch.switch': 'Zmień gałąź',
-        'seg.changes': 'Zmiany {n}',
-        'seg.history': 'Historia',
         'branches.local': 'Lokalne',
         'branches.remote': 'Zdalne',
         'branches.tags': 'Tagi',
@@ -4468,10 +4528,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Tekst lub hash',
         'detail.files': 'Zmienione pliki',
         'detail.back': 'Powrót do historii',
+        'detail.pickHint': 'Wybierz commit, aby zobaczyć szczegóły',
         'detail.noFiles': 'Brak zmian w plikach',
         'diff.empty': 'Brak różnic tekstowych do pokazania',
         'pane.diff': 'widok diff',
         'pane.resize': 'Przeciągnij, aby zmienić rozmiar {name} (podwójne kliknięcie przywraca, strzałki korygują)',
+        'pane.commitBox': 'Pole commita',
         'diff.binary': 'Plik binarny',
         'diff.loading': 'Wczytywanie różnic...',
         'diff.codeLabel': 'Różnice',
@@ -4555,7 +4617,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Wypchnij',
         'toolbar.tree': 'Panel gałęzi',
         'rail.more': 'Więcej działań',
+        'rail.explore': 'Gałęzie i commity (nowa karta)',
         'rail.settings': 'Ustawienia paska działań',
+        'explore.title': 'Gałęzie i commity',
+        'explore.description': 'Drzewo gałęzi, lista commitów i szczegóły (styl IDE)',
         'rail.openSettings': 'Otwórz ustawienia wtyczki',
         'settings.card.title': 'Ustawienia okna narzędzi Git',
         'settings.card.desc': 'Rozmieszczenie panelu, przyciski paska akcji i wiadomość commita od AI',
@@ -4571,6 +4636,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Lokalne commity oczekujące na wysłanie',
       'composer.inWorktree': 'Wybrane w innym drzewie roboczym',
       'composer.busy': 'Operacja Git w toku…',
+      'composer.openPanel': 'Otwórz panel Git',
         'settings.placement.tabHint': 'Po wyłączeniu panel pozostaje dostępny z prawego paska bocznego i dolnego panelu.',
         'settings.placement.immersive': 'Tryb immersyjny (pełna wysokość, ukryte pole wpisywania)',
         'settings.placement.immersiveHint': 'Po włączeniu karta Git wypełnia całą wysokość rozmowy, a pole wpisywania się chowa; zatwierdzenia i pytania pozostają widoczne.',
@@ -4693,8 +4759,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'Inget Git-arkiv hittades i den här arbetsytan',
         'repo.switch': 'Byt arkiv',
         'branch.switch': 'Byt gren',
-        'seg.changes': 'Ändringar {n}',
-        'seg.history': 'Historik',
         'branches.local': 'Lokala',
         'branches.remote': 'Fjärr',
         'branches.tags': 'Taggar',
@@ -4796,10 +4860,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Text eller hash',
         'detail.files': 'Ändrade filer',
         'detail.back': 'Tillbaka till historiken',
+        'detail.pickHint': 'Välj en commit för att se detaljerna',
         'detail.noFiles': 'Inga filändringar',
         'diff.empty': 'Ingen textdiff att visa',
         'pane.diff': 'diff-vy',
         'pane.resize': 'Dra för att ändra storleken på {name} (dubbelklick återställer, piltangenter finjusterar)',
+        'pane.commitBox': 'Commit-fält',
         'diff.binary': 'Binär fil',
         'diff.loading': 'Laddar diff...',
         'diff.codeLabel': 'Skillnad',
@@ -4883,7 +4949,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Push',
         'toolbar.tree': 'Grenpanel',
         'rail.more': 'Fler åtgärder',
+        'rail.explore': 'Grenar och commits (ny flik)',
         'rail.settings': 'Inställningar för åtgärdsfältet',
+        'explore.title': 'Grenar och commits',
+        'explore.description': 'Grenträd, commitlista och commitdetaljer (IDE-stil)',
         'rail.openSettings': 'Öppna plugininställningar',
         'settings.card.title': 'Inställningar för Git-verktygsfönstret',
         'settings.card.desc': 'Panelplacering, knappar i åtgärdsfältet och AI-commitmeddelande',
@@ -4899,6 +4968,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Lokala commits som väntar på push',
       'composer.inWorktree': 'Utcheckad i ett annat arbetsträd',
       'composer.busy': 'Git-åtgärd pågår…',
+      'composer.openPanel': 'Öppna Git-panelen',
         'settings.placement.tabHint': 'Avstängd finns panelen kvar via höger sidopanel och nedre panelen.',
         'settings.placement.immersive': 'Uppslukande läge (full höjd, dolt inmatningsfält)',
         'settings.placement.immersiveHint': 'På: Git-fliken fyller hela konversationsytan och inmatningsfältet träder åt sidan; godkännanden och frågor visas fortfarande.',
@@ -5021,8 +5091,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'Bu çalışma alanında Git deposu bulunamadı',
         'repo.switch': 'Depoyu değiştir',
         'branch.switch': 'Dalı değiştir',
-        'seg.changes': 'Değişiklikler {n}',
-        'seg.history': 'Geçmiş',
         'branches.local': 'Yerel',
         'branches.remote': 'Uzak',
         'branches.tags': 'Etiketler',
@@ -5124,10 +5192,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Metin veya hash',
         'detail.files': 'Değişen dosyalar',
         'detail.back': 'Geçmişe dön',
+        'detail.pickHint': 'Ayrıntıları görmek için bir commit seçin',
         'detail.noFiles': 'Dosya değişikliği yok',
         'diff.empty': 'Gösterilecek metin farkı yok',
         'pane.diff': 'diff görünümü',
         'pane.resize': '{name} boyutunu sürükleyerek ayarlayın (çift tıklama sıfırlar, ok tuşları ince ayar yapar)',
+        'pane.commitBox': 'Commit kutusu',
         'diff.binary': 'İkili dosya',
         'diff.loading': 'Fark yükleniyor...',
         'diff.codeLabel': 'Fark',
@@ -5211,7 +5281,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Push',
         'toolbar.tree': 'Dal paneli',
         'rail.more': 'Diğer eylemler',
+        'rail.explore': 'Dallar ve commit’ler (yeni sekme)',
         'rail.settings': 'Eylem çubuğu ayarları',
+        'explore.title': 'Dallar ve commit’ler',
+        'explore.description': 'Dal ağacı, commit listesi ve commit ayrıntıları (IDE tarzı)',
         'rail.openSettings': 'Eklenti ayarlarını aç',
         'settings.card.title': 'Git araç penceresi ayarları',
         'settings.card.desc': 'Panel yerleşimi, eylem çubuğu düğmeleri ve AI commit mesajı',
@@ -5227,6 +5300,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Push bekleyen yerel commitler',
       'composer.inWorktree': 'Başka bir worktree’da checkout yapılmış',
       'composer.busy': 'Git işlemi sürüyor…',
+      'composer.openPanel': 'Git panelini aç',
         'settings.placement.tabHint': 'Kapatıldığında panel sağ kenar çubuğundan ve alt panelden açılabilir.',
         'settings.placement.immersive': 'Odaklanma modu (tam yükseklik, gizli giriş alanı)',
         'settings.placement.immersiveHint': 'Açıkken Git sekmesi tüm konuşma alanını kaplar ve giriş alanı gizlenir; onaylar ve sorular yine de görünür.',
@@ -5349,8 +5423,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'Tidak ada repositori Git di ruang kerja ini',
         'repo.switch': 'Ganti repositori',
         'branch.switch': 'Ganti branch',
-        'seg.changes': 'Perubahan {n}',
-        'seg.history': 'Riwayat',
         'branches.local': 'Lokal',
         'branches.remote': 'Remote',
         'branches.tags': 'Tag',
@@ -5452,10 +5524,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Teks atau hash',
         'detail.files': 'Berkas yang berubah',
         'detail.back': 'Kembali ke riwayat',
+        'detail.pickHint': 'Pilih sebuah commit untuk melihat detailnya',
         'detail.noFiles': 'Tidak ada perubahan berkas',
         'diff.empty': 'Tidak ada diff teks untuk ditampilkan',
         'pane.diff': 'tampilan diff',
         'pane.resize': 'Seret untuk mengubah ukuran {name} (klik ganda mengatur ulang, tombol panah menyesuaikan)',
+        'pane.commitBox': 'Kotak commit',
         'diff.binary': 'Berkas biner',
         'diff.loading': 'Memuat diff...',
         'diff.codeLabel': 'Perbedaan',
@@ -5539,7 +5613,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Push',
         'toolbar.tree': 'Panel branch',
         'rail.more': 'Tindakan lain',
+        'rail.explore': 'Branch dan commit (tab baru)',
         'rail.settings': 'Pengaturan bilah tindakan',
+        'explore.title': 'Branch dan commit',
+        'explore.description': 'Pohon branch, daftar commit, dan detail commit (gaya IDE)',
         'rail.openSettings': 'Buka pengaturan plugin',
         'settings.card.title': 'Pengaturan jendela alat Git',
         'settings.card.desc': 'Penempatan panel, tombol bilah aksi dan pesan commit AI',
@@ -5555,6 +5632,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commit lokal menunggu push',
       'composer.inWorktree': 'Sudah di-checkout di worktree lain',
       'composer.busy': 'Operasi Git sedang berjalan…',
+      'composer.openPanel': 'Buka panel Git',
         'settings.placement.tabHint': 'Dimatikan, panel tetap bisa dibuka dari bilah sisi kanan dan panel bawah.',
         'settings.placement.immersive': 'Mode imersif (tinggi penuh, kolom masukan tersembunyi)',
         'settings.placement.immersiveHint': 'Aktif: tab Git memenuhi seluruh tinggi area percakapan dan kolom masukan mengalah; persetujuan dan pertanyaan tetap tampil.',
@@ -5677,8 +5755,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'Không tìm thấy kho Git trong không gian làm việc này',
         'repo.switch': 'Chuyển kho',
         'branch.switch': 'Chuyển nhánh',
-        'seg.changes': 'Thay đổi {n}',
-        'seg.history': 'Lịch sử',
         'branches.local': 'Cục bộ',
         'branches.remote': 'Từ xa',
         'branches.tags': 'Thẻ',
@@ -5780,10 +5856,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'Văn bản hoặc hash',
         'detail.files': 'Tệp đã thay đổi',
         'detail.back': 'Quay lại lịch sử',
+        'detail.pickHint': 'Chọn một commit để xem chi tiết',
         'detail.noFiles': 'Không có thay đổi tệp',
         'diff.empty': 'Không có diff văn bản để hiển thị',
         'pane.diff': 'chế độ xem diff',
         'pane.resize': 'Kéo để đổi kích thước {name} (nhấp đúp để đặt lại, phím mũi tên để tinh chỉnh)',
+        'pane.commitBox': 'Ô nhập commit',
         'diff.binary': 'Tệp nhị phân',
         'diff.loading': 'Đang tải diff...',
         'diff.codeLabel': 'Khác biệt',
@@ -5867,7 +5945,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Push',
         'toolbar.tree': 'Bảng nhánh',
         'rail.more': 'Thao tác khác',
+        'rail.explore': 'Nhánh và commit (tab mới)',
         'rail.settings': 'Cài đặt thanh thao tác',
+        'explore.title': 'Nhánh và commit',
+        'explore.description': 'Cây nhánh, danh sách commit và chi tiết commit (kiểu IDE)',
         'rail.openSettings': 'Mở cài đặt plugin',
         'settings.card.title': 'Cài đặt cửa sổ công cụ Git',
         'settings.card.desc': 'Vị trí bảng, nút thanh tác vụ và thông điệp commit do AI viết',
@@ -5883,6 +5964,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commit cục bộ chờ đẩy lên',
       'composer.inWorktree': 'Đã được checkout ở worktree khác',
       'composer.busy': 'Đang chạy tác vụ Git…',
+      'composer.openPanel': 'Mở bảng Git',
         'settings.placement.tabHint': 'Tắt rồi, bảng vẫn mở được từ thanh bên phải và bảng dưới.',
         'settings.placement.immersive': 'Chế độ đắm chìm (chiều cao đầy đủ, ẩn ô nhập)',
         'settings.placement.immersiveHint': 'Bật: thẻ Git chiếm toàn bộ chiều cao vùng hội thoại và ô nhập thu vào; phê duyệt và câu hỏi vẫn hiển thị bình thường.',
@@ -6005,8 +6087,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'لم يُعثر على مستودع Git في مساحة العمل هذه',
         'repo.switch': 'تبديل المستودع',
         'branch.switch': 'تبديل الفرع',
-        'seg.changes': 'التغييرات {n}',
-        'seg.history': 'السجل',
         'branches.local': 'محلي',
         'branches.remote': 'بعيد',
         'branches.tags': 'الوسوم',
@@ -6108,10 +6188,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'نص أو تجزئة',
         'detail.files': 'الملفات المتغيّرة',
         'detail.back': 'رجوع إلى السجل',
+        'detail.pickHint': 'اختر التزامًا لعرض تفاصيله',
         'detail.noFiles': 'لا توجد تغييرات في الملفات',
         'diff.empty': 'لا توجد فروق نصية لعرضها',
         'pane.diff': 'عرض الفروق',
         'pane.resize': 'اسحب لتغيير حجم {name} (النقر المزدوج يعيد الضبط، ومفاتيح الأسهم للضبط الدقيق)',
+        'pane.commitBox': 'مربع الالتزام',
         'diff.binary': 'ملف ثنائي',
         'diff.loading': 'جارٍ تحميل الفروق...',
         'diff.codeLabel': 'الفروق',
@@ -6195,7 +6277,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'دفع',
         'toolbar.tree': 'لوحة الفروع',
         'rail.more': 'مزيد من الإجراءات',
+        'rail.explore': 'الفروع والالتزامات (تبويب جديد)',
         'rail.settings': 'إعدادات شريط الإجراءات',
+        'explore.title': 'الفروع والالتزامات',
+        'explore.description': 'شجرة الفروع وقائمة الالتزامات وتفاصيلها (بأسلوب IDE)',
         'rail.openSettings': 'فتح إعدادات الإضافة',
         'settings.card.title': 'إعدادات نافذة أدوات Git',
         'settings.card.desc': 'موضع اللوحة، أزرار شريط الإجراءات ورسالة إيداع بالذكاء الاصطناعي',
@@ -6211,6 +6296,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'التزامات محلية بانتظار الدفع',
       'composer.inWorktree': 'مسحوب في شجرة عمل أخرى',
       'composer.busy': 'عملية Git جارية…',
+      'composer.openPanel': 'فتح لوحة Git',
         'settings.placement.tabHint': 'عند الإيقاف تبقى اللوحة متاحة من الشريط الجانبي الأيمن واللوحة السفلية.',
         'settings.placement.immersive': 'الوضع الغامر (ارتفاع كامل، إخفاء صندوق الكتابة)',
         'settings.placement.immersiveHint': 'عند التشغيل يملأ تبويب Git منطقة المحادثة بكامل ارتفاعها ويتراجع صندوق الكتابة؛ تظل الموافقات والأسئلة ظاهرة كالمعتاد.',
@@ -6333,8 +6419,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'इस कार्यक्षेत्र में कोई Git रिपॉज़िटरी नहीं मिली',
         'repo.switch': 'रिपॉज़िटरी बदलें',
         'branch.switch': 'शाखा बदलें',
-        'seg.changes': 'परिवर्तन {n}',
-        'seg.history': 'इतिहास',
         'branches.local': 'स्थानीय',
         'branches.remote': 'रिमोट',
         'branches.tags': 'टैग',
@@ -6436,10 +6520,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'टेक्स्ट या हैश',
         'detail.files': 'बदली हुई फ़ाइलें',
         'detail.back': 'इतिहास पर वापस',
+        'detail.pickHint': 'विवरण देखने के लिए कोई कमिट चुनें',
         'detail.noFiles': 'कोई फ़ाइल परिवर्तन नहीं',
         'diff.empty': 'दिखाने के लिए कोई टेक्स्ट अंतर नहीं',
         'pane.diff': 'डिफ़ व्यू',
         'pane.resize': '{name} का आकार बदलने के लिए खींचें (डबल-क्लिक रीसेट, तीर कुंजियाँ सूक्ष्म समायोजन)',
+        'pane.commitBox': 'कमिट बॉक्स',
         'diff.binary': 'बाइनरी फ़ाइल',
         'diff.loading': 'अंतर लोड हो रहा है...',
         'diff.codeLabel': 'अंतर',
@@ -6523,7 +6609,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'पुश',
         'toolbar.tree': 'शाखा पैनल',
         'rail.more': 'अधिक क्रियाएँ',
+        'rail.explore': 'ब्रांच और कमिट (नया टैब)',
         'rail.settings': 'क्रिया पट्टी सेटिंग्स',
+        'explore.title': 'ब्रांच और कमिट',
+        'explore.description': 'ब्रांच ट्री, कमिट सूची और कमिट विवरण (IDE शैली)',
         'rail.openSettings': 'प्लगइन सेटिंग खोलें',
         'settings.card.title': 'Git टूल विंडो सेटिंग्स',
         'settings.card.desc': 'पैनल प्लेसमेंट, एक्शन रेल बटन और AI कमिट संदेश',
@@ -6539,6 +6628,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'पुश के लिए प्रतीक्षारत स्थानीय कमिट',
       'composer.inWorktree': 'दूसरे वर्कट्री में चेकआउट',
       'composer.busy': 'Git कार्य चल रहा है…',
+      'composer.openPanel': 'Git पैनल खोलें',
         'settings.placement.tabHint': 'बंद करने पर भी पैनल दाएँ साइडबार और निचले पैनल से खुलता है।',
         'settings.placement.immersive': 'इमर्सिव मोड (पूरी ऊँचाई, छिपा इनपुट बॉक्स)',
         'settings.placement.immersiveHint': 'चालू होने पर Git टैब पूरे संवाद क्षेत्र की ऊँचाई घेर लेता है और इनपुट बॉक्स हट जाता है; अनुमोदन और प्रश्न फिर भी दिखते हैं।',
@@ -6661,8 +6751,6 @@ window.__ModuleLoader__.load({
         'repo.empty': 'ไม่พบรีโพซิทอรี Git ในเวิร์กสเปซนี้',
         'repo.switch': 'สลับรีโพซิทอรี',
         'branch.switch': 'สลับแบรนช์',
-        'seg.changes': 'การเปลี่ยนแปลง {n}',
-        'seg.history': 'ประวัติ',
         'branches.local': 'โลคัล',
         'branches.remote': 'รีโมต',
         'branches.tags': 'แท็ก',
@@ -6764,10 +6852,12 @@ window.__ModuleLoader__.load({
         'history.filter': 'ข้อความหรือแฮช',
         'detail.files': 'ไฟล์ที่เปลี่ยน',
         'detail.back': 'กลับไปที่ประวัติ',
+        'detail.pickHint': 'เลือกคอมมิตเพื่อดูรายละเอียด',
         'detail.noFiles': 'ไม่มีการเปลี่ยนแปลงไฟล์',
         'diff.empty': 'ไม่มีความต่างเชิงข้อความให้แสดง',
         'pane.diff': 'มุมมอง diff',
         'pane.resize': 'ลากเพื่อปรับขนาด {name} (ดับเบิลคลิกเพื่อรีเซ็ต ปุ่มลูกศรปรับละเอียด)',
+        'pane.commitBox': 'กล่องคอมมิต',
         'diff.binary': 'ไฟล์ไบนารี',
         'diff.loading': 'กำลังโหลดความต่าง...',
         'diff.codeLabel': 'ความต่าง',
@@ -6851,7 +6941,10 @@ window.__ModuleLoader__.load({
         'toolbar.push': 'Push',
         'toolbar.tree': 'แผงแบรนช์',
         'rail.more': 'การทำงานเพิ่มเติม',
+        'rail.explore': 'สาขาและคอมมิต (แท็บใหม่)',
         'rail.settings': 'ตั้งค่าแถบการทำงาน',
+        'explore.title': 'สาขาและคอมมิต',
+        'explore.description': 'ทรีสาขา รายการคอมมิต และรายละเอียดคอมมิต (สไตล์ IDE)',
         'rail.openSettings': 'เปิดการตั้งค่าปลั๊กอิน',
         'settings.card.title': 'การตั้งค่าหน้าต่างเครื่องมือ Git',
         'settings.card.desc': 'ตำแหน่งแผง, ปุ่มแถบการทำงานและข้อความคอมมิตโดย AI',
@@ -6867,6 +6960,7 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'คอมมิตในเครื่องรอพุช',
       'composer.inWorktree': 'ถูกเช็คเอาต์ในเวิร์กทรีอื่น',
       'composer.busy': 'กำลังดำเนินการ Git…',
+      'composer.openPanel': 'เปิดแผง Git',
         'settings.placement.tabHint': 'ปิดแล้วยังเปิดแผงจากแถบข้างขวาหรือแผงล่างได้',
         'settings.placement.immersive': 'โหมดดื่มด่ำ (เต็มความสูง, ซ่อนกล่องพิมพ์)',
         'settings.placement.immersiveHint': 'เมื่อเปิด แท็บ Git จะกินพื้นที่สูงทั้งหมดของบทสนทนาและกล่องพิมพ์จะถอยออก; การอนุมัติและคำถามยังแสดงตามปกติ',
@@ -7846,15 +7940,22 @@ window.__ModuleLoader__.load({
        panes measure width (columns). */
     const PANE_CHROME_KEYS = {
       columns: ['tree', 'changes', 'diff'],
-      stack: ['tree', 'changes', 'diff'],
+      /* No `changes` pane is stacked anywhere: the changes list belongs to the
+         DEFAULT face, which is one full-width column (its diff falls below it),
+         and the stacked chrome only ever draws the EXPLORER (tree above, log or
+         detail in the middle, diff below). A key with no element would still be
+         reserved by paneGeometry and quietly starve the diff's ceiling. */
+      stack: ['tree', 'diff'],
       compact: ['tree', 'diff'],
     }
     /* Whether a key measures a height (stacked chromes) or a width (columns).
        This is the chrome's DEFAULT for the tree/changes panes; the diff pane
        overrides it to height unconditionally (see paneGeometry). */
     const PANE_HEIGHT_CHROME = { columns: false, stack: true, compact: true }
-    /* The pane a separator resizes, and the key its label is translated from. */
-    const PANE_NAME_KEYS = { tree: 'toolbar.tree', changes: 'changes.title', diff: 'pane.diff' }
+    /* The pane a separator resizes, and the key its label is translated from.
+       `changes` is the right-hand column of the columns chrome: the changes list
+       in the default face, the commit detail in the explorer. */
+    const PANE_NAME_KEYS = { tree: 'toolbar.tree', changes: 'changes.title', diff: 'pane.diff', commitBox: 'pane.commitBox' }
     /* Hard limits in px: a gutter moves a pane between these and nothing else,
        so no pane can ever be dragged down to zero. */
     const PANE_LIMITS = {
@@ -7862,7 +7963,6 @@ window.__ModuleLoader__.load({
       'columns:changes': { min: 200, max: 640 },
       'columns:diff': { min: 120, max: 900 },
       'stack:tree': { min: 100, max: 420 },
-      'stack:changes': { min: 120, max: 460 },
       'stack:diff': { min: 120, max: 900 },
       'compact:tree': { min: 100, max: 420 },
       'compact:diff': { min: 120, max: 900 },
@@ -7876,7 +7976,6 @@ window.__ModuleLoader__.load({
       'columns:changes': { px: 290 },
       'columns:diff': { ratio: 0.55 },
       'stack:tree': { ratio: 0.36 },
-      'stack:changes': { ratio: 0.46 },
       'compact:tree': { ratio: 0.42 },
     }
     const PANE_MAIN_MIN_W = 240
@@ -7893,9 +7992,26 @@ window.__ModuleLoader__.load({
        history↔diff separator lives inside the middle pane, so it is not counted
        against the body's own budget. */
     const PANE_GUTTER_PX = 8
-    const PANE_BODY_GUTTERS = { columns: 2, stack: 2, compact: 1 }
+    const PANE_BODY_GUTTERS = { columns: 2, stack: 1, compact: 1 }
     const PANE_BUCKETS = Object.keys(PANE_CHROME_KEYS).reduce(
       (all, chrome) => all.concat([chrome + ':wide', chrome + ':tall']), [])
+
+    /* ---- the commit box: the one resizable thing that is not a pane ----
+       It hangs INSIDE the changes list's own box, its divider is horizontal in
+       every chrome (the panes beside it move sideways in the columns one, this
+       never does), and it is stored in PX rather than as a ratio: a message area
+       is "how many lines do I want", not "what fraction of whatever panel". It
+       rides in the same per-surface record as the panes — same bucket, same
+       key, same write. */
+    const COMMIT_BOX_KEY = 'commitBox'
+    /* The floor is the box's own chrome (row above + buttons below + paddings)
+       plus a message area worth typing in; it is also what the storage check
+       accepts, so a clamped drag always survives the write. */
+    const COMMIT_BOX_MIN_PX = 144
+    const COMMIT_BOX_MAX_PX = 900
+    /* What the change list keeps when the box is dragged as tall as it goes.
+       Below this the divider disappears instead of starving the list. */
+    const COMMIT_BOX_LIST_MIN_PX = 56
 
     /* Two measurements are the same when every pane they know about is. */
     function samePaneSizes(current, next) {
@@ -7927,28 +8043,67 @@ window.__ModuleLoader__.load({
           if (value <= 0 || value > 1) continue
           clean[key] = value
         }
+        /* The commit box rides in the same record, but in PX (see the constants
+           above): a height outside the clamp is a corrupt store, not a size. */
+        const box = entry[COMMIT_BOX_KEY]
+        if (typeof box === 'number' && Number.isFinite(box) === true
+          && box >= COMMIT_BOX_MIN_PX && box <= COMMIT_BOX_MAX_PX) clean[COMMIT_BOX_KEY] = Math.round(box)
         if (Object.keys(clean).length > 0) panes[bucket] = clean
       }
       return { treeOpen: source.treeOpen !== false, panes: panes }
     }
 
-    /* Immutable single-key update. ratio === null removes the override, which is
-       exactly what the double-click reset does. */
-    function withPaneRatio(config, bucket, key, ratio) {
+    /* The tokens one surface may hold: the chrome's panes plus the commit box. */
+    function paneTokens(chrome) {
+      return PANE_CHROME_KEYS[chrome].concat([COMMIT_BOX_KEY])
+    }
+
+    function copyPanes(config) {
       const panes = {}
       for (const name of PANE_BUCKETS) {
         if (config.panes[name] !== undefined) panes[name] = config.panes[name]
       }
+      return panes
+    }
+
+    function copyBucket(bucket, current) {
       const entry = {}
-      const current = panes[bucket] === undefined ? {} : panes[bucket]
-      for (const name of PANE_CHROME_KEYS[bucket.slice(0, bucket.indexOf(':'))]) {
+      for (const name of paneTokens(bucket.slice(0, bucket.indexOf(':')))) {
         if (current[name] !== undefined) entry[name] = current[name]
       }
+      return entry
+    }
+
+    /* Immutable single-key update. ratio === null removes the override, which is
+       exactly what the double-click reset does. */
+    function withPaneRatio(config, bucket, key, ratio) {
+      const panes = copyPanes(config)
+      const entry = copyBucket(bucket, panes[bucket] === undefined ? {} : panes[bucket])
       if (ratio === null) delete entry[key]
       else entry[key] = ratio
       if (Object.keys(entry).length === 0) delete panes[bucket]
       else panes[bucket] = entry
       return { treeOpen: config.treeOpen, panes: panes }
+    }
+
+    /* The commit box's own single-value update (px; null removes it and the box
+       goes back to "as tall as its content"). */
+    function withCommitBoxPx(config, bucket, px) {
+      const panes = copyPanes(config)
+      const entry = copyBucket(bucket, panes[bucket] === undefined ? {} : panes[bucket])
+      if (px === null) delete entry[COMMIT_BOX_KEY]
+      else entry[COMMIT_BOX_KEY] = Math.round(px)
+      if (Object.keys(entry).length === 0) delete panes[bucket]
+      else panes[bucket] = entry
+      return { treeOpen: config.treeOpen, panes: panes }
+    }
+
+    /* What the commit box is drawn at for this surface, or null for auto. */
+    function commitBoxPx(config, bucket) {
+      const entry = config.panes[bucket]
+      if (entry === null || typeof entry !== 'object') return null
+      const px = entry[COMMIT_BOX_KEY]
+      return typeof px === 'number' && Number.isFinite(px) === true ? px : null
     }
 
     /* Stored ratios (or today's defaults) → concrete px for the current chrome,
@@ -10221,17 +10376,6 @@ window.__ModuleLoader__.load({
             E('button', { type: 'button', className: 'dig-btn dig-btn-danger', disabled: matches === false, onClick: props.onConfirm }, props.okLabel))))
     }
 
-    function Segmented(props) {
-      return E('div', { className: 'dig-seg' },
-        props.items.map((item) => E('button', {
-          key: item.id,
-          type: 'button',
-          className: 'dig-seg-item',
-          'data-active': props.value === item.id ? 'true' : 'false',
-          onClick: () => props.onChange(item.id),
-        }, item.label)))
-    }
-
     /* A draggable divider between two panes. The pane it resizes is the sibling
        it is rendered against, and its size is MEASURED at pointerdown — so a pane
        still living on its stylesheet default (a percentage cap, or a diff pane
@@ -10828,6 +10972,36 @@ window.__ModuleLoader__.load({
          host — the hook comment explains why the paint rect must be the list
          wrapper's, not the scroll container's (v0.19.2 offset report). */
       const changesHostRef = useRef(null)
+      /* ---- the commit box's own divider (user request 2026-10-19) ----
+         The box is resizable from its TOP EDGE: a divider sits immediately above
+         it and moves the whole box, so the message area grows with it (IDEA's
+         gesture). What this side owns is how far the box may go HERE, measured
+         from the very element that holds list + divider + box — the drag and the
+         render clamp with one number, and the Panel owns the stored px (per
+         surface, next to the pane sizes). commitBodyH is the room available,
+         commitShownH what the box currently draws at (the divider announces it). */
+      const commitHostRef = useRef(null)
+      const commitBoxRef = useRef(null)
+      const [commitBodyH, setCommitBodyH] = useState(0)
+      const [commitShownH, setCommitShownH] = useState(0)
+      useMeasureLayoutEffect(() => {
+        const body = commitHostRef.current
+        const box = commitBoxRef.current
+        if (body === null || box === null) return undefined
+        const measure = () => {
+          setCommitBodyH(Math.round(body.getBoundingClientRect().height))
+          setCommitShownH(Math.round(box.getBoundingClientRect().height))
+        }
+        measure()
+        if (typeof ResizeObserver === 'function') {
+          const observer = new ResizeObserver(measure)
+          observer.observe(body)
+          observer.observe(box)
+          return () => observer.disconnect()
+        }
+        window.addEventListener('resize', measure)
+        return () => window.removeEventListener('resize', measure)
+      }, [])
       /* Rows in their RENDER order (the order windowing flattens them into) —
          Shift-click spans follow what the eye sees, not the git order. */
       const orderedRowKeys = () => {
@@ -11061,63 +11235,95 @@ window.__ModuleLoader__.load({
         onConfirm: () => { void aiRun() },
         onCancel: () => setAiAsk(false),
       })
+      /* The commit box, IDEA-style (user request 2026-10-19): the amend toggle
+         and the AI writer share ONE row ABOVE the message (amend first), the
+         message is a textarea you can drag taller — both chromes now, the
+         narrow one used to be a one-line <input>, which cannot be resized at
+         all — and the two commit buttons stay at the bottom LEFT. */
+      const amendToggle = E('label', { className: 'dig-check' },
+        E('input', { type: 'checkbox', checked: amend, onChange: (event) => setAmend(event.target.checked) }),
+        E('span', null, t('changes.amend')))
+      const aiWriteButton = E('button', {
+        type: 'button', className: 'dig-btn dig-btn-small dig-btn-ai',
+        disabled: aiBusy === true || props.busy === true,
+        title: t('changes.aiQuota'),
+        onClick: () => { if (message.trim() === '') void aiRun(); else setAiAsk(true) },
+      }, aiBusy === true ? t('changes.aiBusy') : t('changes.aiWrite'))
+      const aiUndoButton = aiUndo === null ? null : E('button', {
+        type: 'button', className: 'dig-link',
+        onClick: () => { setMessage(aiUndo); setAiUndo(null); setAiNote(null) },
+      }, t('changes.aiUndo'))
+      /* The message is a textarea on every chrome, so a bare Enter belongs to
+         the text (a multi-line message is half the point of --amend) and the
+         commit shortcut is Ctrl/Cmd+Enter — the placeholder says as much. */
+      const onMessageKeyDown = (event) => {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); submit() }
+      }
+      const commitButtons = (small) => E('div', { className: 'dig-commit-actions' },
+        E('button', {
+          type: 'button', className: 'dig-btn dig-btn-primary' + (small === true ? ' dig-btn-small' : ''),
+          disabled: message.trim() === '' || props.busy === true,
+          onClick: () => { submit(false) },
+        }, t('changes.commit')),
+        E('button', {
+          type: 'button', className: 'dig-btn' + (small === true ? ' dig-btn-small' : ''),
+          disabled: message.trim() === '' || props.busy === true,
+          onClick: () => { submit(true) },
+        }, t('changes.commitAndPush')))
+      /* How far the commit box may go: the change list keeps its own minimum, and
+         a box with no travel at all shows no divider (the same rule the pane
+         dividers follow: no element, no tab stop, no window nobody can move). */
+      const commitMax = Math.max(COMMIT_BOX_MIN_PX, commitBodyH - COMMIT_BOX_LIST_MIN_PX)
+      const commitReady = commitBodyH > 0 && commitMax > COMMIT_BOX_MIN_PX
+      const clampCommit = (px) => Math.min(Math.max(Math.round(px), COMMIT_BOX_MIN_PX), commitMax)
+      const commitStored = props.commitHeight === undefined ? null : props.commitHeight
+      /* A stored height is honoured through the same clamp: a box dragged to 500
+         in a tall sidebar must not push its buttons out of a short workbench.
+         With no travel at all it is dropped entirely and the box falls back to
+         its content height — the smallest it can be drawn at without clipping
+         its own buttons (see commitReady). */
+      const commitHeight = commitStored === null || commitReady === false ? null : clampCommit(commitStored)
+      const commitStyle = commitHeight === null ? null : { height: commitHeight + 'px', maxHeight: commitHeight + 'px' }
+      /* The divider resizes its NEXT SIBLING — the commit box itself, which is
+         what the body order below arranges. */
+      const commitDivider = commitReady === false ? null : E(Gutter, {
+        key: 'gutter-commit-box',
+        t: t,
+        nameKey: 'pane.commitBox',
+        vertical: false,
+        side: 'next',
+        active: props.commitActive === true,
+        value: clampCommit(commitShownH === 0 ? COMMIT_BOX_MIN_PX : commitShownH),
+        min: COMMIT_BOX_MIN_PX,
+        max: commitMax,
+        onStart: () => props.onCommitDragStart(),
+        onDrag: (px) => props.onCommitDrag(clampCommit(px)),
+        onEnd: () => props.onCommitEnd(),
+        onReset: () => props.onCommitReset(),
+      })
       const composer = props.compact === true
-        ? E('div', { className: 'dig-commit-box dig-commit-box-compact' },
-            E('input', {
-              className: 'dig-input dig-input-compact', value: message, spellCheck: false,
+        ? E('div', { className: 'dig-commit-box dig-commit-box-compact', ref: commitBoxRef, style: commitStyle },
+            E('div', { className: 'dig-commit-ai' }, amendToggle, aiWriteButton, aiUndoButton),
+            E('textarea', {
+              className: 'dig-textarea dig-textarea-compact', value: message, spellCheck: false, rows: 1,
               placeholder: t('changes.commitPlaceholder'),
               onChange: (event) => setMessage(event.target.value),
-              onKeyDown: (event) => {
-                if (event.key === 'Enter') { event.preventDefault(); submit() }
-              },
+              onKeyDown: onMessageKeyDown,
             }),
-            E('button', {
-              type: 'button', className: 'dig-btn dig-btn-small dig-btn-ai',
-              disabled: aiBusy === true || props.busy === true,
-              title: t('changes.aiQuota'),
-              onClick: () => { if (message.trim() === '') void aiRun(); else setAiAsk(true) },
-            }, aiBusy === true ? t('changes.aiBusy') : t('changes.aiWrite')),
-            E('button', {
-              type: 'button', className: 'dig-btn dig-btn-primary dig-btn-small',
-              disabled: message.trim() === '' || props.busy === true,
-              onClick: () => { submit(false) },
-            }, t('changes.commit')),
-            E('span', { className: 'dig-commit-ai-hint dig-commit-ai-hint-block' }, t('changes.aiQuota')))
-        : E('div', { className: 'dig-commit-box' },
+            E('span', { className: 'dig-commit-ai-hint dig-commit-ai-hint-block' }, t('changes.aiQuota')),
+            aiNote === null ? null : E('div', { className: 'dig-commit-ai-note', 'data-ai-note': '' }, aiNote),
+            commitButtons(true))
+        : E('div', { className: 'dig-commit-box', ref: commitBoxRef, style: commitStyle },
+            E('div', { className: 'dig-commit-ai' }, amendToggle, aiWriteButton,
+              E('span', { className: 'dig-commit-ai-hint' }, t('changes.aiQuota')), aiUndoButton),
             E('textarea', {
               className: 'dig-textarea', value: message, spellCheck: false,
               placeholder: t('changes.commitPlaceholder'),
               onChange: (event) => setMessage(event.target.value),
-              onKeyDown: (event) => {
-                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); submit() }
-              },
+              onKeyDown: onMessageKeyDown,
             }),
-            E('div', { className: 'dig-commit-ai' },
-              E('button', {
-                type: 'button', className: 'dig-btn dig-btn-small dig-btn-ai',
-                disabled: aiBusy === true || props.busy === true,
-                onClick: () => { if (message.trim() === '') void aiRun(); else setAiAsk(true) },
-              }, aiBusy === true ? t('changes.aiBusy') : t('changes.aiWrite')),
-              E('span', { className: 'dig-commit-ai-hint' }, t('changes.aiQuota')),
-              aiUndo === null ? null : E('button', {
-                type: 'button', className: 'dig-link',
-                onClick: () => { setMessage(aiUndo); setAiUndo(null); setAiNote(null) },
-              }, t('changes.aiUndo'))),
             aiNote === null ? null : E('div', { className: 'dig-commit-ai-note', 'data-ai-note': '' }, aiNote),
-            E('div', { className: 'dig-commit-actions' },
-              E('label', { className: 'dig-check' },
-                E('input', { type: 'checkbox', checked: amend, onChange: (event) => setAmend(event.target.checked) }),
-                E('span', null, t('changes.amend'))),
-              E('button', {
-                type: 'button', className: 'dig-btn dig-btn-primary',
-                disabled: message.trim() === '' || props.busy === true,
-                onClick: () => { submit(false) },
-              }, t('changes.commit')),
-              E('button', {
-                type: 'button', className: 'dig-btn',
-                disabled: message.trim() === '' || props.busy === true,
-                onClick: () => { submit(true) },
-              }, t('changes.commitAndPush'))))
+            commitButtons(false))
       // Folding hides the FILE LIST only. The commit box is the panel's primary
       // action and used to vanish together with the list, leaving an empty pane
       // with no way to commit anything (reported on v0.3.5).
@@ -11154,7 +11360,7 @@ window.__ModuleLoader__.load({
       return E('div', { className: 'dig-changes', ref: changesHostRef },
         aiConfirmDialog,
         head,
-        E('div', { className: 'dig-changes-body' },
+        E('div', { className: 'dig-changes-body', ref: commitHostRef },
           E('div', {
             className: 'dig-changes-list', ref: changesScrollRef,
             /* Focusable list: the keyboard shortcuts (Ctrl+C / Del / Ctrl+A /
@@ -11186,6 +11392,9 @@ window.__ModuleLoader__.load({
              (scrollTop untouched), so the v0.18.3 dblclick precision holds —
              and nothing on the list (group head, rows) is ever covered. */
           selectionBar,
+          /* Immediately above the box, and its next sibling IS the box: that is
+             the top edge the user drags (2026-10-19). */
+          commitDivider,
           composer),
         E(MarqueeBox, { box: changeMarquee.box }))
     }
@@ -11856,7 +12065,12 @@ window.__ModuleLoader__.load({
       if (detail === null || detail === undefined) return E('div', { className: 'dig-empty' }, t('status.loading'))
       return E('div', { className: 'dig-detail' },
         E('div', { className: 'dig-detail-head' },
-          E('button', { type: 'button', className: 'dig-btn dig-btn-small', onClick: props.onBack }, '← ' + t('detail.back')),
+          /* The explorer's detail column shows the log BESIDE it (IDE style), so
+             it needs no way "back" — the log is right there. Only the single
+             swapping pane (compact / stack) gets the back button. */
+          typeof props.onBack === 'function'
+            ? E('button', { type: 'button', className: 'dig-btn dig-btn-small', onClick: props.onBack }, '← ' + t('detail.back'))
+            : null,
           E('span', { className: 'dig-mono' }, detail.shortHash),
           E('span', { className: 'dig-detail-author' }, detail.author),
           E('span', { className: 'dig-detail-date' }, shortDate(detail.date))),
@@ -11887,6 +12101,12 @@ window.__ModuleLoader__.load({
     function Panel(props) {
       const scope = props.scope
       const t = props.t
+      /* Which face of the plugin this mount is (user request 2026-10-19): the
+         DEFAULT is the changes face — 变更 list + commit box, what the commit
+         loop needs — and 'explore' is the IDE-shaped browsing face (branch tree
+         | commit list | commit details) that the rail's branch button opens in
+         its own tab. Same component, same data, two layouts. */
+      const explore = props.mode === 'explore'
       const hostRef = useRef(null)
       const railHostRef = useRef(null)
       const [size, setSize] = useState({ width: 0, height: 0 })
@@ -11910,6 +12130,9 @@ window.__ModuleLoader__.load({
       const panesRef = useRef(panes)
       const [treeOpen, setTreeOpen] = useState(panes.treeOpen)
       const [paneDragging, setPaneDragging] = useState(null)
+      /* The commit box's own divider (the default face's top edge): the same
+         shape as paneDragging, one flag, because there is exactly one box. */
+      const [commitDragging, setCommitDragging] = useState(false)
       const [paneSizes, setPaneSizes] = useState({})
       /* The float pane this panel is drawn in, or null while it is docked. The
          dock face exposes operations only, so the state comes from the float
@@ -12133,6 +12356,20 @@ window.__ModuleLoader__.load({
 
       const resetPane = (key) => {
         commitPanes(withPaneRatio(panesRef.current, paneLayout.bucket, key, null))
+        writePanes(panesRef.current)
+      }
+
+      /* The commit box's divider works the same way, except that the clamp lives
+         in the changes panel (it owns the box that measures the room) and the
+         size is stored in px — one entry in the same per-surface record. */
+      const dragCommitBox = (px) => commitPanes(withCommitBoxPx(panesRef.current, paneLayout.bucket, px))
+      const endCommitBoxDrag = () => {
+        setCommitDragging(false)
+        writePanes(panesRef.current)
+      }
+      const resetCommitBox = () => {
+        setCommitDragging(false)
+        commitPanes(withCommitBoxPx(panesRef.current, paneLayout.bucket, null))
         writePanes(panesRef.current)
       }
 
@@ -13358,39 +13595,49 @@ window.__ModuleLoader__.load({
         E('button', { type: 'button', className: 'dig-link', onClick: () => setNote(null) }, t('error.dismiss')))
 
 
-      const historyPane = view === 'detail'
-        ? E(CommitDetail, {
-            t: t, detail: detail, selectedPath: selectedPath,
-            onBack: () => { setView('history'); setSelectedPath(null); setPatch(''); setDiffContext(null) },
-            /* Plain click only highlights the file; the DOUBLE-click opens its
-               diff (v0.18.3, one click model across every list). */
-            onSelectFile: (file) => { setSelectedPath(file.path) },
-            onOpenFile: (file) => {
-              setSelectedPath(file.path)
-              showDiff({
-                hash: detail === null || detail === undefined ? undefined : detail.hash,
-                subject: detail === null || detail === undefined ? '' : detail.subject,
-                path: file.path,
-              })
-            },
-            onFileMenu: detailFileMenu,
+      /* The log and the commit detail are built separately because the explorer
+         shows them SIDE BY SIDE (IDE style: list in the middle, detail on the
+         right). Every other layout keeps the swap — one pane that is either the
+         log or the detail — which is all a narrow column can afford. */
+      const logPane = E(HistoryList, {
+        t: t, commits: commits, hasMore: hasMore, busy: busy, selectedHash: selectedHash,
+        hideSearch: compact, pathFilter: pathFilter, openMenuAt: openMenuAt,
+        onPathFilter: (value) => setPathFilter(value),
+        onSelect: (commit) => { void selectCommit(commit) },
+        onMenu: commitMenu,
+        onLoadMore: () => { void guard(() => loadCommits(commits.length)) },
+        /* ---- multi-select (issue #13) ---- */
+        pickedHashes: pickedCommits,
+        onPicksChange: onCommitPicks,
+        onSelectAll: (hashes) => onCommitPicks(new Set(hashes)),
+        onKeyDown: onHistoryKeyDown,
+        mergeAnchor: mergeAnchor,
+        base: base,
+        request: request,
+      })
+
+      /* `back` is the swapping layouts' way out of the detail; the explorer's
+         detail column passes nothing and gets no back button. */
+      const detailPane = (back) => E(CommitDetail, {
+        t: t, detail: detail, selectedPath: selectedPath,
+        onBack: back === true
+          ? () => { setView('history'); setSelectedPath(null); setPatch(''); setDiffContext(null) }
+          : undefined,
+        /* Plain click only highlights the file; the DOUBLE-click opens its
+           diff (v0.18.3, one click model across every list). */
+        onSelectFile: (file) => { setSelectedPath(file.path) },
+        onOpenFile: (file) => {
+          setSelectedPath(file.path)
+          showDiff({
+            hash: detail === null || detail === undefined ? undefined : detail.hash,
+            subject: detail === null || detail === undefined ? '' : detail.subject,
+            path: file.path,
           })
-        : E(HistoryList, {
-            t: t, commits: commits, hasMore: hasMore, busy: busy, selectedHash: selectedHash,
-            hideSearch: compact, pathFilter: pathFilter, openMenuAt: openMenuAt,
-            onPathFilter: (value) => setPathFilter(value),
-            onSelect: (commit) => { void selectCommit(commit) },
-            onMenu: commitMenu,
-            onLoadMore: () => { void guard(() => loadCommits(commits.length)) },
-            /* ---- multi-select (issue #13) ---- */
-            pickedHashes: pickedCommits,
-            onPicksChange: onCommitPicks,
-            onSelectAll: (hashes) => onCommitPicks(new Set(hashes)),
-            onKeyDown: onHistoryKeyDown,
-            mergeAnchor: mergeAnchor,
-            base: base,
-            request: request,
-          })
+        },
+        onFileMenu: detailFileMenu,
+      })
+
+      const historyPane = view === 'detail' ? detailPane(true) : logPane
 
       const diffPane = patch === '' && patchLoading === false ? null : E('div', { className: 'dig-diff-pane', 'data-pane': 'diff', style: paneStyle('diff'), onContextMenu: onDiffPaneContextMenu },
         E('div', { className: 'dig-diff-head' },
@@ -13636,6 +13883,15 @@ window.__ModuleLoader__.load({
       }
       const commitSettings = readCommitSettings()
       const changesPane = E(ChangesPanel, {
+        /* The commit box's divider: the stored height for THIS surface, and the
+           three handlers the divider drives (the changes panel clamps both the
+           drag and the render to the room it measures). */
+        commitHeight: commitBoxPx(panes, paneLayout.bucket),
+        commitActive: commitDragging === true,
+        onCommitDragStart: () => setCommitDragging(true),
+        onCommitDrag: dragCommitBox,
+        onCommitEnd: endCommitBoxDrag,
+        onCommitReset: resetCommitBox,
         t: t, summary: summary, busy: busy, compact: compact, hideHeader: compact,
         groupBy: groupBy, sortKey: sortKey, onGroupBy: setGroupBy,
         foldedDirs: foldedDirs, onFoldedDirs: setFoldedDirs,
@@ -13758,7 +14014,19 @@ window.__ModuleLoader__.load({
           if (railPickedLocals.length > 0) { entry.label = fill(t('toolbar.pushPicked'), { n: railPickedLocals.length }); entry.disabled = blocked; entry.run = () => setDialog({ kind: 'pushMany', items: railPickedLocals.map((item) => ({ name: item.name, upstream: item.entry.upstream })) }) }
           else { entry.disabled = remoteReady !== true || blocked; entry.run = () => setDialog({ kind: 'push' }) }
         }
-        else if (spec.id === 'tree') { entry.active = treeOpen; entry.run = () => foldTree(!treeOpen) }
+        else if (spec.id === 'tree') {
+          /* One slot, two faces (user request 2026-10-19): in the explorer the
+             branch button folds the tree column it owns; in the changes face
+             there is no tree to fold, so the same button opens the explorer in
+             its own tab. The seat supplies the door — a host that cannot open
+             one hides the button instead of showing a dead one. */
+          if (explore === true) { entry.active = treeOpen; entry.run = () => foldTree(!treeOpen) }
+          else {
+            entry.label = t('rail.explore')
+            entry.available = typeof props.openExplore === 'function'
+            entry.run = () => { props.openExplore() }
+          }
+        }
         else if (spec.id === 'float') {
           // Label AND icon follow where the panel actually is: floating panels get
           // the way back, docked ones get the way out.
@@ -13900,11 +14168,21 @@ window.__ModuleLoader__.load({
 
       /* ---------- body per chrome ---------- */
 
-      /* ---------- body per chrome ---------- */
-
       /* The history↔diff separator only exists while a diff is on screen, and it
          lives inside the middle pane — the diff is the pane below it. */
       const diffGutter = diffPane === null ? null : gutter('diff', 'next')
+
+      /* One branch tree, one wrapper per chrome (the class decides how the pane
+         is sized: a fixed column, a stacked cap, or the compact fold). */
+      const branchTree = (className) => E('div', { className: className, 'data-pane': 'tree', style: paneStyle('tree') },
+        E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBrowse: browseBranch, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues, onPicksChange: onBranchPicks, clearSignal: pickEpochs.tree }))
+
+      /* The explorer's right column: the selected commit, or the hint that says
+         what the column is for — an IDE detail pane is never blank without a
+         word (the merge/back states stay CommitDetail's own business). */
+      const detailColumn = view === 'detail'
+        ? detailPane(false)
+        : E('div', { className: 'dig-empty' }, t('detail.pickHint'))
 
       let body
       if (repoState === null) {
@@ -13916,17 +14194,19 @@ window.__ModuleLoader__.load({
         body = E('div', { className: 'dig-body', ref: bodyRef }, E(RepoPicker, {
           t: t, cwd: cwd === undefined ? '' : cwd, repos: repoOptions, onPick: pickRepo,
         }))
+      } else if (explore !== true) {
+        /* ---------- the DEFAULT face: 变更 + commit box (user request) -------
+           One column in every chrome: the branch tree and the commit list moved
+           into the explorer tab, so there is nothing to segment or fold here.
+           The chrome class stays on the body element (the layout probes read
+           the chrome off it), and the inline diff pane stays as the LAST-RESORT
+           fallback for a host where neither the base's diff tab nor the native
+           preview tab can take the diff. */
+        body = E('div', { className: 'dig-body dig-body-' + chrome + ' dig-body-changes', ref: bodyRef },
+          E('div', { className: 'dig-pane dig-pane-main' }, changesPane, diffGutter, diffPane))
       } else if (compact) {
         body = E('div', { className: 'dig-body dig-body-compact', ref: bodyRef },
           E('div', { className: 'dig-compact-bar' },
-            E(Segmented, {
-              value: view === 'detail' ? 'history' : view,
-              onChange: (next) => { setView(next); setPatch(''); setDiffContext(null) },
-              items: [
-                { id: 'changes', label: fill(t('seg.changes'), { n: dirty }) },
-                { id: 'history', label: t('seg.history') },
-              ],
-            }),
             E('span', { className: 'dig-topbar-spacer' }),
             // Two-way on purpose: treeOpen is persisted, so a header button that
             // only rendered while the tree was OPEN left a folded tree with no way
@@ -13939,22 +14219,23 @@ window.__ModuleLoader__.load({
               title: t('toolbar.tree'),
               onClick: () => foldTree(!treeOpen),
             }, E(Icon, { name: treeOpen ? 'eye' : 'eyeOff' }))),
-          treeOpen ? E('div', { className: 'dig-compact-tree', 'data-pane': 'tree', style: paneStyle('tree') }, E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBrowse: browseBranch, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues, onPicksChange: onBranchPicks, clearSignal: pickEpochs.tree })) : null,
+          treeOpen ? branchTree('dig-compact-tree') : null,
           treeOpen ? gutter('tree', 'prev') : null,
-          view === 'changes' ? changesPane : E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane))
+          E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane))
       } else if (columns) {
+        /* The IDE shape: tree | log | detail, the log and the detail at the SAME
+           time. The right column reuses the changes pane's width key and its
+           divider, so a user who widened either face keeps one width. */
         body = E('div', { className: 'dig-body dig-body-columns', ref: bodyRef },
-          treeOpen ? E('div', { className: 'dig-pane dig-pane-tree', 'data-pane': 'tree', style: paneStyle('tree') }, E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBrowse: browseBranch, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues, onPicksChange: onBranchPicks, clearSignal: pickEpochs.tree })) : null,
+          treeOpen ? branchTree('dig-pane dig-pane-tree') : null,
           treeOpen ? gutter('tree', 'prev') : null,
-          E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane),
+          E('div', { className: 'dig-pane dig-pane-main' }, logPane, diffGutter, diffPane),
           gutter('changes', 'next'),
-          E('div', { className: 'dig-pane dig-pane-changes', 'data-pane': 'changes', style: paneStyle('changes') }, changesPane))
+          E('div', { className: 'dig-pane dig-pane-changes', 'data-pane': 'changes', style: paneStyle('changes') }, detailColumn))
       } else {
         body = E('div', { className: 'dig-body dig-body-stack', ref: bodyRef },
-          treeOpen ? E('div', { className: 'dig-pane dig-pane-tree-stack', 'data-pane': 'tree', style: paneStyle('tree') }, E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBrowse: browseBranch, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues, onPicksChange: onBranchPicks, clearSignal: pickEpochs.tree })) : null,
+          treeOpen ? branchTree('dig-pane dig-pane-tree-stack') : null,
           treeOpen ? gutter('tree', 'prev') : null,
-          E('div', { className: 'dig-pane dig-pane-changes-stack', 'data-pane': 'changes', style: paneStyle('changes') }, changesPane),
-          gutter('changes', 'prev'),
           E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane))
       }
 
@@ -14265,7 +14546,8 @@ window.__ModuleLoader__.load({
       return E('div', {
         className: 'dig-root'
           + (compact ? ' dig-root-narrow' : '')
-          + (paneDragging === null ? '' : ' dig-pane-dragging' + (paneByWidth ? '-v' : '-h')),
+          + (paneDragging === null ? '' : ' dig-pane-dragging' + (paneByWidth ? '-v' : '-h'))
+          + (commitDragging === true ? ' dig-pane-dragging dig-pane-dragging-h' : ''),
         ref: hostRef,
       }, topBar,
         columns === true || repoRoot === null ? null : renderRail(false),
@@ -14394,7 +14676,9 @@ window.__ModuleLoader__.load({
       '.dig-settings-text{display:flex;flex-direction:column;gap:3px;min-width:0}',
       '.dig-settings-text-label{color:var(--dsw-alias-label-secondary);font-weight:400}',
       '.dig-settings-input{width:100%;box-sizing:border-box;font:inherit}',
-      '.dig-commit-ai{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}',
+      /* One row ABOVE the message (user request 2026-10-19): the amend toggle
+         first, then the AI writer, then the quota hint and the AI undo. */
+      '.dig-commit-ai{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:none}',
       '.dig-commit-ai-hint{color:var(--dsw-alias-label-tertiary);font-size:11px}',
       '.dig-commit-ai-hint-block{flex:1 0 100%;font-size:11px}',
       '.dig-commit-ai-note{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-size:11px;margin-bottom:4px;word-break:break-word}',
@@ -14436,12 +14720,14 @@ window.__ModuleLoader__.load({
       '.dig-body-columns{flex-direction:row}',
       '.dig-body-stack{flex-direction:column}',
       '.dig-body-compact{flex-direction:column}',
+      /* The changes face is one column in every chrome: 变更 over the commit box
+         (the branch tree and the commit list live in the explorer tab). */
+      '.dig-body-changes{flex-direction:column}',
       '.dig-pane{display:flex;flex-direction:column;min-height:0;min-width:0}',
       '.dig-pane-tree{width:200px;flex:none;border-right:1px solid var(--dsw-alias-border-l2)}',
       '.dig-pane-tree-stack{max-height:36%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
       '.dig-pane-main{flex:1;min-width:0}',
       '.dig-pane-changes{width:290px;flex:none;border-left:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-pane-changes-stack{max-height:46%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
       '.dig-compact-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;flex:none}',
       '.dig-compact-tree{max-height:42%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
       // A divider: an 8px hit area (a fingertip needs it) painted as a 1px hairline
@@ -14458,10 +14744,6 @@ window.__ModuleLoader__.load({
       '.dig-pane-dragging,.dig-pane-dragging *{user-select:none}',
       '.dig-pane-dragging-v{cursor:col-resize}',
       '.dig-pane-dragging-h{cursor:row-resize}',
-      '.dig-seg{display:inline-flex;gap:2px;padding:2px;border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-interactive-bg-hover);flex:none}',
-      '.dig-seg-item{border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-weight:500;padding:2px 10px;border-radius:calc(var(--dsw-radius-sm,8px) - 2px);cursor:pointer;white-space:nowrap}',
-      '.dig-seg-item:hover{color:var(--dsw-alias-label-primary)}',
-      '.dig-seg-item[data-active="true"]{background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary)}',
       '.dig-search{padding:4px 6px;flex:none}',
       '.dig-input{width:100%;box-sizing:border-box;padding:4px 6px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;outline:none}',
       '.dig-input::placeholder{color:var(--dsw-alias-label-tertiary)}',
@@ -14628,12 +14910,26 @@ window.__ModuleLoader__.load({
       '.dig-mini{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;border-radius:var(--dsw-radius-xs,4px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;flex:none;padding:0}',
       '.dig-row:hover .dig-mini{opacity:1}',
       '.dig-mini:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
-      '.dig-commit-box{flex:none;padding:6px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-commit-box-compact{flex-direction:row;align-items:center;gap:6px;padding:4px 6px;flex-wrap:wrap}',
-      '.dig-textarea{width:100%;box-sizing:border-box;min-height:50px;resize:vertical;padding:5px 6px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;outline:none}',
+      /* `flex:0 1 auto` (not `flex:none`): the box is user-resizable, and a tall
+         one in a short workbench must not push its own buttons out of the pane —
+         the box gives way, the message absorbs it, and the control rows below
+         are pinned (see the gutter rule further down). */
+      '.dig-commit-box{flex:0 1 auto;min-height:0;overflow:hidden;padding:6px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--dsw-alias-border-l2)}',
+      /* The divider above the box paints the hairline, so the box drops its own
+         — two parallel lines 8px apart read as a rendering bug. */
+      '.dig-changes-body .dig-gutter + .dig-commit-box{border-top:none}',
+      '.dig-commit-box-compact{flex-direction:column;align-items:stretch;gap:4px;padding:4px 6px}',
+      /* The message fills whatever height the box was given, and the divider owns
+         the resize: two grips on one axis would fight (the corner grip is gone). */
+      '.dig-textarea{width:100%;box-sizing:border-box;flex:1 1 auto;min-height:56px;resize:none;padding:5px 6px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;outline:none}',
+      '.dig-textarea-compact{min-height:36px}',
       '.dig-textarea::placeholder{color:var(--dsw-alias-label-tertiary)}',
       '.dig-textarea:focus{border-color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary))}',
-      '.dig-commit-actions{display:flex;align-items:center;gap:8px}',
+      /* The IDE shape: 提交 / 提交并推送 stay at the LEFT edge (the shared
+         .dig-btn-primary rule pushes a dialog's primary button right instead),
+         and they wrap rather than overflow in the narrow chrome. */
+      '.dig-commit-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:none}',
+      '.dig-commit-actions .dig-btn-primary{margin-left:0}',
       '.dig-check{display:inline-flex;align-items:center;gap:4px;color:var(--dsw-alias-label-secondary);cursor:pointer}',
       '.dig-btn{padding:3px 10px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-weight:500;cursor:pointer;flex:none}',
       '.dig-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
@@ -14805,6 +15101,10 @@ window.__ModuleLoader__.load({
       '.dig-cs-pill{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 8px;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);font-family:inherit;font-size:var(--dsh-content-font-size-secondary,13px);line-height:20px;white-space:nowrap;cursor:pointer}',
       '.dig-cs-pill:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.dig-cs-pill:disabled{cursor:default}',
+      // The repository pill's caret is its own button (open panel on the name,
+      // pick a checkout on the arrow): pulled tight against the name it still
+      // reads as one control, but the two hover targets stay separate.
+      '.dig-cs-caret{padding:0 4px;margin-left:-2px}',
       '.dig-cs-name{overflow:hidden;text-overflow:ellipsis;max-width:150px}',
       '.dig-cs-pill svg{flex:none}',
       '.dig-cs-badge{display:inline-flex;align-items:center;font-size:12px;line-height:20px;font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 3px;font-weight:500}',
@@ -14860,6 +15160,11 @@ window.__ModuleLoader__.load({
        conversation tab, the native panel) feeds the same single preview. */
     const NATIVE_PREVIEW_ID = 'dsh-ide-git-preview'
     const NATIVE_PREVIEW_KIND = 'ide-git-preview'
+    /* The native explorer type (see TAB_EXPLORE_ID): like the preview it stays
+       OFF the guide page — the changes panel's branch button is the only door
+       in (user request), so the start page keeps its single Git card. */
+    const NATIVE_EXPLORE_ID = 'dsh-ide-git-explore'
+    const NATIVE_EXPLORE_KIND = 'ide-git-explore'
 
     /* The one diff seed the native preview tab shows. set() bumps a monotonous
        counter so a re-click of the SAME file still re-fetches; subscribers get
@@ -14909,7 +15214,19 @@ window.__ModuleLoader__.load({
       const openSettings = navigation !== undefined && navigation !== null && typeof navigation.openBundle === 'function'
         ? () => { navigation.openBundle(SETTINGS_BUNDLE) }
         : null
-      return E(Panel, { scope: props.scope, t: props.t, visible: props.visible, dock: props.dock, openSettings: openSettings, ctx: props.ctx, openDiffExternal: props.openDiffExternal })
+      /* The changes face offers the explorer tab one click away — but only when
+         the host actually has a door to open it through (a host with neither
+         better-sidebar nor the native right sidebar would get a dead button,
+         so the rail hides it instead). */
+      const openExplore = typeof props.openExplore === 'function'
+        ? props.openExplore
+        : (props.mode === 'explore' || gitSeatHost(props.ctx) === null
+          ? undefined
+          : () => {
+              const scope = props.scope === undefined || props.scope === null ? {} : props.scope
+              openGitSeat(props.ctx, 'explore', scope.sessionId, scope.cwd)
+            })
+      return E(Panel, { scope: props.scope, t: props.t, visible: props.visible, dock: props.dock, openSettings: openSettings, ctx: props.ctx, openDiffExternal: props.openDiffExternal, mode: props.mode, openExplore: openExplore })
     }
 
     /* The conversation-area seat (issue #8): the same panel as a view tab
@@ -14968,6 +15285,49 @@ window.__ModuleLoader__.load({
       if (ready === null) return true
       const value = ready.value !== null && typeof ready.value === 'object' ? ready.value.composerStatus : undefined
       return value !== false
+    }
+
+    /* The pill is also the door into the Git tool window: clicking the
+       repository name opens the panel in the RIGHT column and focuses it
+       (user request 2026-10-19). Which seat draws that column is the host's
+       decision, so the order follows it: better-sidebar first — when it is
+       loaded it OWNS the tab and our native seats were taken down, so its
+       `openTab(seed, scope)` is the only working path — then DSH's native
+       right sidebar, whose `openTab(kind)` reveals and expands the column
+       itself. A host with neither returns false and the click stays inert.
+
+       The same door reveals the explorer tab (the rail's branch button in the
+       changes face), so the host lookup is shared and the seat decides which
+       id/kind is asked for. */
+    function gitSeatHost(ctx) {
+      let betterSidebar = undefined
+      try { betterSidebar = ctx === undefined || ctx === null ? undefined : ctx.get('betterSidebar') } catch (error) { void error }
+      if (betterSidebar !== undefined && betterSidebar !== null && typeof betterSidebar.openTab === 'function') {
+        return { host: 'better-sidebar', service: betterSidebar }
+      }
+      let sidebarRight = undefined
+      try { sidebarRight = ctx === undefined || ctx === null ? undefined : ctx.get('sidebarRight') } catch (error) { void error }
+      if (sidebarRight !== undefined && sidebarRight !== null && typeof sidebarRight.openTab === 'function') {
+        return { host: 'native', service: sidebarRight }
+      }
+      return null
+    }
+
+    /* `seat` is 'panel' (the changes panel) or 'explore' (the branches & commits
+       tab). Returns whether a door was actually asked to open it. */
+    function openGitSeat(ctx, seat, sessionId, cwd) {
+      const door = gitSeatHost(ctx)
+      if (door === null) return false
+      const explorer = seat === 'explore'
+      try {
+        if (door.host === 'better-sidebar') {
+          door.service.openTab({ type: explorer ? TAB_EXPLORE_ID : TAB_ID, target: 'right' }, { sessionId: sessionId, cwd: cwd })
+        } else {
+          door.service.openTab(explorer ? NATIVE_EXPLORE_KIND : NATIVE_KIND)
+        }
+        return true
+      } catch (error) { void error }
+      return false
     }
 
     const COMPOSER_POLL_MS = 30000
@@ -15227,17 +15587,32 @@ window.__ModuleLoader__.load({
         rememberRepoShared(sessionId, path)
       }
 
+      /* The repository name is the shortcut into the tool window; the caret
+         beside it keeps the checkout picker alive (a single-repo workspace
+         has nothing to pick, so the caret is dropped and the whole pill is
+         the panel door). */
+      const openPanel = () => {
+        setMenu(null)
+        openGitSeat(ctx, 'panel', sessionId, cwd)
+      }
+
       return E('div', { ref: rootRef, className: 'dig-cs-root', 'data-dsh-ide-git-status': '' },
         E('button', {
           type: 'button',
-          className: 'dig-cs-pill',
-          title: singleRepo === true ? undefined : t('composer.repoHint'),
-          disabled: singleRepo === true,
-          onClick: singleRepo === true ? undefined : () => { setMenu(menu === 'repo' ? null : 'repo') },
+          className: 'dig-cs-pill dig-cs-repo',
+          title: t('composer.openPanel'),
+          onClick: openPanel,
         },
           E(Icon, { name: 'commit', size: 13 }),
-          E('span', { className: 'dig-cs-name' }, repoName),
-          singleRepo === true ? null : E(Icon, { name: 'chevron', size: 10 })),
+          E('span', { className: 'dig-cs-name' }, repoName)),
+        singleRepo === true ? null : E('button', {
+          type: 'button',
+          className: 'dig-cs-pill dig-cs-caret',
+          title: t('composer.repoHint'),
+          'aria-label': t('composer.repoHint'),
+          onClick: () => { setMenu(menu === 'repo' ? null : 'repo') },
+        },
+          E(Icon, { name: 'chevron', size: 10 })),
         branchName !== null ? E('button', {
           type: 'button',
           className: 'dig-cs-pill',
@@ -15493,7 +15868,7 @@ window.__ModuleLoader__.load({
          binds; the better-sidebar door has no sidebarRight tab id and therefore
          wires nothing (a panel hosted elsewhere must not float a foreign tab). */
       const dock = readDockInfo(props.useTabInfo, props.ctx)
-      return E(LocaleLive, { ctx: props.ctx, scope: scope, t: props.t, visible: true, dock: dock })
+      return E(LocaleLive, { ctx: props.ctx, scope: scope, t: props.t, visible: true, dock: dock, mode: props.mode })
     }
 
     /* The native preview tab's body (external diff preview): shows exactly one
@@ -15681,7 +16056,21 @@ window.__ModuleLoader__.load({
               { name: 'sidebar.right.pane.tab', key: NATIVE_PREVIEW_ID },
               (tabProps) => E(NativePreviewPanel, Object.assign({}, tabProps, { t: t, ctx: ctx })),
             ))
+            /* The explorer face, same deal as the preview: registered so the
+               changes panel's branch button can open it, kept OFF the guide page
+               (no `guide`) so the start page keeps its single Git card. */
+            const offExploreType = tabs.register({
+              id: NATIVE_EXPLORE_ID,
+              kind: NATIVE_EXPLORE_KIND,
+              title: () => t('explore.title'),
+            })
+            const offExploreBody = slots.inject('sidebar.right.pane.tab', () => slots.register(
+              { name: 'sidebar.right.pane.tab', key: NATIVE_EXPLORE_ID },
+              (tabProps) => E(NativePanel, Object.assign({}, tabProps, { t: t, ctx: ctx, mode: 'explore' })),
+            ))
             return () => {
+              try { offExploreBody() } catch (error) { void error }
+              try { offExploreType() } catch (error) { void error }
               try { offPreviewBody() } catch (error) { void error }
               try { offPreviewType() } catch (error) { void error }
               try { offBody() } catch (error) { void error }
@@ -15725,6 +16114,27 @@ window.__ModuleLoader__.load({
               openDiffExternal: typeof tabProps.onOpenDiff === 'function' ? tabProps.onOpenDiff : undefined,
             }),
           })
+          /* The explorer face as its own tab (user request 2026-10-19): the
+             changes panel's branch button opens it (`openTab` by id), and
+             `hidden: true` keeps it out of the base's + menu AND out of DSH's
+             native guide list — the start page keeps its single Git card. */
+          const offExploreTab = betterSidebar.registerTab({
+            id: TAB_EXPLORE_ID,
+            title: () => t('explore.title'),
+            description: () => t('explore.description'),
+            icon: (size) => E(Icon, { name: 'branch', size: size === undefined ? 16 : size }),
+            order: 22,
+            single: true,
+            hidden: true,
+            component: (tabProps) => E(LocaleLive, {
+              ctx: ctx,
+              scope: tabProps.scope,
+              t: t,
+              visible: tabProps.visible,
+              mode: 'explore',
+              openDiffExternal: typeof tabProps.onOpenDiff === 'function' ? tabProps.onOpenDiff : undefined,
+            }),
+          })
           /* The base can go away at RUNTIME (disabled in the plugin panel, or
              uninstalled): cordis unloads this effect when the service
              disappears, and the panel must fall back to the native
@@ -15732,6 +16142,7 @@ window.__ModuleLoader__.load({
              same inject re-fires when the service returns, and the
              callback above takes the native seats down again. */
           return () => {
+            try { offExploreTab() } catch (error) { void error }
             try { offTab() } catch (error) { void error }
             hostedByBetterSidebar = false
             hostNatively()

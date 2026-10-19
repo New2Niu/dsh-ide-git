@@ -47,8 +47,8 @@
 | docs/screenshots/ | README 效果图(6 张,由 scripts/screenshots.mjs 生成) |
 | scripts/demo-repo.mjs | 生成用于截图的虚构演示仓库(幂等) |
 | scripts/screenshots.mjs | Playwright 驱动的截图流程(只截插件面板元素) |
-| scripts/ssr-check.mjs | 客户端半的 SSR 自检(真渲染一次 Tab 组件) |
-| scripts/conversation-probe.mjs | 主对话区 Git 标签页的回归探针(10 项断言:注册/挂载/真数据/开关翻转/`/remote` 回退/零 pageerror);要求隔离实例 + `DIG_PROBE_WORKSPACE` 指名的工作区(默认「演示仓库」) |
+| scripts/ssr-check.mjs | 客户端半的 SSR 自检(真渲染一次 Tab 组件;**两个面各渲染一次**) |
+| scripts/conversation-probe.mjs | 主对话区 Git 标签页的回归探针(注册/挂载/真数据/默认面断言/提交框上边框拖动/explorer 页签/开关翻转/`/remote` 回退/零 pageerror);要求隔离实例 + `DIG_PROBE_WORKSPACE` 指名的工作区(默认「演示仓库」) |
 
 ## 核心不变量(改代码前必读)
 
@@ -58,12 +58,12 @@
 4. **破坏性操作必须 `confirm: true`**:push、`reset --hard`、`branch -D`、丢弃未跟踪文件(`clean`)、`stash drop`。UI 侧对应动作一律先弹 ConfirmDialog。**唯一例外是「提交并推送」按钮**(v0.3.7):按钮文案已经把「会推送」写在脸上,点击即视为确认,不再二次弹框——它仍然把 `confirm: true` 传给宿主,所以守卫没有被绕过。冒烟测试校验这些守卫字符串存在。
 5. **两条信任围栏**:宿主路由只服务 loopback Host 或 `Sec-Fetch-Site: same-origin/same-site` 的请求;任何新路由都必须先过 `isTrusted(req)`,再检查 method 为 POST。
 6. **注册是两条通道,互斥,自动选**(v0.4.0 起)。客户端半按宿主决定挂哪儿,返回值的 `inject` 是 `[]`——底座是**可选** peer,不是硬依赖:
-   - **有 dsh-better-sidebar** → `ctx.inject(['betterSidebar'], (tabCtx) => tabCtx.effect(() => betterSidebar.registerTab({ … })))`。注册必须包在 `effect` 里(否则 HMR/禁用后残留注册,再次激活抛 already registered);`id` 用 `dsh-ide-git:panel`(单例 `single: true`);标题/描述用函数形式以跟随语言切换。
-   - **没有它** → DSH **原生右侧栏**座位:`ctx.sidebarRightTabs.register({ id: 'dsh-ide-git', kind: 'ide-git', title, guide: [胶囊] })` 加上 keyed slot `sidebar.right.pane.tab`(键同 id)。`guide` **至少要有一项**——原生右侧栏里 guide 胶囊是打开一个 page 类型的唯一入口,没有它 tab 注册了也进不去。
+   - **有 dsh-better-sidebar** → `ctx.inject(['betterSidebar'], (tabCtx) => tabCtx.effect(() => betterSidebar.registerTab({ … })))`。注册必须包在 `effect` 里(否则 HMR/禁用后残留注册,再次激活抛 already registered);`id` 用 `dsh-ide-git:panel`(单例 `single: true`);标题/描述用函数形式以跟随语言切换。**同一处还注册第二个 Tab `dsh-ide-git:explore`**(explorer 面,`hidden: true`,见不变量 17)。
+   - **没有它** → DSH **原生右侧栏**座位:`ctx.sidebarRightTabs.register({ id: 'dsh-ide-git', kind: 'ide-git', title, guide: [胶囊] })` 加上 keyed slot `sidebar.right.pane.tab`(键同 id)。`guide` **至少要有一项**——原生右侧栏里 guide 胶囊是打开一个 page 类型的唯一入口,没有它 tab 注册了也进不去。**同一处还注册 explorer 类型**(`dsh-ide-git-explore` / `ide-git-explore`,同一条 slot,且**不写 `guide`**:它必须留在开始页之外)。
    - 两条通道**永不并存**:原生注册留着 disposer,晚到的 better-sidebar 会先撤掉它再接管(`hostedByBetterSidebar`)。
    - 原生座位不给 cwd:`NativePanel` 从 `useWorkspaces(state => state.items)` 里找 **sessionIds 含当前会话**的 workspace,取它的 `path`——与底座通道的 `scope.cwd` 同源。
    - **第三座位(独立于上两条,v0.13.0 起,issue #8):主对话区 `conversation.view` 槽**(ui-conversation 的 tab 环,「对话/轨迹」那一排;契约与 dsh-context 相同)。默认注册、由 row Config 字段 `conversationTab`(default true)经 `subscribeRailConfig` **实时**注册/注销;`ConversationPanel` 的 cwd 取 `ctx.get('sessions')` 的 `session.byId[sessionId].cwd`(带 subscribe 跟随)。`dsh.client.inject` 里声明了 `@deepseek-ai/dsh-client-ui-conversation`。回回归:`scripts/conversation-probe.mjs`(含开关翻转与 `/remote` 回退,10 项断言)。
-7. **布局用测量而不是猜测,而且宽度说了算**。`TabComponentProps` 不携带「我在右栏还是底部面板」的信息,所以只看容器尺寸:`compact`(**宽度 < 400** → 单行头部 + 变更/历史分段,即窄栏 chrome);否则 `width >= 600 且 width >= height * 1.15` → `columns`(三栏);其余 → `stack`(纵向)。**高度没有否决权**:它只参与 `columns` / `stack` 的区分,**绝不能单独触发 `compact`**——v0.1.3 用 `height < 330` 判紧凑,把 1500x300 的底部工作台判成了单栏;v0.3.5 仍留着 `height < 200`,于是 1320x180 的底部面板一拉矮就整块翻成右栏样式(用户报告,v0.3.6 修掉)。回归验证用 `scripts/layout-probe.mjs`(驱动干净实例把面板从 480 拉到 90px,逐档记录实际 chrome 并截图)。不要引入「按面板类型」的分支,也不要硬编码高度。
+7. **布局用测量而不是猜测,而且宽度说了算**。`TabComponentProps` 不携带「我在右栏还是底部面板」的信息,所以只看容器尺寸:`compact`(**宽度 < 400** → 单行头部,即窄栏 chrome);否则 `width >= 600 且 width >= height * 1.15` → `columns`(三栏);其余 → `stack`(纵向)。**高度没有否决权**:它只参与 `columns` / `stack` 的区分,**绝不能单独触发 `compact`**——v0.1.3 用 `height < 330` 判紧凑,把 1500x300 的底部工作台判成了单栏;v0.3.5 仍留着 `height < 200`,于是 1320x180 的底部面板一拉矮就整块翻成右栏样式(用户报告,v0.3.6 修掉)。回归验证用 `scripts/layout-probe.mjs`(驱动干净实例把面板从 480 拉到 90px,逐档记录实际 chrome 并截图;**两面都扫**:默认面 + explorer 面)。不要引入「按面板类型」的分支,也不要硬编码高度。
 8. **服务只在 client 半**。宿主半既没有 `ctx.betterSidebar` 也没有 `sidebarRightTabs`;宿主侧要读侧栏状态只能走它自己的 `/sidebar/*` 路由。宿主半不依赖任何插件;客户端半用 `ctx.get()` **探测**两个宿主服务,一个都没有时只挂样式、什么都不注册,绝不抛错。
 9. **版本两处一致**:`package.json` 与 `dsh.plugin.json` 的 version 必须相同(冒烟测试强制);`files[]` 里列出的每个文件都必须真实存在。
 
@@ -77,6 +77,18 @@
 
 15. **删除 / 覆盖类方法必须留下撤回句柄**。删除记对象 id(`pushUndo()`),覆盖工作区内容记**文件字节快照**(`snapshotForUndo()` 在动手前读、`snapshotState()` 记下操作后的样子),响应里统一返回 `undo: { id, kind, label }`;撤回逻辑集中在 `undoApply` 里按 `kind` 分支,不要另开方法。**快照不成立时不许假装能撤回**:符号链接 / 特殊文件 / 超过 `UNDO_MAX_FILES`(400)或 `UNDO_MAX_SNAPSHOT_BYTES`(4 MB)时返回 `undoBlocked: true` 而**不返回** `undo`,客户端如实提示「未保留撤回」。写回前必须逐个比对目标是否仍是操作后的样子(内容 sha1),有一个不一致就返回 `undo-conflict` 并且**一个文件都不写**。撤回是**一次性**的:成功后必须把数组写回(`undoStacks.set(root, list)`)——`undoEntriesOf()` 返回的是 `filter` 出来的新数组,v0.3.0 就因此漏过写回,导致同一个句柄重放时走到 `undo-conflict` 而不是 `undo-gone`。句柄有 TTL 与条数上限。
 16. **会改仓库的方法必须登记进 `WRITE_METHODS`**。路由按这个 Set 把写请求放进 per-repo 队列(`withRepoLock`),漏登记就等于重新打开并发写窗口;只读方法不要加进去,否则白白排队。
+17. **面板有两面,`mode` 说了算,explorer 只从分支图标进**(v0.20.0 起,用户需求)。`Panel` 的 `props.mode`(`'changes'` 默认 | `'explore'`)决定画哪一面:
+   - `changes`(默认页签)= **变更 + 提交框**,三种 chrome 下都是单列;body 类名保持 `dig-body dig-body-<chrome> dig-body-changes`——**chrome token 必须留在类名里**,`layout-probe` / `panes-probe` 靠它读布局判定;内容外层是 `dig-pane-main`(变更 + 内嵌 diff 兜底)。
+   - `explore`(explorer 页签)= **分支树 | 提交图谱 | 提交详情**:`columns` 三栏并排(tree | log+diff | 详情列,详情列复用 `changes` 这个 pane key 的宽度与分隔条;未选中提交时显示 `detail.pickHint`),窄/堆叠时 tree 在上、log 与 detail 在中区互换、diff 在下。
+   - **入口唯一**:动作条上的 `tree` 动作。changes 面上 `label = t('rail.explore')`、`run = props.openExplore()`(宿主没有开门能力时 `available: false`,按钮**根本不渲染**);explore 面上同一个按钮是 `foldTree(!treeOpen)`。双通道开门收在 `gitSeatHost(ctx)` + `openGitSeat(ctx, seat, sessionId, cwd)` 一对 helper 里(better-sidebar `openTab({ type, target: 'right' })`;原生 `sidebarRight.openTab(kind)`),输入框仓库胶囊走同一条路(seat `'panel'`)。
+   - **explorer 不许进任何目录**:底座侧 `hidden: true`(不进 `+` 菜单、不进开始页卡片),原生侧**不写 `guide`**(开始页只留一张 Git 卡片)——开始页多出一张卡就是回归。
+   - 回归:**改到「有数据才出现」的 explorer chrome,必须跑 `layout-probe` / `panes-probe` / `conversation-probe`**(树 / 提交列表 / 详情现在只在这两面里画);`ssr-check` 会把两面各渲染一次,但它只覆盖初始态。
+
+18. **提交框的上边框是可以拖的分隔条,而且它是「非窗格」的那个特例**(用户需求 2026-10-19,与不变量 17 同一批改动)。变更列表下方、提交框上方的 8px 分隔条就是提交框的**上边框**:复用同一个 `Gutter`(`side: 'next'` → 量到的是提交框本身),拖动它整只框长高、列表让位。三条容易踩的规矩:
+    - **它永远走高度轴**(`vertical: false`),与 chrome 无关——`columns` 里两侧的窗格按宽度拖,这一根不参与;**不要**把它塞进 `PANE_CHROME_KEYS` 的几何里(那套按 chrome 决定轴)。
+    - **尺寸按 px 记、与窗格同一把键、同一个 bucket**:`panes[<chrome>:<wide|tall>].commitBox`,`normalizePanes` 单独按 `COMMIT_BOX_MIN_PX..COMMIT_BOX_MAX_PX` 校验(px 不是比例,混进比例校验会被丢掉)。`withPaneRatio` 与 `withCommitBoxPx` 都必须保留对方的键——一次拖动不许抹掉另一个的记忆。
+    - **钳制在 ChangesPanel 里,因为房间只有它量得到**(`.dig-changes-body`):`commitMax = max(MIN, bodyH - COMMIT_BOX_LIST_MIN_PX)`;**没有行程就没有元素**(`commitReady` 为假 → 整根不渲染,不给死控件),渲染与拖动共用同一个 `clampCommit`(面板变矮时存储值同样被钳)。Panel 半只负责「存 + 一个手势写一次盘」(`dragCommitBox` / `endCommitBoxDrag` / `resetCommitBox`,双击 = `null`)。文本框自己的 `resize` 已取消:同一根轴只留一个手势。
+    - 回归:`conversation-probe` 的 2c-bis(保证落在默认面上)拖一次、断言盒子长高而**面板没长高**、落盘、双击复位;`tests/smoke.mjs` 的尺寸核心里有 `commitBox` 的读写与「窗格/盒子互不覆盖」守卫。
 
 ## 文档规范
 

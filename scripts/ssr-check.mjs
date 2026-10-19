@@ -56,24 +56,32 @@ const plugin = capturedSpec.factory((name) => {
 })
 if (typeof plugin.apply !== 'function') throw new Error('factory did not return an apply()')
 
-/* Door 1 — dsh-better-sidebar is loaded: it hosts the tab (and the bottom
-   workbench with it). */
-let tab = null
-const betterSidebar = { registerTab: (descriptor) => { tab = descriptor; return () => {} } }
+/* Door 1 — dsh-better-sidebar is loaded: it hosts the tabs (and the bottom
+   workbench with them). v0.20 registers TWO: the changes panel, and the
+   explorer tab the panel's branch button opens. Both faces render here — the
+   explorer is where the tree/log/detail markup lives, so the SSR check has to
+   pull both descriptors apart instead of keeping the last one. */
+const tabs = {}
+const betterSidebar = { registerTab: (descriptor) => { tabs[descriptor.id] = descriptor; return () => {} } }
 const ctx = {
   effect: (fn) => fn(),
   get: (name) => (name === 'betterSidebar' ? betterSidebar : undefined),
   inject: (deps, callback) => { callback(ctx) },
 }
 plugin.apply(ctx)
-if (tab === null) throw new Error('apply() did not register a tab')
+if (Object.keys(tabs).length === 0) throw new Error('apply() did not register a tab')
 
-const props = {
+const panelTab = tabs['dsh-ide-git:panel']
+const exploreTab = tabs['dsh-ide-git:explore']
+if (panelTab === undefined) throw new Error('apply() did not register the changes panel tab')
+if (exploreTab === undefined) throw new Error('apply() did not register the explorer tab')
+
+const propsFor = (tab) => ({
   ctx, store: {},
   scope: { sessionId: 'ssr', cwd: '/tmp/ssr-workspace' },
   tab: { id: tab.id, type: tab.id, title: 'Git' },
   visible: true,
-}
+})
 // A server render never runs effects, so the panel is stuck in its initial state:
 // the workspace scan is still running (v0.5.4 shows a neutral loading state
 // there — the old render printed "no repository found", a verdict nobody had
@@ -82,14 +90,21 @@ const props = {
 // assertions below pin the shell, and everything else relies on the real
 // page. The TDZ class of bug is still caught, because a hooks dependency
 // array is evaluated during render.
-const html = renderToStaticMarkup(React.createElement(tab.component, props))
+const props = propsFor(panelTab)
+const html = renderToStaticMarkup(React.createElement(panelTab.component, props))
 const needles = ['dig-root', 'dig-topbar', 'dig-shell', 'dig-empty']
 for (const needle of needles) {
   if (html.indexOf(needle) < 0) throw new Error('rendered output is missing: ' + needle)
 }
-console.log('ssr-check: tab ' + tab.id + ' (' + tab.title() + ') rendered ' + html.length + ' chars - OK')
+console.log('ssr-check: tab ' + panelTab.id + ' (' + panelTab.title() + ') rendered ' + html.length + ' chars - OK')
 
-const empty = renderToStaticMarkup(React.createElement(tab.component, Object.assign({}, props, { scope: { sessionId: 'ssr-2' } })))
+const exploreHtml = renderToStaticMarkup(React.createElement(exploreTab.component, propsFor(exploreTab)))
+for (const needle of needles) {
+  if (exploreHtml.indexOf(needle) < 0) throw new Error('the explorer render is missing: ' + needle)
+}
+console.log('ssr-check: tab ' + exploreTab.id + ' (' + exploreTab.title() + ') rendered ' + exploreHtml.length + ' chars - OK')
+
+const empty = renderToStaticMarkup(React.createElement(panelTab.component, Object.assign({}, props, { scope: { sessionId: 'ssr-2' } })))
 if (empty.length === 0) throw new Error('rendering without a cwd produced nothing')
 console.log('ssr-check: workspace-less render ' + empty.length + ' chars - OK')
 
@@ -97,14 +112,14 @@ console.log('ssr-check: workspace-less render ' + empty.length + ' chars - OK')
    right-sidebar seats, and must register a guide entry so the tab is actually
    reachable (the guide is the only door into a page type). v0.14 registers a
    SECOND type — the guide-less preview tab (it opens itself from a diff verb,
-   never from the start page). */
-let nativeDefinition = null
-let previewDefinition = null
+   never from the start page) — and v0.20 a THIRD, the guide-less explorer
+   (the changes panel's branch button opens it). Keyed by id, or the last
+   registration would silently stand in for all of them. */
+const nativeDefinitions = {}
 const nativeBodies = {}
 const sidebarRightTabs = {
   register: (definition) => {
-    if (definition.id === 'dsh-ide-git-preview') previewDefinition = definition
-    else nativeDefinition = definition
+    nativeDefinitions[definition.id] = definition
     return () => {}
   },
 }
@@ -129,12 +144,18 @@ const nativeCtx = {
   },
 }
 plugin.apply(nativeCtx)
-if (nativeDefinition === null) throw new Error('the native fallback registered no tab type')
-if (previewDefinition === null) throw new Error('the native fallback registered no preview tab type')
+const nativeDefinition = nativeDefinitions['dsh-ide-git']
+const previewDefinition = nativeDefinitions['dsh-ide-git-preview']
+const exploreDefinition = nativeDefinitions['dsh-ide-git-explore']
+if (nativeDefinition === undefined) throw new Error('the native fallback registered no tab type')
+if (previewDefinition === undefined) throw new Error('the native fallback registered no preview tab type')
+if (exploreDefinition === undefined) throw new Error('the native fallback registered no explorer tab type')
 const nativeBody = nativeBodies['dsh-ide-git']
 const previewBody = nativeBodies['dsh-ide-git-preview']
-if (nativeBody === null) throw new Error('the native fallback registered no tab body')
-if (previewBody === null) throw new Error('the native fallback registered no preview tab body')
+const exploreBody = nativeBodies['dsh-ide-git-explore']
+if (nativeBody === null || nativeBody === undefined) throw new Error('the native fallback registered no tab body')
+if (previewBody === null || previewBody === undefined) throw new Error('the native fallback registered no preview tab body')
+if (exploreBody === null || exploreBody === undefined) throw new Error('the native fallback registered no explorer tab body')
 const guide = nativeDefinition.guide
 if (typeof nativeDefinition.kind !== 'string' || nativeDefinition.kind === ''
   || !Array.isArray(guide) || guide.length === 0) {
@@ -143,12 +164,26 @@ if (typeof nativeDefinition.kind !== 'string' || nativeDefinition.kind === ''
 if (Array.isArray(previewDefinition.guide) && previewDefinition.guide.length > 0) {
   throw new Error('the preview tab must stay OFF the guide page (it opens itself from a diff verb)')
 }
+/* The explorer is the changes panel's own door, so the start page must keep its
+   single Git card: no guide entry, and `hidden` on the better-sidebar side. */
+if (Array.isArray(exploreDefinition.guide) && exploreDefinition.guide.length > 0) {
+  throw new Error('the explorer tab must stay OFF the guide page (the rail branch button opens it)')
+}
+if (exploreTab.hidden !== true) throw new Error('the better-sidebar explorer must register with hidden: true')
 const nativeHtml = renderToStaticMarkup(React.createElement(nativeBody, {
   sessionId: 'ssr-native',
   useWorkspaces: (selector) => selector({ items: [{ path: '/tmp/ssr-workspace', sessionIds: ['ssr-native'] }] }),
 }))
 if (nativeHtml.indexOf('dig-root') < 0) throw new Error('the native seat rendered no panel')
 console.log('ssr-check: native right-sidebar seat rendered ' + nativeHtml.length + ' chars - OK')
+const exploreNativeHtml = renderToStaticMarkup(React.createElement(exploreBody, {
+  sessionId: 'ssr-native',
+  useWorkspaces: (selector) => selector({ items: [{ path: '/tmp/ssr-workspace', sessionIds: ['ssr-native'] }] }),
+}))
+for (const needle of needles) {
+  if (exploreNativeHtml.indexOf(needle) < 0) throw new Error('the native explorer seat is missing: ' + needle)
+}
+console.log('ssr-check: native explorer seat rendered ' + exploreNativeHtml.length + ' chars - OK')
 const previewHtml = renderToStaticMarkup(React.createElement(previewBody, { sessionId: 'ssr-native' }))
 if (previewHtml.indexOf('dig-preview-root') < 0) throw new Error('the preview seat rendered no body')
 console.log('ssr-check: native preview tab rendered ' + previewHtml.length + ' chars - OK')

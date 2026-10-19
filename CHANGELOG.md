@@ -3,6 +3,39 @@
 > 倒序排列,新版本条目在最上面。条目格式:`## vX.Y.Z — YYYY-MM-DD` + 类型(feat / fix / docs / chore)+ 要点 + 相关链接。
 > 纪律见 AGENTS.md「变更记录纪律」:发版前先更新本文件并随版本提交。
 
+## Unreleased
+
+**类型**:docs(README 按当前功能重排;安装只写仓库地址)
+
+- **docs README 重排**(用户要求):中文页与英文页按同一张骨架整理——标题/徽章/语言互切 → 简介 → 它解决什么 → 效果 → **安装(提前到第二屏内)** → 面板:两个面、三处座位 → 功能一览 → 右键发送到对话 → 工作原理 → 界面语言 → 限制与路线图 → 开发 → 许可。此前散在两处的「两个页签」「挂在哪里」合成一节,不再互相重复。
+- **修掉过时事实**:宿主方法表 `32 → 47`;「开发」段从两层测试改成实际的四层(`smoke` / `api` / `graph` / `repos`,119 项),并列出 `scripts/` 下各探针与用途;路线图里已经做完的项(三列表框选与批量操作、无限滚动、收藏分支、双击浏览分支历史、diff 行级引用、插件自有设置)从「还在路上」移到「已经做完」。
+- **补上此前没写的功能**:`⋯ 更多操作`(SCM 风格的分组菜单:查看和排序 / 提交 / 更改 / 拉取推送 / 远程 / 分支 / 存储 / 标记 + 克隆 / 中止变基 / Git 输出)、多仓库选择器与克隆仓库、顶栏的「最近可撤回的操作」与「显示 Git 输出」、动作条里的 浮动 / 分栏 / 全屏(宿主 dock 服务存在时才渲染)、**Git 预览** 页签与「显示差异」的三个落点、设置卡片的四组开关(面板放置 / 输入框 Git 状态 / 动作条 / AI 提交信息),以及强制推送的 `--force-with-lease`。
+- **安装段改为只从仓库地址安装**:`dsh plugin --profile web add git+https://github.com/New2Niu/dsh-ide-git.git`(同一地址也可粘进 DSH 的「插件」页);不再出现 npm 安装路径。仓库地址之外的元数据(package.json 的 repository / homepage / bugs 与 npm-publish 流水线)按用户要求原样不动。
+- 119 项测试仍全绿(markdown 围栏配对校验覆盖两份 README)。
+
+**类型**:feat(输入框状态条:点仓库名直接打开右侧 Git 面板)
+
+- **feat 点仓库名打开 Git 面板**(用户需求):输入框工具条上的仓库胶囊此前只有「切换仓库」一种手势——单仓库工作区里它还是 `disabled` 的死按钮,点了没反应。现在**点仓库名 = 打开并聚焦右侧栏的 Git 面板**,座位按宿主现状自动选:装了 better-sidebar 就走它的 `openTab({ type: 'dsh-ide-git:panel', target: 'right' }, scope)`,没有底座就走 DSH 原生右侧栏的 `openTab('ide-git')`(它自己会展开列);两者都没有的宿主上点击保持无声,不抛错。仓库切换没有丢:多仓库工作区的胶囊多出一个**箭头按钮**(`composer.repoHint` 文案不变)专门开仓库选择菜单;单仓库没有箭头,整颗胶囊就是面板入口,原来的 `disabled` 死点一并移除。
+- 新增动作条之外的唯一新文案键 `composer.openPanel`(仓库名胶囊的 tooltip),21 门词典一次补齐。
+- **验证**:115 项测试全绿(新增守卫:面板入口 helper 必须先问 better-sidebar 再问原生座位并双向 gate、仓库名绑 `openPanel`、箭头仍开仓库菜单、单仓库不渲染箭头、`disabled: singleRepo === true` 不得回归、新文案键 21 门齐全);文档同步中文/英文 README 两处描述。真机复验请点输入框里的仓库名。
+
+**类型**:feat(面板拆成两个页签:默认「变更 + 提交框」,分支图标另开 IDEA 风格 explorer)
+
+- **feat 面板拆成两面**(用户需求):此前一个页签里塞着分支树 + 提交图谱 + 变更 + 提交框,窄栏里什么都挤。现在**默认页签只放「变更 + 提交框」**(三种 chrome 下都是单列,body 类名保留 chrome token 给探针读),分支树 / 提交列表 / 提交详情搬进**新的 explorer 页签**:`columns` 下 tree | 提交列表 + diff | 提交详情**三栏并排**(详情列未选中提交时显示提示),窄栏/堆叠下 tree 在上、列表与详情在中区互换、diff 在下。提交详情在窄栏里因此有了「返回历史」,宽栏里列表与详情同屏、不需要返回。
+- **入口是一枚两用按钮**:动作条上原本的树按钮(`tree`,icon `branch`)——在默认页签里点它 = **另开 explorer 页签**(`rail.explore` 文案),在 explorer 页签里点它 = 折叠 / 展开最左的分支树。宿主没有开门能力时这个按钮**直接不渲染**,不给死按钮。
+- **explorer 页签不进任何目录**:底座侧注册 `hidden: true`(不进 `+` 菜单、不占开始页卡片),原生侧注册第三类型 `ide-git-explore` 且**不写 `guide`**(开始页仍只有一张 Git 卡片)。落位交给宿主:底座 `openTab({ type: 'dsh-ide-git:explore', target: 'right' })`,原生 `sidebarRight.openTab('ide-git-explore')`;输入框仓库胶囊与分支图标共用同一对 helper(`gitSeatHost` / `openGitSeat`)。
+- **清理**:默认面不再有「变更 / 历史」分段器(`Segmented` 组件与 `.dig-seg*` CSS、`seg.changes` / `seg.history` 两键 21 门词典、`.dig-pane-changes-stack` 与 `stack:changes` 的尺寸配置一并删除——留着会白白占掉堆叠 diff 的高度上限)。新增 4 个文案键(`rail.explore` / `explore.title` / `explore.description` / `detail.pickHint`),21 门词典一次补齐。
+- 回归:116 项测试全绿(三通道注册计数改为 2 个底座 Tab / 3 个原生类型,新增 explorer tab 形状、两面 body 结构、rail 两用按钮与新文案键守卫;`setDiffContext` 清除点由 5 降到 4,因为「变更/历史」切换器跟着分段器一起没了)。**探针按两面重写**:`ssr-check` 两面各渲染一次并按 id 取定义、断言 explorer 无 guide;`layout-probe` 两面各扫一遍宽度;`panes-probe` / `dock-probe` / `selection-probe` 先点分支按钮进 explorer 再测;`conversation-probe` 的默认面断言改成「变更 + 提交框」并新增 explorer 页签一步。
+- **真机复验清单**(本机没有 Playwright / DSH checkout,以下由用户复验):①默认页签(右侧栏 + 底部)只显示变更 + 提交框;②点分支图标新开 explorer 页签,右栏里三栏/堆叠都对;③会话区 Git 标签页同样默认走进「变更 + 提交框」;④开始页仍然只有一张 Git 卡片。
+- **待办**:`docs/screenshots/` 6 张图需按新流程重拍(`scripts/screenshots.mjs` 已改成按面取根)——在干净实例上重跑后替换,README 两页的配图说明已先改好。
+
+**类型**:feat(提交框改成 IDEA 式排布:Amend + AI 在框上方一行、提交按钮靠左、上边框可上下拖)
+
+- **feat 提交框对齐 IDEA**(用户需求 + 截图,两轮指正):①**勾选与 AI 上移**:提交框勾选与「AI 写提交信息」搬到提交信息**上方同一行**,且**勾选在前**;勾选标签按用户要求只用 git 术语——它就是 `git commit --amend`,中文/英文/繁体统一为 **`Amend`**(此前中文写作「修补」,含义太糊);②**提交按钮靠左**:左下角是「提交 / 提交并推送」——它们此前被 `.dig-btn-primary{margin-left:auto}` 顶到右边,现在 `.dig-commit-actions .dig-btn-primary{margin-left:0}` 让这一行留在左缘(对话框的主按钮仍靠右);③**提交框上边框可以上下拖动**(用户第二次指正):窄栏(右侧栏 / 紧凑 chrome)此前是一行 `<input>`,**根本不能拖动**;现在两种 chrome 都是多行 `<textarea>`,并且**上边框本身是一根分隔条**(复用 `Gutter`:`side: 'next'`,永远走高度轴、与 chrome 无关),拖动它整只提交框跟着长高、上面的变更列表让位。尺寸与窗格同一把 `dsh-ide-git.panes.v1`、同一个 bucket,只是记成 **px**(`panes[bucket].commitBox`,单独校验范围)——「几行提交信息」与面板大小无关;**双击复位、方向键微调**;面板太矮(没有行程)时这根分隔条直接不渲染,不给死控件。提交框为此改成 `flex:0 1 auto` + `overflow:hidden`,被挤时由信息区吸收、上下两行按钮钉住(`flex:none`),不会把按钮挤出面板。
+- 行为变化:提交信息在两种 chrome 下都是多行文本,**回车只换行**,提交走 `Ctrl+Enter`(macOS `Cmd+Enter`)——窄栏此前是「回车即提交」,多行消息与 `--amend` 需要这个改动;占位符文案本就写着 `(Ctrl+Enter)`。文本框自己右下角的拖拽手柄(`resize`)随之取消:同一根轴只留一个手势(拖动框的上边框)。
+- 回归:**119 项测试全绿**(新增守卫:两种 chrome 的排布、共用 `commitButtons()`、消息不再是 `<input>`、`.dig-commit-actions .dig-btn-primary{margin-left:0}`、中文标签恰为 `Amend`;分块尺寸核心里 `commitBox` 的读写与范围校验,以及「窗格拖动不丢盒子尺寸、盒子拖动不丢窗格比例」;分隔条就在提交框上方、`side: 'next'`、`vertical: false`、没有行程就整根不渲染)。**探针**:`conversation-probe` 新增一步(会话区 Git 标签页是必经的默认面)——定位 `.dig-changes-body .dig-gutter`、往上拖、断言盒子真的长高而**面板没长高**、`pointerup` 落盘 `commitBox`、双击复位并删除;`panes-probe` 不涉及(它在 explorer 面量窗格,默认面的分隔条不参与)。新文案键 `pane.commitBox` 21 门一次补齐。
+- **真机复验**:拖提交框**上边框**改高(双击复位、方向键微调)、勾 Amend 提一次确认走 `--amend`、回车换行 + `Ctrl+Enter` 提交、提交按钮贴在左下角。
+
 ## v0.19.8 — 2026-10-19
 
 **类型**:fix(「Git 预览」split + wrap 同开白屏)

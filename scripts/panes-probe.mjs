@@ -1,6 +1,12 @@
 /**
  * Panes probe (issue #5): drives a RUNNING clean dsh web instance and checks that
- * the three panes are draggable and that their sizes are remembered PER SURFACE.
+ * the panes are draggable and that their sizes are remembered PER SURFACE.
+ *
+ * The panel opens on the CHANGES face (变更 + commit box, user request
+ * 2026-10-19); every draggable pane — the branch tree, the log column and the
+ * diff — lives in the EXPLORER tab the rail's branch button opens. The probe
+ * therefore switches faces once the panel is up (and again after every remount)
+ * and asserts against the explorer.
  *
  * What it asserts, in order:
  *   1. a gutter drag really changes the pane it belongs to;
@@ -115,7 +121,10 @@ async function enterSession(label) {
   }
 
 async function ensurePanel() {
-  if (await page.locator('.dig-root:visible').count() > 0) return true
+  if (await page.locator('.dig-root:visible').count() > 0) {
+    await ensureExplorer()
+    return true
+  }
   if (await guideCard() === null) {
     await clickText('稍后配置', 900)
     if (await guideCard() === null) await clickText('打开右侧边栏', 2500)
@@ -127,7 +136,27 @@ async function ensurePanel() {
   // The panel needs the branch/changes data before a gutter exists at all.
   await page.locator('.dig-body').first().waitFor({ timeout: 8000 }).catch(() => {})
   await settle(1500)
-  return await page.locator('.dig-root:visible').count() > 0
+  if (await page.locator('.dig-root:visible').count() === 0) return false
+  await ensureExplorer()
+  return true
+}
+
+/** The panel opens on the changes face, which has no draggable pane at all; the
+ *  tree/log/diff live in the explorer tab. The rail's branch button opens it
+ *  (the same door the user clicks), and a remount — reload, new session — comes
+ *  back on whichever face was last active, so this runs after every ensurePanel. */
+async function ensureExplorer() {
+  if (await page.locator('.dig-root:visible [data-pane="tree"]').count() > 0) return true
+  const button = page.locator('.dig-root:visible [data-action="tree"]').first()
+  if (await button.count() === 0) {
+    log('MISS the rail branch button (no explorer door on this host)')
+    return false
+  }
+  try { await button.click({ timeout: 8000 }) } catch (error) { log('branch button click failed: ' + String(error && error.message ? error.message : error).slice(0, 120)) }
+  await settle(4000)
+  await page.locator('.dig-body').first().waitFor({ timeout: 8000 }).catch(() => {})
+  await settle(1500)
+  return await page.locator('.dig-root:visible [data-pane="tree"]').count() > 0
 }
 
 /** Everything the assertions need, straight out of the rendered panel. */
@@ -159,7 +188,9 @@ async function readState() {
       body: body === null ? null : box(body),
       chrome: chrome,
       tree: tree,
-      changes: pick('.dig-pane-changes', '.dig-pane-changes-stack'),
+      /* The columns chrome's right column: the changes list on the default
+         face, the commit detail in the explorer (one pane, one stored width). */
+      right: pick('.dig-pane-changes'),
       main: pick('.dig-pane-main'),
       diff: pick('.dig-diff-pane'),
       gutters: [...root.querySelectorAll('.dig-gutter')].map((gutter) => ({
@@ -303,7 +334,9 @@ try {
   log('tall start: panel ' + tall0.panel.w + 'x' + tall0.panel.h + ' body ' + tall0.body.w + 'x' + tall0.body.h
     + ' chrome=' + tall0.chrome + ' bucket=' + bucketOf(tall0) + ' gutters=' + tall0.gutters.length
     + ' tree=' + (tall0.tree === null ? 'none' : tall0.tree.w + 'x' + tall0.tree.h))
-  check(tall0.gutters.length >= 2, 'the tall chrome renders a divider per pane seam (got ' + tall0.gutters.length + ')')
+  // The stacked explorer has ONE seam: the tree above the log (the diff adds a
+  // second one of its own once a file is open, checked in 4b below).
+  check(tall0.gutters.length >= 1, 'the tall chrome renders the tree divider (got ' + tall0.gutters.length + ')')
   check(tall0.stored === null, 'a fresh profile starts with no stored pane sizes')
   const tallBucket = bucketOf(tall0)
   await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'tall-default.png') })
@@ -393,20 +426,22 @@ try {
   await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'wide-dragged.png') })
   rows.push({ step: 'wide dragged', bucket: wideBucket, tree: wide1.tree.w + 'px', stored: wideStore.panes[wideBucket].tree.toFixed(3) })
 
-  // The other seam of the same chrome: the changes column, dragged the other way.
-  if (wide1.gutters.length >= 2 && wide1.changes !== null) {
-    const changesDelta = travel(wide1.gutters[1], Math.round(wide1.changes.w))
-    check(changesDelta !== 0, 'the changes divider has room to move (limits '
+  // The other seam of the same chrome: the right-hand column (the commit
+  // detail, in the pane the changes list occupies on the default face), dragged
+  // the other way.
+  if (wide1.gutters.length >= 2 && wide1.right !== null) {
+    const rightDelta = travel(wide1.gutters[1], Math.round(wide1.right.w))
+    check(rightDelta !== 0, 'the right-column divider has room to move (limits '
       + wide1.gutters[1].min + '..' + wide1.gutters[1].max + ')')
     // `side: next` again: the pane sits to the RIGHT of the divider, so the screen
     // delta that grows it is the negative one.
-    await dragGutter(1, -changesDelta)
+    await dragGutter(1, -rightDelta)
     const wide2 = await readState()
-    const changesMoved = wide2.changes.w - wide1.changes.w
-    check(changesMoved * Math.sign(changesDelta) >= Math.max(5, Math.abs(changesDelta) - 6),
-      'the main↔changes divider resizes the changes column (' + wide1.changes.w + ' -> ' + wide2.changes.w + 'px)')
+    const rightMoved = wide2.right.w - wide1.right.w
+    check(rightMoved * Math.sign(rightDelta) >= Math.max(5, Math.abs(rightDelta) - 6),
+      'the main↔right divider resizes the commit-detail column (' + wide1.right.w + ' -> ' + wide2.right.w + 'px)')
     check(stored(wide2).panes[wideBucket].changes !== undefined, 'and it is stored under the same bucket')
-    rows.push({ step: 'wide changes dragged', bucket: wideBucket, tree: wide2.tree.w + 'px', stored: 'tree+changes' })
+    rows.push({ step: 'wide right column dragged', bucket: wideBucket, tree: wide2.tree.w + 'px', stored: 'tree+right' })
   }
 
   /* ---------- 3. back to the tall surface: the two buckets are independent ---------- */
@@ -445,14 +480,24 @@ try {
 
   await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'tall-nudged.png') })
 
-  /* ---------- 4b. the history↔diff divider really resizes the diff ---------- */
+  /* ---------- 4b. the log↔diff divider really resizes the diff ---------- */
 
+  /* The diff pane sits BELOW the log, inside the explorer: select a commit,
+     then DOUBLE-click a file inside its detail — one click only highlights a
+     file, the double-click opens its diff (the same one-click model the panel
+     documents). A merge commit shows no patch, so the second row is used. */
   await page.setViewportSize({ width: 1500, height: 1000 })
   await settle(1800)
-  const row = page.locator('.dig-root:visible .dig-changes-list .dig-row-file').first()
-  check(await row.count() > 0, 'the changes pane offers a file to diff')
+  const commitRow = page.locator('.dig-root:visible .dig-commit').nth(1)
+  check(await commitRow.count() > 0, 'the explorer offers a commit to open')
+  if (await commitRow.count() > 0) {
+    await commitRow.click({ timeout: 8000 })
+    await settle(2500)
+  }
+  const row = page.locator('.dig-root:visible .dig-detail-files .dig-row-file').first()
+  check(await row.count() > 0, 'its detail offers a file to diff')
   if (await row.count() > 0) {
-    await row.click({ timeout: 8000 })
+    try { await row.dblclick({ timeout: 8000 }) } catch (error) { log('file double-click failed: ' + String(error && error.message ? error.message : error).slice(0, 120)) }
     await settle(2500)
   }
   const diff0 = await readState()

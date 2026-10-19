@@ -7,6 +7,11 @@
  * images. Every shot is an element screenshot of the plugin's own root, so only
  * the panel is captured, never the surrounding shell.
  *
+ * The panel has two faces (user request 2026-10-19): the default 变更 + 提交框
+ * face, and the explorer tab (branch tree | commit list | commit detail) that
+ * the rail's branch button opens. Shots 1 and 6 are the default face in the two
+ * layouts the panel measures itself into; 2-5 are the explorer tab.
+ *
  *   node scripts/demo-repo.mjs /tmp/dsh-ide-git-demo
  *   # a clean DSH_HOME with the two plugins, then:
  *   #   dsh web --port 3099 --no-open
@@ -73,13 +78,53 @@ async function clickText(text, options) {
   return false
 }
 
-async function shot(name, index) {
-  const roots = page.locator('.dig-root')
-  const count = await roots.count()
-  if (count === 0) throw new Error('panel not present for ' + name)
-  const target = index === undefined ? roots.first() : roots.nth(index)
+/* The panel has two faces (user request 2026-10-19): the DEFAULT one keeps the
+   changes list and the commit box, and the explorer tab — opened by the rail's
+   branch button — carries the branch tree, the commit list and the commit
+   detail. Both can be on screen at once (the faces are separate tabs, and a
+   folded dock leaves a zero-sized root behind), so a shot names the face it
+   wants and the helper picks the VISIBLE root that owns that face's markup. */
+const FACE_MARKUP = { changes: '.dig-changes-list', explore: '[data-pane="tree"]' }
+
+async function shotFace(name, face) {
+  const markup = FACE_MARKUP[face]
+  if (markup === undefined) throw new Error('unknown face ' + face)
+  const target = page.locator('.dig-root:visible:has(' + markup + ')').first()
+  if (await target.count() === 0) throw new Error('no visible ' + face + ' panel for ' + name)
   await target.screenshot({ path: join(outDir, name) })
-  log('saved ' + name)
+  log('saved ' + name + ' (' + face + ')')
+}
+
+/** Every interaction below is scoped to one face's root, so a shot can never
+ *  accidentally hit the other face's rows. */
+const faceRoot = (face) => page.locator('.dig-root:visible:has(' + FACE_MARKUP[face] + ')').first()
+
+/** The explorer is registered `hidden` — deliberately absent from the base's +
+ *  menu and from the sidebar's start page — so the rail's branch button is the
+ *  only door, and this is the gesture a user makes. */
+async function openExplorer() {
+  const button = faceRoot('changes').locator('[data-action="tree"]').first()
+  if (await button.count() === 0) throw new Error('the changes face offers no branch button')
+  await button.click({ timeout: 8000 })
+  await settle(6000)
+  if (await faceRoot('explore').count() === 0) {
+    throw new Error('the branch button did not open the explorer tab')
+  }
+  log('explorer tab open')
+}
+
+/** The panel remembers its last active tab, so a second run of this script on
+ *  the same instance comes back on the explorer — switch back to the default
+ *  face through its tab (the same click a user makes) instead of shooting the
+ *  wrong pane. A clean profile needs none of this. */
+async function ensureChangesFace() {
+  if (await faceRoot('changes').count() > 0) return
+  await page.locator('button:visible').filter({ hasText: /^Git$/ }).last().click({ timeout: 8000 }).catch(() => {})
+  await settle(4000)
+  if (await faceRoot('changes').count() === 0) {
+    throw new Error('the default (changes) face is not on screen — restart from a clean profile')
+  }
+  log('switched back to the changes face')
 }
 
 /** Boots the clean instance into a session whose workspace is the demo repo. */
@@ -122,52 +167,15 @@ async function openBottomPanel() {
 try {
   await enterSession()
   await openBottomPanel()
+  await ensureChangesFace()
 
-  // 1 — the three-pane workbench: branch tree, commit graph, changes + commit box
-  await shot('1-bottom-workbench.png')
+  // 1 — the DEFAULT face in the wide bottom workbench: the vertical rail on the
+  //     left, the change groups and the commit box in one column. The tree and
+  //     the commit list live in the explorer tab (shots 2-5).
+  await shotFace('1-bottom-workbench.png', 'changes')
 
-  // 2 — the commit context menu
-  await page.locator('.dig-commit').nth(2).click({ button: 'right' })
-  await settle(1200)
-  await shot('2-commit-menu.png')
-  await page.keyboard.press('Escape')
-  await settle(800)
-
-  // 3 — deleting a branch really deletes it; the toast offers an undo
-  const branchRow = page.locator('.dig-tree .dig-row').filter({ hasText: 'feature/search-index' }).first()
-  await branchRow.click({ button: 'right' })
-  await settle(1200)
-  await page.getByText('删除', { exact: true }).first().click({ timeout: 6000 })
-  await settle(1200)
-  await page.locator('.dig-dialog .dig-btn-danger').first().click({ timeout: 6000 })
-  await settle(3000)
-  await shot('3-branch-undo.png')
-  const undoButton = page.locator('.dig-toast-action').first()
-  if (await undoButton.count() > 0) {
-    await undoButton.click({ timeout: 6000 })
-    await settle(3000)
-    log('branch restored through undo')
-  }
-
-  // 4 — the action rail settings (reorder + show/hide)
-  await page.locator('.dig-rail-settings').first().click({ timeout: 6000 })
-  await settle(1500)
-  await shot('4-rail-settings.png')
-  await page.locator('.dig-dialog .dig-btn-primary').first().click({ timeout: 6000 })
-  await settle(1000)
-
-  // 5 — commit details with the per-file diff
-  await page.locator('.dig-commit').nth(1).click({ timeout: 6000 })
-  await settle(2500)
-  const detailFile = page.locator('.dig-detail-files .dig-row').first()
-  if (await detailFile.count() > 0) {
-    await detailFile.click({ timeout: 6000 })
-    await settle(2500)
-  }
-  await shot('5-commit-detail.png')
-
-  // 6 — the same panel in the native right sidebar (narrow + tall). The workbench
-  //     is folded first so exactly one panel root exists on the page.
+  // 6 — the same face in the narrow right column (compact chrome). The workbench
+  //     is folded first so exactly one panel is on screen.
   await page.keyboard.press('Escape')
   await clickText('折叠底部面板')
   await settle(1500)
@@ -177,7 +185,62 @@ try {
   // directly — no plus menu involved.
   await page.locator('button:visible').filter({ hasText: /^Git$/ }).last().click({ timeout: 8000 })
   await settle(6000)
-  await shot('6-right-sidebar.png')
+  await ensureChangesFace()
+  await shotFace('6-right-sidebar.png', 'changes')
+
+  // 2..5 — the explorer tab (branch tree | commit list | commit detail), opened
+  //     with the rail's branch button exactly as a user would, from the panel
+  //     that is on screen right now.
+  await openExplorer()
+
+  // 2 — the commit context menu
+  await faceRoot('explore').locator('.dig-commit').nth(2).click({ button: 'right' })
+  await settle(1200)
+  await shotFace('2-commit-menu.png', 'explore')
+  await page.keyboard.press('Escape')
+  await settle(800)
+
+  // 3 — deleting a branch really deletes it; the toast offers an undo
+  const branchRow = faceRoot('explore').locator('.dig-tree .dig-row').filter({ hasText: 'feature/search-index' }).first()
+  await branchRow.click({ button: 'right' })
+  await settle(1200)
+  await page.getByText('删除', { exact: true }).first().click({ timeout: 6000 })
+  await settle(1200)
+  await page.locator('.dig-dialog .dig-btn-danger').first().click({ timeout: 6000 })
+  await settle(3000)
+  await shotFace('3-branch-undo.png', 'explore')
+  const undoButton = page.locator('.dig-toast-action').first()
+  if (await undoButton.count() > 0) {
+    await undoButton.click({ timeout: 6000 })
+    await settle(3000)
+    log('branch restored through undo')
+  }
+
+  // 4 — the action rail settings (reorder + show/hide)
+  await faceRoot('explore').locator('.dig-rail-settings').first().click({ timeout: 6000 })
+  await settle(1500)
+  await shotFace('4-rail-settings.png', 'explore')
+  await page.locator('.dig-dialog .dig-btn-primary').first().click({ timeout: 6000 })
+  await settle(1000)
+
+  // 5 — the commit detail. One click selects a commit; a DOUBLE-click on a file
+  //     opens its diff — which this host may take to its own preview tab, so the
+  //     diff re-shot below is best-effort and never fails the run.
+  await faceRoot('explore').locator('.dig-commit').nth(1).click({ timeout: 6000 })
+  await settle(2500)
+  await shotFace('5-commit-detail.png', 'explore')
+  const detailFile = faceRoot('explore').locator('.dig-detail-files .dig-row').first()
+  if (await detailFile.count() > 0) {
+    try { await detailFile.dblclick({ timeout: 6000 }) } catch (error) { void error }
+    await settle(2500)
+    const withDiff = page.locator('.dig-root:visible:has(.dig-diff-pane)').first()
+    if (await withDiff.count() > 0) {
+      await withDiff.screenshot({ path: join(outDir, '5-commit-detail.png') })
+      log('5-commit-detail.png re-shot with the inline diff pane')
+    } else {
+      log('the diff went to the host preview tab — 5-commit-detail.png keeps the detail')
+    }
+  }
   log('done')
 } finally {
   await browser.close()

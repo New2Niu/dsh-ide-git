@@ -108,7 +108,10 @@ async function enterSession() {
   }
 
 async function ensurePanel() {
-  if (await page.locator('.dig-root:visible').count() > 0) return true
+  if (await page.locator('.dig-root:visible').count() > 0) {
+    await ensureExplorer()
+    return true
+  }
   if (await guideCard() === null) {
     await clickText('稍后配置', 900)
     if (await guideCard() === null) await clickText('打开右侧边栏', 2500)
@@ -119,7 +122,25 @@ async function ensurePanel() {
   await settle(5500)
   await page.locator('.dig-body').first().waitFor({ timeout: 8000 }).catch(() => {})
   await settle(1500)
-  return await page.locator('.dig-root:visible').count() > 0
+  if (await page.locator('.dig-root:visible').count() === 0) return false
+  await ensureExplorer()
+  return true
+}
+
+/** The panel opens on the changes face (变更 + commit box); the tree toggle
+ *  this probe exercises only folds a tree that is on screen, and the tree lives
+ *  in the explorer tab the SAME rail button opens (user request 2026-10-19).
+ *  So open the explorer first — a remount (reload, new session, dock flip) can
+ *  come back on either face, hence the call after every ensurePanel. */
+async function ensureExplorer() {
+  if (await page.locator('.dig-root:visible [data-pane="tree"]').count() > 0) return true
+  const button = page.locator('.dig-root:visible [data-action="tree"]').first()
+  if (await button.count() === 0) return false
+  try { await button.click({ timeout: 8000 }) } catch (error) { log('branch button click failed: ' + String(error && error.message ? error.message : error).slice(0, 120)) }
+  await settle(4000)
+  await page.locator('.dig-body').first().waitFor({ timeout: 8000 }).catch(() => {})
+  await settle(1500)
+  return await page.locator('.dig-root:visible [data-pane="tree"]').count() > 0
 }
 
 /** The panel's own DOM: rail actions, pane presence and the dock's layout surface. */
