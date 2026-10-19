@@ -22,41 +22,19 @@ DSH 自带的 Git 面板覆盖「暂存 / 提交 / 还原 / 看历史」;`dsh-id
 
 ## 效果
 
-> 下面这些图取自一个**只装了两个插件**(`dsh-better-sidebar` + 本插件)的干净 DSH,绑定在一个虚构的演示仓库上(见 `scripts/demo-repo.mjs`),画面里没有真实工作区、没有壁纸插件、也没有其它面板。**图 1 与图 6 是默认页签**(变更 + 提交框),**图 2–5 是 explorer 页签**(分支树 | 提交列表 | 提交详情)——由动作条上的分支图标打开,和用户点的是同一个入口。
+> 两张图取自一个**正在运行的 DSH** 右侧栏里的 Git 面板:图 1 是**默认页签**(变更 + 提交框),图 2 是**explorer 页签**(分支与提交,即提交列表 + 图谱)。两面是同一个注册、同一份状态,由动作条上的**分支图标**来回切换。
 
 <table>
 <tr>
-<td align="center" width="58%"><img src="docs/screenshots/1-bottom-workbench.png" alt="底部工作台:变更列表与提交框"/></td>
-<td valign="top"><b>默认页签:变更 + 提交框(宽扁底部工作台)</b><br/>左列是 IDEA 式动作条:按<b>自身高度</b>决定放几个按钮,放不下的收进 <code>⋯</code>,末尾 <code>⚙</code> 可调顺序与显隐;<b>分支图标</b>是通往 explorer 页签的那扇门。右侧是变更分组(暂存 / 未暂存,暂存区可折叠)与提交框——写完就能提交。分支树、提交图谱与提交详情都在 explorer 页签里。</td>
+<td align="center" width="58%"><img src="docs/screenshots/1-changes-commit-box.png" alt="默认页签:变更 + 提交框"/></td>
+<td valign="top"><b>默认页签:变更 + 提交框(右侧栏)</b><br/>窄而高的右栏里量出的是紧凑布局:顶栏一行(仓库胶囊 + 分支切换 + 刷新),下面一条<b>横排动作条</b>——<b>分支图标</b>就是通往 explorer 页签的那扇门。主体是变更区(这张图的仓库是干净的,所以写着「没有未提交的变更」)与 <b>IDEA 式提交框</b>:<code>Amend</code> 与「AI 写提交信息」在提交信息<b>上方同一行</b>,「提交 / 提交并推送」贴<b>左下角</b>;拖动提交框的<b>上边框</b>就能改高(双击复位、方向键微调)。</td>
 </tr>
 </table>
 
 <table>
 <tr>
-<td align="center" width="58%"><img src="docs/screenshots/2-commit-menu.png" alt="提交右键菜单"/></td>
-<td valign="top"><b>explorer 页签:提交列表与右键菜单</b><br/>提交列表的列序与 IDEA 一致(<b>日期 → 提交人 → 图谱 → 分支标签 → 提交信息</b>),上方一排筛选(文本 / 哈希、分支或标签、提交人、日期、路径)与排序方向。右键给出:详情、复制修订号、签出该修订、在此新建分支、新建标签、优选(Cherry-Pick)、还原提交、重置到此(保留 / 丢弃更改)——破坏性项标红,菜单在面板内定位,底部工作台里同样能弹出来。</td>
-</tr>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/3-branch-undo.png" alt="删除分支后的撤回浮窗"/></td>
-<td valign="top"><b>删除可撤回</b><br/>explorer 页签最左一列就是分支树:删除分支 / 贮藏是<b>真删除</b>,但宿主在动手前记下了对象 id:右下角浮窗点「撤回」即可恢复(一次性、30 分钟内有效);错过浮窗还有顶栏的「最近可撤回的操作」入口。删除 <code>main</code>/<code>master</code> 需要输入分支名确认。</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/4-rail-settings.png" alt="动作条设置:排序与显隐"/></td>
-<td valign="top"><b>动作条可配置</b><br/>拖动或用箭头调整顺序、眼睛图标逐项显隐,配置只存「排列 + 隐藏」并做过归一化,以后新增动作不会打坏旧配置。</td>
-</tr>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/5-commit-detail.png" alt="提交详情与逐行 diff"/></td>
-<td valign="top"><b>提交详情</b><br/>完整提交信息、作者与日期、变更文件列表(带 +/− 行数);点文件在<b>并排的预览</b>里看逐行 diff(行号 + hunk 高亮 + 红绿底)。explorer 页签够宽时(≥600px)提交列表与详情<b>同屏并列</b>;窄栏里点开详情会把列表换下去,顶上有「返回历史」。</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/6-right-sidebar.png" alt="原生右侧栏里的同一面板"/></td>
-<td valign="top"><b>同一个注册,两种布局</b><br/>同一个默认页签,窄而高的<b>右侧栏</b>里量出的是紧凑布局:单行头部 + 动作条一行 + 变更与提交框;宽扁的底部工作台(图 1)才是左侧竖排动作条。面板只量自己的尺寸,从不猜自己在哪个容器里。截图顺序、演示仓库与干净环境都由 <code>scripts/screenshots.mjs</code> 复现。</td>
+<td align="center" width="58%"><img src="docs/screenshots/2-explorer-commits.png" alt="explorer 页签:提交列表与图谱"/></td>
+<td valign="top"><b>explorer 页签:分支与提交</b><br/>同一个面板的另一面(标签页就叫「分支与提交」)。提交列表的列序与 IDEA 一致(<b>日期 → 提交人 → 图谱 → 分支标签 → 提交信息</b>),lane 拓扑把父子关系连成整行;右侧是版本标签与 <code>HEAD → main</code> 徽章。上方一排筛选(文本或哈希、分支或标签、提交人、日期、路径)与排序方向;双击分支浏览它的历史(不强制签出)。</td>
 </tr>
 </table>
 
@@ -203,7 +181,7 @@ npm test   # 四层,共 119 项
 #   repos:工作区与子仓库解析
 ```
 
-真机回归用 `scripts/` 下的探针(都要一个**隔离**实例:独立 `DSH_HOME` + 独立端口,别碰自己在用的 `dsh web`):`ssr-check`(客户端半的 SSR 自检)、`layout-probe`(从 480 拉到 90px 逐档记录 chrome,两面都扫)、`panes-probe`(窗格拖动与按面记忆)、`dock-probe`(浮动 / 分栏 / 全屏)、`selection-probe`(框选与批量)、`conversation-probe`(主对话区座位与提交框上边框拖动)、`settings-card-probe`(设置卡片);`demo-repo.mjs` 造演示仓库、`screenshots.mjs` 拍 README 的图。
+真机回归用 `scripts/` 下的探针(都要一个**隔离**实例:独立 `DSH_HOME` + 独立端口,别碰自己在用的 `dsh web`):`ssr-check`(客户端半的 SSR 自检)、`layout-probe`(从 480 拉到 90px 逐档记录 chrome,两面都扫)、`panes-probe`(窗格拖动与按面记忆)、`dock-probe`(浮动 / 分栏 / 全屏)、`selection-probe`(框选与批量)、`conversation-probe`(主对话区座位与提交框上边框拖动)、`settings-card-probe`(设置卡片);`demo-repo.mjs` 造演示仓库,`screenshots.mjs` 拍它的 6 张演示图(README 引用的两张真机图不在其中)。
 
 本机联调:把仓库加到 web profile 后重启 `dsh web`;客户端半改动由 DSH 热加载,宿主半改动需要重启。
 

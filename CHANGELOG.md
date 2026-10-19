@@ -5,6 +5,11 @@
 
 ## Unreleased
 
+**类型**:docs(README 效果图换成两张真机图;AGENTS 记录新事实)
+
+- **docs 效果图**:README 的 `## 效果` / `## Screenshots` 换成用户提供的**两张真机全窗口截图**——`docs/screenshots/1-changes-commit-box.png`(默认页签:变更 + 提交框,右侧栏紧凑布局)与 `docs/screenshots/2-explorer-commits.png`(explorer 页签:分支与提交,提交列表 + 图谱),一图一面;图注只写图里看得见的东西(那张仓库是干净的,就写「没有未提交的变更」)。旧演示仓库那 6 张(`1-bottom-workbench.png` … `6-right-sidebar.png`)一并删除——它们拍的是旧版单页签布局。
+- **docs AGENTS.md 的当前事实**:gh 登录账号是 **New2Niu**(原文写着 KannaKuron),推送目标是 `New2Niu/dsh-ide-git`(remote `new2niu`;`origin` 是上游,不要推它),本机没配 credential helper,所以推送走一次性 `GH_TOKEN=$(gh auth token)`;CI 那段从「三层」改回事实上的**四层**(smoke / api / graph / repos);README 对外**只写仓库地址安装**;「截图与演示仓库」按上面两张图的来源重写(演示 6 张的拍法与干净环境要求保留,但注明脚本默认就写进 `docs/screenshots/`、别两套混放),目录地图补上 `tests/graph.test.mjs` / `tests/repos.test.mjs` 两行并更新 `docs/screenshots/` 一行。
+
 **类型**:docs(README 按当前功能重排;安装只写仓库地址)
 
 - **docs README 重排**(用户要求):中文页与英文页按同一张骨架整理——标题/徽章/语言互切 → 简介 → 它解决什么 → 效果 → **安装(提前到第二屏内)** → 面板:两个面、三处座位 → 功能一览 → 右键发送到对话 → 工作原理 → 界面语言 → 限制与路线图 → 开发 → 许可。此前散在两处的「两个页签」「挂在哪里」合成一节,不再互相重复。

@@ -8,8 +8,8 @@
 
 ## 环境与工具
 
-- GitHub 操作一律用 gh(已认证 KannaKuron)。**npm 发布通道(v0.4.2 起)**:.github/workflows/npm-publish.yml(OIDC:node 24 + id-token: write,零令牌),Trusted Publisher 已登记(repo=KannaKuron/dsh-ide-git,file=npm-publish.yml,permissions=publish);日常发版 = 更新 CHANGELOG → npm version patch/minor → push --tags → gh release create,Release published 自动发 npm;发完 curl -X PUT https://registry.npmmirror.com/dsh-ide-git/sync 同步镜像。v0.4.1 为手动 bootstrap 首版(令牌建包,无 Release)。
-- CI(`.github/workflows/ci.yml`)只跑 `npm test`(smoke + api + graph 三层),不发布任何东西;npm 发布走 npm-publish.yml(Release 触发,见上一条)。
+- GitHub 操作一律用 gh(已认证 **New2Niu**)。**本仓库推送的目标是 `https://github.com/New2Niu/dsh-ide-git`**(remote 名 `new2niu`);`origin` 仍指上游 KannaKuron,**不要往它推**。本机没配 credential helper,推送走一次性令牌:`export GH_TOKEN="$(gh auth token)" && git -c credential.helper='!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f' push new2niu HEAD:main`(别把令牌写进 remote URL 或全局 git 配置)。**对外文档只写「仓库地址安装」**:README 的安装段是 `dsh plugin --profile web add git+https://github.com/New2Niu/dsh-ide-git.git`(已实测:pnpm clone 整仓、解析出当前版本、无 `allowBuilds` 审批);npm 通道保留给自己用,不写进 README。**npm 发布通道(v0.4.2 起)**:.github/workflows/npm-publish.yml(OIDC:node 24 + id-token: write,零令牌),Trusted Publisher 已登记(repo=KannaKuron/dsh-ide-git,file=npm-publish.yml,permissions=publish);日常发版 = 更新 CHANGELOG → npm version patch/minor → push --tags → gh release create,Release published 自动发 npm;发完 curl -X PUT https://registry.npmmirror.com/dsh-ide-git/sync 同步镜像。v0.4.1 为手动 bootstrap 首版(令牌建包,无 Release)。
+- CI(`.github/workflows/ci.yml`)只跑 `npm test`(smoke + api + graph + repos 四层),不发布任何东西;npm 发布走 npm-publish.yml(Release 触发,见上一条)。
 - 本机联调:把包名加进 profile 的 `dsh.profile.bundles`(依赖指向仓库里的 tarball)→ 客户端半改动硬刷新页面即可,宿主半改动需要重启 `dsh web`(见不变量 11)——**重启由用户自己做**,规则见下一条。
   - **先核对安装形态,再决定怎么迭代**:2026-09-26 记录的是「`dsh plugin add file:<仓库目录>` 装出来的是硬链接」,但**同日独立复核实测为副本**(`node_modules/<pkg>/src/client.js` 链接数 1,且改了仓库之后实例里仍是旧代码、页面刷新不生效)——同一个 `dsh` 版本下两种形态都出现过,可能是 `dsh plugin add` 与 pnpm 的 copy 策略差异。**动手前先 `ls -l` 看链接数、`shasum` 比对内容**:链接数 1 = 副本,迭代时要把改动同步进实例(重装/`cp`)并重启;链接数 2 = 硬链接,改仓库即可。想往 `node_modules` 里放一份「改动前」的代码做对比基线时,`git show HEAD:src/client.js > node_modules/<pkg>/src/client.js` 这种就地写入会把**仓库里的实现一起打回 HEAD**(`>` 截断的是同一个 inode,那次丢了约 460 行未提交改动)。正确姿势:先 `rm -f <那个文件>` 断链,再 `cp`/重定向写;验证完再 `rm` + `cp` 换回来。反过来这也是个便利:改仓库 `src/client.js` 后页面刷新即生效,不必重新 `plugin add`。
 - **绝不替用户重启他的实例**(2026-09-14 用户明确要求)。`dsh web`(默认 3080)是用户自己的工作环境:重启会打断他正在进行的回合,而且「什么时候重启」必须由他掌握。
@@ -22,9 +22,9 @@
 
 ## 截图与演示仓库
 
-- `scripts/demo-repo.mjs [dir]` 生成演示仓库(纯虚构),`scripts/screenshots.mjs <web-url> [out]` 拍 README 效果图。两者都要能重跑:演示仓库脚本是幂等的(先删后建),截图脚本假定实例已就绪。
-- **截图环境必须是干净的**:独立 `DSH_HOME`(例:`/Users/kanna/sandbox/dsh-shot-home`)、只装 `dsh-better-sidebar` 与本插件、绑定演示仓库、`ui-theme.preference: dark`。不要在真实 profile 里拍——壁纸插件、真实工作区与其它面板都会入镜。
-- **只截元素,不截窗口**:每张图都是 `.dig-root`(或其中的对话框)的元素截图,所以会话内容、文件路径与 DSH 外壳天然不会出现。
+- **README 现在的两张效果图是真机全窗口截图**(2026-10-19,用户提供、用户要求采用):`docs/screenshots/1-changes-commit-box.png`(默认页签:变更 + 提交框,右侧栏紧凑布局)与 `docs/screenshots/2-explorer-commits.png`(explorer 页签:分支与提交,提交列表 + 图谱)。它们**不是**演示仓库那套拍出来的——画面里就是用户在用的 DSH(左侧栏、真实工作区名、壁纸都在)。换图时守住「一图一面」:**默认面一张、explorer 面一张**,别把两面混进同一张说明里;图注只描述图里看得见的东西(例如仓库干净时写「没有未提交的变更」,别吹成有变更分组)。
+- `scripts/demo-repo.mjs [dir]` 生成演示仓库(纯虚构),`scripts/screenshots.mjs <web-url> [out]` 是它的配套拍照脚本,两个都要能重跑(演示仓库幂等:先删后建;截图脚本假定实例已就绪)。注意**它写的仍是老一套 6 张按面取的图**(`1-bottom-workbench.png` … `6-right-sidebar.png`),而默认 out-dir 就是 `docs/screenshots/`——不想把这两套图混在一起,跑的时候显式传一个 out-dir。
+- 那套流程的环境要求(**只适用于 `screenshots.mjs`**):独立 `DSH_HOME`(例:`/Users/kanna/sandbox/dsh-shot-home`)、只装 `dsh-better-sidebar` 与本插件、绑定演示仓库、`ui-theme.preference: dark`。它遵循「**只截元素,不截窗口**」:每张图都是 `.dig-root`(或其中对话框)的元素截图,所以会话内容、文件路径与 DSH 外壳天然不会出现——README 引用的那两张真机图是例外,那是用户明确要的全窗口图。
 - 主题与引导标记都写在 `DSH_HOME/settings.yaml`;**覆盖该文件会把 `ui-onboarding.welcomeNoticeVersion` 一起抹掉**,下次打开页面又会弹内测声明,挡住后续点击(截图脚本会先尝试点掉它)。
 - 面板要出现在底部工作台:会话头右侧的「展开底部面板」→ 面板 Tab 条 `+` → 卡片里的 **Git**;出现在原生右侧栏:点会话头右侧的「打开右侧边栏」→ 侧栏「开始」页里直接点 **Git** 卡片(那时没有 `+` 菜单可用)。这两个入口只在**会话真正开始之后**才存在(发一条消息即可,模型没有 key 也没关系)。
 
@@ -44,9 +44,11 @@
 | dsh.plugin.json | 插件注册表清单(id `dsh-external/dsh-ide-git`) |
 | tests/smoke.mjs | 文件级冒烟测试(无 Cordis runtime、无浏览器):清单一致性 / 客户端包装 / 基线 require 白名单 / 破坏性守卫 / 写队列与撤回 / 方法表一致性 |
 | tests/api.test.mjs | 集成测试:临时真实仓库 + 伪造 cordis ctx 与 HTTP req/res,直驱宿主路由(解析 / 变更 / 全部守卫) |
-| docs/screenshots/ | README 效果图(6 张,由 scripts/screenshots.mjs 生成) |
+| tests/graph.test.mjs | 提交图谱的 lane 布局测试 |
+| tests/repos.test.mjs | 工作区与子仓库解析测试 |
+| docs/screenshots/ | README 的两张真机效果图(`1-changes-commit-box.png` 默认面 / `2-explorer-commits.png` explorer 面);`scripts/screenshots.mjs` 的演示图另有 6 张,别混放 |
 | scripts/demo-repo.mjs | 生成用于截图的虚构演示仓库(幂等) |
-| scripts/screenshots.mjs | Playwright 驱动的截图流程(只截插件面板元素) |
+| scripts/screenshots.mjs | Playwright 驱动的截图流程(只截插件面板元素;输出老一套 6 张演示图,默认写 `docs/screenshots/`) |
 | scripts/ssr-check.mjs | 客户端半的 SSR 自检(真渲染一次 Tab 组件;**两个面各渲染一次**) |
 | scripts/conversation-probe.mjs | 主对话区 Git 标签页的回归探针(注册/挂载/真数据/默认面断言/提交框上边框拖动/explorer 页签/开关翻转/`/remote` 回退/零 pageerror);要求隔离实例 + `DIG_PROBE_WORKSPACE` 指名的工作区(默认「演示仓库」) |
 
@@ -94,7 +96,7 @@
 
 - **README 顶部顺序:标题 → 收录徽章 → 中英互切链接 → 简介引用块**,语言切换照生态惯例写:`简体中文 | [English](README_EN.md)`(英文页 `[简体中文](README.md) | English`)。
 - **收录徽章可以挂**(2026-09-23 起 awesome-dsh-plugin 已收录本插件,收录 PR 已合并):两份 README 标题下挂官方 badge,与 `dsh-better-workspace` 同款:`[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)`。历史教训仍然有效:**未收录时挂徽章 = 虚假宣称**(v0.3.2 加过、v0.3.4 撤掉,用户明确纠正过),所以收录状态变化时同步更新本条。写法备注:`badge.svg` 内部用 `<text>` 定位、依赖 Verdana 字宽,若真机渲染挤压可换 shields.io 写法(服务端按固定字体算宽度;v0.3.3 曾因此换过一次)。
-- 效果图走 `docs/screenshots/`,中文页与英文页引用同一批文件,配图段落用「左图右说明」的两列表格(见 `## 效果` / `## Screenshots`)。
+- 效果图走 `docs/screenshots/`,中文页与英文页引用同一批文件,配图段落用「左图右说明」的两列表格(见 `## 效果` / `## Screenshots`);当前引用的就是**两张真机图**(默认面 / explorer 面),来源与换图规则见上面的「截图与演示仓库」。
 
 ## 宿主演进跟随(dsh 升级时必查)
 

@@ -22,41 +22,19 @@ DSH's built-in Git panel covers stage / commit / revert / history. `dsh-ide-git`
 
 ## Screenshots
 
-> Captured from a **clean DSH with only two plugins installed** (`dsh-better-sidebar` + this one), bound to a fictional demo repository (`scripts/demo-repo.mjs`). No real workspace, no wallpaper plugin and no other panel is in frame; the whole sequence is reproducible with `scripts/screenshots.mjs`. **Shots 1 and 6 are the default tab** (changes + commit box) and **shots 2–5 are the explorer tab** (branch tree | commit list | commit detail) — opened by the branch button on the action rail, exactly the door a user clicks.
+> Two shots of the Git panel in the right sidebar of a **running DSH**: shot 1 is the **default tab** (changes + commit box) and shot 2 is the **explorer tab** (branches and commits — the commit list plus the graph). Both are the same registration and the same state; the **branch button** on the action rail switches between them.
 
 <table>
 <tr>
-<td align="center" width="58%"><img src="docs/screenshots/1-bottom-workbench.png" alt="Bottom workbench: changes list and commit box"/></td>
-<td valign="top"><b>Default tab: changes + commit box (wide bottom workbench)</b><br/>A JetBrains-style action rail on the left whose button count follows the rail's <b>own height</b> (overflow folds into <code>⋯</code>, and <code>⚙</code> at the end reorders or hides actions); the <b>branch button</b> is the door to the explorer tab. On the right: the grouped changes (staged / unstaged, the staged group collapses) and the commit box. The branch tree, the commit graph and the commit details all live in the explorer tab.</td>
+<td align="center" width="58%"><img src="docs/screenshots/1-changes-commit-box.png" alt="Default tab: changes and the commit box"/></td>
+<td valign="top"><b>Default tab: changes + commit box (right sidebar)</b><br/>A narrow, tall right column measures into the compact layout: one header line (repository capsule, branch switch, refresh) and a single <b>horizontal rail</b> below it — the <b>branch button</b> is the door to the explorer tab. The body is the changes area (the repository in this shot is clean, hence “no uncommitted changes”) and the <b>IDEA-shaped commit box</b>: <code>Amend</code> and the AI writer share the <b>line above</b> the message, and <b>Commit / Commit and push sit at the bottom left</b>. Dragging the box's <b>top edge</b> resizes it (double-click resets, arrow keys nudge).</td>
 </tr>
 </table>
 
 <table>
 <tr>
-<td align="center" width="58%"><img src="docs/screenshots/2-commit-menu.png" alt="Commit context menu"/></td>
-<td valign="top"><b>Explorer tab: commit list and context menu</b><br/>The commit list is in IDEA column order (<b>date → author → graph → refs → subject</b>), with the filter row above it (text / hash, branch or tag, author, date, path) and a sort direction. Right-click gives: details, copy revision, checkout, new branch here, new tag, cherry-pick, revert, reset here (keep / discard) — destructive rows in red, positioned inside the panel so it opens in the bottom workbench too.</td>
-</tr>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/3-branch-undo.png" alt="Undo toast after deleting a branch"/></td>
-<td valign="top"><b>Deletes are reversible</b><br/>The leftmost column of the explorer tab is the branch tree: deleting a branch or a stash is a <b>real delete</b>, but the host records the object id first: the toast in the corner offers <b>Undo</b> (one-shot, valid 30 minutes), and the toolbar keeps a “recently deleted” menu for when the toast is gone. Deleting <code>main</code>/<code>master</code> asks you to type the branch name.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/4-rail-settings.png" alt="Action rail settings: order and visibility"/></td>
-<td valign="top"><b>Configurable action rail</b><br/>Drag or use the arrows to reorder, the eye to hide an action. Only the permutation and the hidden set are stored (normalised), so a later version that adds an action never breaks an existing config.</td>
-</tr>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/5-commit-detail.png" alt="Commit details with a per-file diff"/></td>
-<td valign="top"><b>Commit details</b><br/>Full message, author and date, changed files with +/− counts; clicking a file opens its line-level diff (gutters, hunk highlighting, red/green backgrounds) in the side-by-side preview. With ≥600px the explorer shows the commit list and the details <b>side by side</b>; in a narrow column the details replace the list and a “back to history” button appears.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/6-right-sidebar.png" alt="The same panel in the native right sidebar"/></td>
-<td valign="top"><b>One registration, two layouts</b><br/>The same default tab measured into a narrow, tall <b>right sidebar</b> comes out compact: a single-line header, the rail as one row, changes and the commit box. The wide bottom workbench (shot 1) is where the rail becomes a vertical IDE column. The panel only measures itself — it never guesses which container it is in.</td>
+<td align="center" width="58%"><img src="docs/screenshots/2-explorer-commits.png" alt="Explorer tab: commit list and graph"/></td>
+<td valign="top"><b>Explorer tab: branches and commits</b><br/>The panel's other face (its tab is literally “branches and commits”). The commit list is in IDEA column order (<b>date → author → graph → refs → subject</b>) with the lane graph spanning whole rows, and the version tags plus a <code>HEAD → main</code> badge on the right. The filter row above it carries text or hash, branch or tag, author, date and path, plus a sort direction; double-clicking a branch browses its history without checking it out.</td>
 </tr>
 </table>
 
@@ -203,7 +181,7 @@ npm test   # four layers, 119 cases
 #   repos: workspace and nested-repository resolution
 ```
 
-Real-machine regressions use the probes under `scripts/` (each needs an **isolated** instance: its own `DSH_HOME` and port — never the `dsh web` you are working in): `ssr-check` (server-render self-check of the client half), `layout-probe` (drags the container from 480 to 90px and records the chrome at each step, both faces), `panes-probe` (pane dragging and per-surface memory), `dock-probe` (float / split / full screen), `selection-probe` (rubber-band select and batch actions), `conversation-probe` (the conversation-area seat and the commit box's top-edge drag), `settings-card-probe` (the settings card); `demo-repo.mjs` builds the demo repository and `screenshots.mjs` takes the README shots.
+Real-machine regressions use the probes under `scripts/` (each needs an **isolated** instance: its own `DSH_HOME` and port — never the `dsh web` you are working in): `ssr-check` (server-render self-check of the client half), `layout-probe` (drags the container from 480 to 90px and records the chrome at each step, both faces), `panes-probe` (pane dragging and per-surface memory), `dock-probe` (float / split / full screen), `selection-probe` (rubber-band select and batch actions), `conversation-probe` (the conversation-area seat and the commit box's top-edge drag), `settings-card-probe` (the settings card); `demo-repo.mjs` builds the demo repository and `screenshots.mjs` takes its six demo shots (the two real-instance images the README shows are not among them).
 
 Local iteration: add the repository to a web profile and restart `dsh web`; client-half changes are hot-loaded by DSH, host-half changes need the restart.
 
