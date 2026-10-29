@@ -5,6 +5,13 @@
 
 ## Unreleased
 
+**类型**:fix(link: 安装的实例拿不到行配置:插件设置卡片只剩一句降级提示)
+
+- **fix 症状**(用户报告,附插件页截图):插件详情页的「Git 工具窗口设置」卡片里没有开关,只有一行橙字「当前宿主没有设置服务,请用面板内的『动作条设置』。」(`settings.rail.unavailable`,由 `src/client.js` 里 `status !== 'ready'` 的提前返回渲染)。随之不可用的不只是动作条勾选:**面板放置**的三个开关(主对话区标签页 / 沉浸模式 / 输入框 Git 状态)与 **AI 提交信息**的模型 / 思考强度 / 补充提示词在别的入口都没有替代,只能停留在默认值(跟随会话、无提示词)。
+- **根因**:`src/index.js` 用 `await import('@deepseek-ai/schemastery')` 取 Schema 来导出 `Config`;Node 解析模块时**先还原软链的真实路径**再向上找依赖,而 `link:` 安装的插件真实路径是仓库目录(`~/.dsh/profiles/desktop/package.json` 里 `"dsh-ide-git": "link:/Users/lei/Documents/project/dsh-ide-git"`),那里没有宿主自带的 `@deepseek-ai/schemastery`,于是该 import 落进 catch、`Config` 变成 `undefined`,宿主(`dsh-settings` 的 `describe()` 只收有 schema 的行)就不为 `ide-git` 这一行发布配置命名空间,浏览器端 `configForms` 查不到 → 卡片降级成那句话。**这不是宿主版本太老**(dsh 0.2.2-alpha.2 完全支持),副本 / npm / 仓库地址安装都不受影响(真实路径落在 profile 内,向上能找到 `profiles/node_modules/@deepseek-ai/schemastery`)。
+- **解法**:仓库自带一份 devDependency `@deepseek-ai/schemastery@3.18.6-alpha.1`(版本对齐宿主 profile 里那份,`next` 标签同一版本;`pnpm add -D … --config.auto-install-peers=false`,锁文件的 `autoInstallPeers: false` 一并提交,避免把 peer 也拉进仓库)。`node_modules/` 本来就在 .gitignore 里。
+- **验证**:`node --input-type=module -e "const m=await import('./src/index.js'); console.log(typeof m.Config)"` 在**改动前**打印 `undefined` 并伴随 `schemastery is not resolvable here` 警告,改动后打印 `object`;真机验收要用户重启宿主(`Config` 只在插件加载时求值,刷页面无效),重启后应看到卡片恢复三段开关、面板 `⋯` 里的那一项从「动作条设置」变回「打开插件设置」(`railSettingsTarget()` 的依据),拨一个开关后落在 profile 的 `cordis.patch.yml` 的 `config:` 段。`npm test` 119 项全绿(纯依赖声明,不动两端代码)。
+
 **类型**:feat(输入框只留分支胶囊;仓库胶囊按用户要求删除)
 
 - **feat 删掉输入框里的仓库胶囊**(用户要求,附截图):输入框工具条上那颗「commit 图标 + 仓库名」(`.dig-cs-pill.dig-cs-repo`,v0.19.x 加的「点仓库名开 Git 面板」)整颗删除——用户读它像「输入框左边塞了个文件夹」。随它一起下去的还有:那颗箭头切换按钮(`.dig-cs-caret`)、仓库选择菜单(`menu === 'repo'` 那一支)、只有它们用的 `pickRepoRoot` / `baseNameOf` 两个 helper、两条 `.dig-cs-item-main`·`.dig-cs-item-sub` 样式,以及文案键 `composer.openPanel` / `composer.repoHint`(21 门词典同步删除,不留死键)。
