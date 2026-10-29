@@ -5,6 +5,13 @@
 
 ## Unreleased
 
+**类型**:feat(输入框仓库胶囊回来了,并带自己的开关)
+
+- **feat 恢复仓库胶囊 + 新增开关**(用户要求:「commit a8a2441 删掉的仓库胶囊找回来,然后放到面板放置里设置是否展示」):把 a8a2441 整颗删掉的「commit 图标 + 仓库名」胶囊(`.dig-cs-pill.dig-cs-repo`)原样搬回来——连同箭头按钮(`.dig-cs-caret`)、仓库选择菜单(`menu === 'repo'`)、`pickRepoRoot` / `baseNameOf` 两个 helper、`.dig-cs-caret` / `.dig-cs-item-main` / `.dig-cs-item-sub` 三条样式,以及 `composer.openPanel` / `composer.repoHint` 两个文案键(21 门词典一并补回)。点仓库名仍然开右侧 Git 面板(座位仍按宿主自动选),箭头仍开仓库选择菜单。
+- **新增放置开关**「在输入框显示仓库胶囊」(`composerRepoPill`,默认**开**),排在设置卡片「面板放置」的「输入框 Git 状态」行下面;标签与说明 21 门词典齐全。**宿主半** `src/index.js` 的 row Config 同步声明这个字段——不声明的话宿主会以 `Config field "composerRepoPill" is not volatile` 拒写、开关拨了会回弹(composerStatus 当年就栽在这里)。
+- **关掉时的状态** = v0.20.0 的样子:只剩分支胶囊 + ±/↑/↓ 计数;胶囊关掉时它的仓库选择菜单也一并收起(不会在重新打开时冒出来)。
+- **验证**:`npm test` 119/119(原来的反向守卫改回正向守卫:胶囊/箭头/菜单/helper/两条文案键都必须还在、三者都受 `repoPill` 门控、新开关的文案键 21 门齐全、宿主声明了 `composerRepoPill` 且默认 `true`)。**宿主半改动,需要用户自己重启 `dsh web`**;客户端半硬刷新页面即生效。
+
 **类型**:fix(link: 安装的实例拿不到行配置:插件设置卡片只剩一句降级提示)
 
 - **fix 症状**(用户报告,附插件页截图):插件详情页的「Git 工具窗口设置」卡片里没有开关,只有一行橙字「当前宿主没有设置服务,请用面板内的『动作条设置』。」(`settings.rail.unavailable`,由 `src/client.js` 里 `status !== 'ready'` 的提前返回渲染)。随之不可用的不只是动作条勾选:**面板放置**的三个开关(主对话区标签页 / 沉浸模式 / 输入框 Git 状态)与 **AI 提交信息**的模型 / 思考强度 / 补充提示词在别的入口都没有替代,只能停留在默认值(跟随会话、无提示词)。

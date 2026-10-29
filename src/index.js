@@ -84,6 +84,12 @@ function railConfigSchema(schema) {
      back and said "设置没写进去". Any new row-Config field the client writes MUST
      be declared (and volatile) here, or the write is refused before it lands. */
   shape.composerStatus = live(schema.boolean().default(true))
+  /* Repository pill in the composer tool row (v0.19.9): v0.20.0 deleted the
+     pill outright, the user asked for it back but switchable, so it is a row of
+     its own — nested under composerStatus's switch in the settings card.
+     Default ON (the request was to restore it). Same "any new row-Config field
+     the client writes MUST be declared here" rule as composerStatus above. */
+  shape.composerRepoPill = live(schema.boolean().default(true))
   return schema.object(shape)
 }
 

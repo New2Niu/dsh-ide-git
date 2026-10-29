@@ -303,7 +303,8 @@ window.__ModuleLoader__.load({
       'settings.placement.title': '面板放置',
       'settings.placement.tab': '在主对话区显示 Git 标签页',
       'settings.composer.title': '输入框 Git 状态',
-      'settings.composer.hint': '在输入框工具条显示分支与变更计数(可点击切换分支,与 Git 面板联动);关闭后输入框不再显示。',
+      'settings.composer.hint': '在输入框工具条显示仓库与分支(可点击切换,与 Git 面板联动);关闭后输入框不再显示。',
+      'composer.repoHint': '切换仓库',
       'composer.branchHint': '切换分支',
       'composer.detached': 'HEAD(游离)',
       'composer.changesHint': '未提交变更数',
@@ -311,9 +312,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '本地待推送提交',
       'composer.inWorktree': '已被其他工作树签出',
       'composer.busy': 'Git 操作进行中…',
+      'composer.openPanel': '打开 Git 面板',
       'settings.placement.tabHint': '关闭后仍可从右侧栏或底部面板打开。',
       'settings.placement.immersive': '沉浸模式(占满全高,隐藏输入框)',
       'settings.placement.immersiveHint': '开启后 Git 标签页占满整个会话区高度,输入框自动收起;审批与提问仍会正常显示。',
+      'settings.placement.repoPill': '在输入框显示仓库胶囊',
+      'settings.placement.repoPillHint': '仓库名胶囊在工具条最左侧,点击打开 Git 面板;多仓库工作区还会多出一个切换箭号。关闭后输入框只留分支与变更计数。',
       'preview.openFile': '打开文件预览',
       'lf.added': '+{count}',
       'lf.deleted': '-{count}',
@@ -633,7 +637,8 @@ window.__ModuleLoader__.load({
       'settings.placement.title': 'Placement',
       'settings.placement.tab': 'Show the Git tab in the conversation area',
       'settings.composer.title': 'Git status in the input bar',
-      'settings.composer.hint': 'Show the branch and the change counters beside the composer tool row — click to switch branches, synced with the Git panel. Off, the input bar stays clean.',
+      'settings.composer.hint': 'Show repository and branch beside the composer tool row — click to switch, synced with the Git panel. Off, the input bar stays clean.',
+      'composer.repoHint': 'Switch repository',
       'composer.branchHint': 'Switch branch',
       'composer.detached': 'HEAD (detached)',
       'composer.changesHint': 'Uncommitted changes',
@@ -641,9 +646,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Local commits waiting to push',
       'composer.inWorktree': 'Checked out in another worktree',
       'composer.busy': 'Git operation in progress…',
+      'composer.openPanel': 'Open the Git panel',
       'settings.placement.tabHint': 'Off, the panel stays reachable from the right sidebar and the bottom panel.',
       'settings.placement.immersive': 'Immersive mode (full height, hidden composer)',
       'settings.placement.immersiveHint': 'On, the Git tab fills the whole conversation area and the composer steps aside; approvals and questions still show.',
+      'settings.placement.repoPill': 'Show the repository pill in the input bar',
+      'settings.placement.repoPillHint': 'The repository pill sits at the far left of the tool row — click it to open the Git panel; a multi-repository workspace also gets a switch caret. Off, the input bar keeps only the branch and the change counters.',
       'preview.openFile': 'Open in the file preview',
       'lf.added': '+{count}',
       'lf.deleted': '-{count}',
@@ -971,7 +979,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': '面板放置',
         'settings.placement.tab': '喺主對話區顯示 Git 分頁',
       'settings.composer.title': '輸入框 Git 狀態',
-      'settings.composer.hint': '喺輸入框工具列顯示分支同變更計數(可以點擊切換分支,同 Git 面板聯動);關閉之後輸入框就唔會再顯示。',
+      'settings.composer.hint': '喺輸入框工具列顯示儲存庫同分支(可以點擊切換,同 Git 面板聯動);關閉之後輸入框就唔會再顯示。',
+      'composer.repoHint': '切換儲存庫',
       'composer.branchHint': '切換分支',
       'composer.detached': 'HEAD(游離)',
       'composer.changesHint': '未提交變更數',
@@ -979,9 +988,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '本地等待推送提交',
       'composer.inWorktree': '已經喺其他工作樹簽出',
       'composer.busy': 'Git 操作進行中…',
+      'composer.openPanel': '開啟 Git 面板',
         'settings.placement.tabHint': '關閉之後仍可從右側欄或底部面板開啟。',
         'settings.placement.immersive': '沉浸模式(佔滿全高,隱藏輸入框)',
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個會話區高度,輸入框自動收起;審批與提問仍會正常顯示。',
+        'settings.placement.repoPill': '喺輸入框顯示倉庫膠囊',
+        'settings.placement.repoPillHint': '倉庫名膠囊喺工具列最左邊,點擊開啟 Git 面板;多倉庫工作區仲會有切換箭咀。關閉之後輸入框只留分支同變更計數。',
         'preview.openFile': '開啟檔案預覽',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -1301,7 +1313,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': '面板放置',
         'settings.placement.tab': '在主對話區顯示 Git 分頁',
       'settings.composer.title': '輸入框 Git 狀態',
-      'settings.composer.hint': '在輸入框工具列顯示分支與變更計數(可點擊切換分支,並與 Git 面板連動);關閉後輸入框不再顯示。',
+      'settings.composer.hint': '在輸入框工具列顯示儲存庫與分支(可點擊切換,並與 Git 面板連動);關閉後輸入框不再顯示。',
+      'composer.repoHint': '切換儲存庫',
       'composer.branchHint': '切換分支',
       'composer.detached': 'HEAD(分離)',
       'composer.changesHint': '未提交變更數',
@@ -1309,9 +1322,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '本地待推送提交',
       'composer.inWorktree': '已被其他工作樹簽出',
       'composer.busy': 'Git 操作進行中…',
+      'composer.openPanel': '開啟 Git 面板',
         'settings.placement.tabHint': '關閉之後仍可從右側欄或底部面板開啟。',
         'settings.placement.immersive': '沉浸模式(佔滿全高,隱藏輸入框)',
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個對話區高度,輸入框自動收起;審核與提問仍會正常顯示。',
+        'settings.placement.repoPill': '在輸入框顯示儲存庫膠囊',
+        'settings.placement.repoPillHint': '儲存庫名膠囊顯示在工具列最左側,點擊可開啟 Git 面板;多儲存庫工作區還會出現切換箭號。關閉後輸入框只留分支與變更計數。',
         'preview.openFile': '開啟檔案預覽',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -1631,7 +1647,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': '面板放置',
         'settings.placement.tab': '喺主對話區顯示 Git 分頁',
       'settings.composer.title': '輸入框 Git 狀態',
-      'settings.composer.hint': '喺輸入框工具列顯示分支同變更計數(可以點擊切換分支,同 Git 面板聯動);關閉之後輸入框就唔會再顯示。',
+      'settings.composer.hint': '喺輸入框工具列顯示儲存庫同分支(可以點擊切換,同 Git 面板聯動);關閉之後輸入框就唔會再顯示。',
+      'composer.repoHint': '切換儲存庫',
       'composer.branchHint': '切換分支',
       'composer.detached': 'HEAD(游離)',
       'composer.changesHint': '未提交變更數',
@@ -1639,9 +1656,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '本地等待推送提交',
       'composer.inWorktree': '已經喺其他工作樹簽出',
       'composer.busy': 'Git 操作進行中…',
+      'composer.openPanel': '開啟 Git 面板',
         'settings.placement.tabHint': '關閉之後仍可從右側欄或底部面板開啟。',
         'settings.placement.immersive': '沉浸模式(佔滿全高,隱藏輸入框)',
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個會話區高度,輸入框自動收起;審批與提問仍會正常顯示。',
+        'settings.placement.repoPill': '喺輸入框顯示儲存庫膠囊',
+        'settings.placement.repoPillHint': '儲存庫名膠囊喺工具列最左邊,點擊開啟 Git 面板;多儲存庫工作區仲會有切換箭咀。關閉之後輸入框只留分支同變更計數。',
         'preview.openFile': '開啟檔案預覽',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -1961,7 +1981,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'パネル配置',
         'settings.placement.tab': '会話エリアに Git タブを表示',
       'settings.composer.title': '入力欄の Git ステータス',
-      'settings.composer.hint': '入力欄ツールバーにブランチと変更数を表示します(クリックでブランチを切り替え、Git パネルと連動)。オフにすると入力欄には表示されません。',
+      'settings.composer.hint': '入力欄ツールバーにリポジトリとブランチを表示します(クリックで切り替え、Git パネルと連動)。オフにすると入力欄には表示されません。',
+      'composer.repoHint': 'リポジトリを切り替え',
       'composer.branchHint': 'ブランチを切り替え',
       'composer.detached': 'HEAD(切断)',
       'composer.changesHint': '未コミットの変更数',
@@ -1969,9 +1990,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'プッシュ待ちのローカルコミット',
       'composer.inWorktree': '別のワークツリーでチェックアウト中',
       'composer.busy': 'Git 操作を実行中…',
+      'composer.openPanel': 'Git パネルを開く',
         'settings.placement.tabHint': 'オフにしても右サイドバーと下部パネルから開けます。',
         'settings.placement.immersive': '没入モード(全高表示・入力欄を非表示)',
         'settings.placement.immersiveHint': 'オンにすると Git タブが会話エリアの高さいっぱいに広がり、入力欄は引っ込みます。承認や質問は通常どおり表示されます。',
+        'settings.placement.repoPill': '入力欄にリポジトリのピルを表示',
+        'settings.placement.repoPillHint': 'リポジトリ名のピルをツールバーの左端に表示します。クリックで Git パネルを開き、複数リポジトリのワークスペースでは切り替え矢印も表示されます。オフにすると入力欄はブランチと変更数のみになります。',
         'preview.openFile': 'ファイルプレビューを開く',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -2291,7 +2315,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': '패널 배치',
         'settings.placement.tab': '대화 영역에 Git 탭 표시',
       'settings.composer.title': '입력창 Git 상태',
-      'settings.composer.hint': '입력창 도구 모음에 브랜치와 변경 수를 표시합니다(클릭하여 브랜치 전환, Git 패널과 연동). 끄면 입력창에 표시되지 않습니다.',
+      'settings.composer.hint': '입력창 도구 모음에 저장소와 브랜치를 표시합니다(클릭하여 전환, Git 패널과 연동). 끄면 입력창에 표시되지 않습니다.',
+      'composer.repoHint': '저장소 전환',
       'composer.branchHint': '브랜치 전환',
       'composer.detached': 'HEAD(분리됨)',
       'composer.changesHint': '커밋되지 않은 변경 수',
@@ -2299,9 +2324,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': '푸시 대기 중인 로컬 커밋',
       'composer.inWorktree': '다른 작업 트리에서 체크아웃됨',
       'composer.busy': 'Git 작업 진행 중…',
+      'composer.openPanel': 'Git 패널 열기',
         'settings.placement.tabHint': '꺼도 오른쪽 사이드바와 하단 패널에서 열 수 있습니다.',
         'settings.placement.immersive': '몰입 모드(전체 높이, 입력창 숨김)',
         'settings.placement.immersiveHint': '켜면 Git 탭이 대화 영역 전체 높이를 차지하고 입력창은 숨겨집니다. 승인과 질문은 정상적으로 표시됩니다.',
+        'settings.placement.repoPill': '입력창에 저장소 알약 표시',
+        'settings.placement.repoPillHint': '도구 모음 맨 왼쪽에 저장소 이름 알약을 표시합니다. 클릭하면 Git 패널이 열리고, 여러 저장소 워크스페이스에서는 전환 화살표도 나타납니다. 끄면 입력창에는 브랜치와 변경 수만 남습니다.',
         'preview.openFile': '파일 미리보기로 열기',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -2621,7 +2649,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Panel-Platzierung',
         'settings.placement.tab': 'Git-Tab im Gesprächsbereich anzeigen',
       'settings.composer.title': 'Git-Status in der Eingabeleiste',
-      'settings.composer.hint': 'Zweig und Änderungszähler neben der Eingabeleiste zeigen — Klick wechselt den Zweig, synchron mit dem Git-Panel. Aus schaltet die Anzeige ab.',
+      'settings.composer.hint': 'Repository und Zweig neben der Eingabeleiste zeigen — anklickbar zum Wechseln, mit dem Git-Panel synchron. Aus schaltet die Anzeige ab.',
+      'composer.repoHint': 'Repository wechseln',
       'composer.branchHint': 'Zweig wechseln',
       'composer.detached': 'HEAD (detached)',
       'composer.changesHint': 'Uncommittete Änderungen',
@@ -2629,9 +2658,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Lokale Commits zum Pushen',
       'composer.inWorktree': 'In anderem Worktree ausgecheckt',
       'composer.busy': 'Git-Aktion läuft…',
+      'composer.openPanel': 'Git-Panel öffnen',
         'settings.placement.tabHint': 'Ausgeschaltet bleibt das Panel über rechte Seitenleiste und unteres Panel erreichbar.',
         'settings.placement.immersive': 'Immersiver Modus (volle Höhe, ausgeblendetes Eingabefeld)',
         'settings.placement.immersiveHint': 'Eingeschaltet füllt der Git-Tab die gesamte Gesprächshöhe und das Eingabefeld weicht zurück; Freigaben und Rückfragen bleiben sichtbar.',
+        'settings.placement.repoPill': 'Repository-Pille in der Eingabeleiste zeigen',
+        'settings.placement.repoPillHint': 'Die Repository-Pille sitzt ganz links in der Werkzeugleiste — Klick öffnet das Git-Panel; in einem Workspace mit mehreren Repositories erscheint zusätzlich der Wechselpfeil. Aus bleiben nur Zweig und Änderungszähler.',
         'preview.openFile': 'In der Dateivorschau öffnen',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -2951,7 +2983,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Placement du panneau',
         'settings.placement.tab': 'Afficher l’onglet Git dans la zone de conversation',
       'settings.composer.title': 'Statut Git dans la barre de saisie',
-      'settings.composer.hint': 'Affiche la branche et les compteurs de modifications à côté de la barre de saisie — clic pour changer de branche, synchronisé avec le panneau Git. Désactivé, la barre reste épurée.',
+      'settings.composer.hint': 'Affiche le dépôt et la branche à côté de la barre de saisie — cliquables pour basculer, synchronisés avec le panneau Git. Désactivé, la barre reste épurée.',
+      'composer.repoHint': 'Changer de dépôt',
       'composer.branchHint': 'Changer de branche',
       'composer.detached': 'HEAD (détaché)',
       'composer.changesHint': 'Modifications non commitées',
@@ -2959,9 +2992,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commits locaux en attente d’envoi',
       'composer.inWorktree': 'Extrait dans un autre arbre de travail',
       'composer.busy': 'Opération Git en cours…',
+      'composer.openPanel': 'Ouvrir le panneau Git',
         'settings.placement.tabHint': 'Désactivé, le panneau reste accessible depuis la barre latérale droite et le panneau inférieur.',
         'settings.placement.immersive': 'Mode immersif (pleine hauteur, zone de saisie masquée)',
         'settings.placement.immersiveHint': 'Activé, l’onglet Git occupe toute la hauteur de la conversation et la zone de saisie s’efface ; approbations et questions restent visibles.',
+        'settings.placement.repoPill': 'Afficher la pastille de dépôt dans la barre de saisie',
+        'settings.placement.repoPillHint': 'La pastille du dépôt se place à l’extrême gauche de la barre d’outils — un clic ouvre le panneau Git ; dans un espace de travail multi-dépôts, une flèche de bascule apparaît aussi. Désactivé, il ne reste que la branche et les compteurs.',
         'preview.openFile': 'Ouvrir dans l’aperçu du fichier',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3281,7 +3317,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Размещение панели',
         'settings.placement.tab': 'Показывать вкладку Git в области диалога',
       'settings.composer.title': 'Статус Git в строке ввода',
-      'settings.composer.hint': 'Показывает ветку и счётчики изменений рядом с панелью ввода — клик переключает ветку, синхронно с панелью Git. Выключено — строка ввода остаётся чистой.',
+      'settings.composer.hint': 'Показывает репозиторий и ветку рядом с панелью ввода — клик переключает, синхронно с панелью Git. Выключено — строка ввода остаётся чистой.',
+      'composer.repoHint': 'Сменить репозиторий',
       'composer.branchHint': 'Сменить ветку',
       'composer.detached': 'HEAD (отделён)',
       'composer.changesHint': 'Незакоммиченные изменения',
@@ -3289,9 +3326,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Локальные коммиты, ожидающие отправки',
       'composer.inWorktree': 'Выверен в другом worktree',
       'composer.busy': 'Операция Git выполняется…',
+      'composer.openPanel': 'Открыть панель Git',
         'settings.placement.tabHint': 'В выключенном виде панель доступна из правой боковой панели и нижней панели.',
         'settings.placement.immersive': 'Полноэкранный режим (во всю высоту, без поля ввода)',
         'settings.placement.immersiveHint': 'Во включённом виде вкладка Git занимает всю высоту области диалога, поле ввода скрывается; подтверждения и вопросы остаются на виду.',
+        'settings.placement.repoPill': 'Показывать пилюлю репозитория в строке ввода',
+        'settings.placement.repoPillHint': 'Пилюля с именем репозитория стоит у левого края панели инструментов — клик открывает панель Git; в рабочем пространстве с несколькими репозиториями появляется ещё стрелка переключения. Выключено — остаются только ветка и счётчики изменений.',
         'preview.openFile': 'Открыть в предпросмотре файла',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3611,7 +3651,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Posição do painel',
         'settings.placement.tab': 'Mostrar a aba Git na área de conversa',
       'settings.composer.title': 'Status do Git na barra de entrada',
-      'settings.composer.hint': 'Mostra a branch e os contadores de alterações ao lado da barra de entrada — clique para trocar de branch, em sincronia com o painel Git. Desligado, a barra fica limpa.',
+      'settings.composer.hint': 'Mostra repositório e branch ao lado da barra de entrada — clique para alternar, em sincronia com o painel Git. Desligado, a barra fica limpa.',
+      'composer.repoHint': 'Trocar repositório',
       'composer.branchHint': 'Trocar branch',
       'composer.detached': 'HEAD (destacado)',
       'composer.changesHint': 'Alterações não commitadas',
@@ -3619,9 +3660,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commits locais aguardando push',
       'composer.inWorktree': 'Em checkout em outra worktree',
       'composer.busy': 'Operação Git em andamento…',
+      'composer.openPanel': 'Abrir o painel Git',
         'settings.placement.tabHint': 'Desligado, o painel continua disponível na barra lateral direita e no painel inferior.',
         'settings.placement.immersive': 'Modo imersivo (altura total, campo de entrada oculto)',
         'settings.placement.immersiveHint': 'Ativado, a aba Git ocupa toda a altura da conversa e o campo de entrada fica de lado; aprovações e perguntas continuam visíveis.',
+        'settings.placement.repoPill': 'Mostrar a pílula do repositório na barra de entrada',
+        'settings.placement.repoPillHint': 'A pílula com o nome do repositório fica na ponta esquerda da barra de ferramentas — o clique abre o painel Git; em espaços de trabalho com vários repositórios aparece também a seta de troca. Desligado, sobram apenas a branch e os contadores.',
         'preview.openFile': 'Abrir na pré-visualização do arquivo',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3941,7 +3985,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Posizione del pannello',
         'settings.placement.tab': 'Mostra la scheda Git nell’area conversazione',
       'settings.composer.title': 'Stato Git nella barra di inserimento',
-      'settings.composer.hint': 'Mostra il ramo e i contatori delle modifiche accanto alla barra di inserimento — clic per cambiare ramo, sincronizzati con il pannello Git. Disattivato, la barra resta pulita.',
+      'settings.composer.hint': 'Mostra repository e ramo accanto alla barra di inserimento — cliccabili per cambiare, sincronizzati con il pannello Git. Disattivato, la barra resta pulita.',
+      'composer.repoHint': 'Cambia repository',
       'composer.branchHint': 'Cambia ramo',
       'composer.detached': 'HEAD (staccato)',
       'composer.changesHint': 'Modifiche non ancora committate',
@@ -3949,9 +3994,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commit locali in attesa di push',
       'composer.inWorktree': 'Estratto in un altro worktree',
       'composer.busy': 'Operazione Git in corso…',
+      'composer.openPanel': 'Apri il pannello Git',
         'settings.placement.tabHint': 'Da spento, il pannello resta raggiungibile dalla barra laterale destra e dal pannello inferiore.',
         'settings.placement.immersive': 'Modalità immersiva (altezza piena, input nascosto)',
         'settings.placement.immersiveHint': 'Attiva, la scheda Git occupa tutta l’altezza della conversazione e la barra di input resta nascosta; approvazioni e domande restano visibili.',
+        'settings.placement.repoPill': 'Mostra la pill del repository nella barra di inserimento',
+        'settings.placement.repoPillHint': 'La pill con il nome del repository sta all’estrema sinistra della barra degli strumenti — il clic apre il pannello Git; nei workspace con più repository compare anche la freccia di cambio. Disattivato, restano solo ramo e contatori.',
         'preview.openFile': 'Apri nell’anteprima del file',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -4271,7 +4319,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Paneelplaatsing',
         'settings.placement.tab': 'Git-tabblad in het gespreksgebied tonen',
       'settings.composer.title': 'Git-status in de invoerbalk',
-      'settings.composer.hint': 'Toont branch en wijzigingstellers naast de invoerbalk — klikbaar om van branch te wisselen, gesynchroniseerd met het Git-paneel. Uit houdt de balk schoon.',
+      'settings.composer.hint': 'Toont repository en branch naast de invoerbalk — klikbaar om te wisselen, gesynchroniseerd met het Git-paneel. Uit houdt de balk schoon.',
+      'composer.repoHint': 'Repository wisselen',
       'composer.branchHint': 'Branch wisselen',
       'composer.detached': 'HEAD (los)',
       'composer.changesHint': 'Ongecommitte wijzigingen',
@@ -4279,9 +4328,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Lokale commits die wachten op push',
       'composer.inWorktree': 'Uitgecheckt in een andere worktree',
       'composer.busy': 'Git-actie gaande…',
+      'composer.openPanel': 'Git-paneel openen',
         'settings.placement.tabHint': 'Uitgeschakeld blijft het paneel bereikbaar via de rechterzijbalk en het onderpaneel.',
         'settings.placement.immersive': 'Meeslepende modus (volledige hoogte, verborgen invoerveld)',
         'settings.placement.immersiveHint': 'Aan: het Git-tabblad vult de hele gespreksruimte en het invoerveld wijkt; goedkeuringen en vragen blijven zichtbaar.',
+        'settings.placement.repoPill': 'Repository-pil in de invoerbalk tonen',
+        'settings.placement.repoPillHint': 'De pil met de repositorynaam staat links in de werkbalk — klikken opent het Git-paneel; in een workspace met meerdere repositories verschijnt ook de wisselpijl. Uit blijven alleen branch en tellers over.',
         'preview.openFile': 'Openen in de bestandsvoorbeeld',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -4601,7 +4653,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Rozmieszczenie panelu',
         'settings.placement.tab': 'Pokazuj kartę Git w obszarze rozmowy',
       'settings.composer.title': 'Status Git w pasku wprowadzania',
-      'settings.composer.hint': 'Pokazuje gałąź i liczniki zmian obok paska wprowadzania — kliknij, aby przełączyć gałąź; synchronizacja z panelem Git. Wyłączone — pasek pozostaje czysty.',
+      'settings.composer.hint': 'Pokazuje repozytorium i gałąź obok paska wprowadzania — kliknij, aby przełączyć; synchronizacja z panelem Git. Wyłączone — pasek pozostaje czysty.',
+      'composer.repoHint': 'Przełącz repozytorium',
       'composer.branchHint': 'Przełącz gałąź',
       'composer.detached': 'HEAD (odłączony)',
       'composer.changesHint': 'Niezatwierdzone zmiany',
@@ -4609,9 +4662,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Lokalne commity oczekujące na wysłanie',
       'composer.inWorktree': 'Wybrane w innym drzewie roboczym',
       'composer.busy': 'Operacja Git w toku…',
+      'composer.openPanel': 'Otwórz panel Git',
         'settings.placement.tabHint': 'Po wyłączeniu panel pozostaje dostępny z prawego paska bocznego i dolnego panelu.',
         'settings.placement.immersive': 'Tryb immersyjny (pełna wysokość, ukryte pole wpisywania)',
         'settings.placement.immersiveHint': 'Po włączeniu karta Git wypełnia całą wysokość rozmowy, a pole wpisywania się chowa; zatwierdzenia i pytania pozostają widoczne.',
+        'settings.placement.repoPill': 'Pokazuj pigułkę repozytorium w pasku wprowadzania',
+        'settings.placement.repoPillHint': 'Pigułka z nazwą repozytorium stoi na lewym końcu paska narzędzi — kliknięcie otwiera panel Git; w obszarze roboczym z wieloma repozytoriami pojawia się też strzałka przełączania. Wyłączone — zostają tylko gałąź i liczniki zmian.',
         'preview.openFile': 'Otwórz w podglądzie pliku',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -4931,7 +4987,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Panelplacering',
         'settings.placement.tab': 'Visa Git-fliken i konversationsytan',
       'settings.composer.title': 'Git-status i inmatningsfältet',
-      'settings.composer.hint': 'Visar gren och ändringsräknare bredvid inmatningsfältet — klicka för att byta gren, synkat med Git-panelen. Av stänger av visningen.',
+      'settings.composer.hint': 'Visar repo och gren bredvid inmatningsfältet — klicka för att växla, synkat med Git-panelen. Av stänger av visningen.',
+      'composer.repoHint': 'Byt repo',
       'composer.branchHint': 'Byt gren',
       'composer.detached': 'HEAD (frånkopplad)',
       'composer.changesHint': 'Ocommittade ändringar',
@@ -4939,9 +4996,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Lokala commits som väntar på push',
       'composer.inWorktree': 'Utcheckad i ett annat arbetsträd',
       'composer.busy': 'Git-åtgärd pågår…',
+      'composer.openPanel': 'Öppna Git-panelen',
         'settings.placement.tabHint': 'Avstängd finns panelen kvar via höger sidopanel och nedre panelen.',
         'settings.placement.immersive': 'Uppslukande läge (full höjd, dolt inmatningsfält)',
         'settings.placement.immersiveHint': 'På: Git-fliken fyller hela konversationsytan och inmatningsfältet träder åt sidan; godkännanden och frågor visas fortfarande.',
+        'settings.placement.repoPill': 'Visa repopillret i inmatningsfältet',
+        'settings.placement.repoPillHint': 'Pillret med repots namn ligger längst till vänster i verktygsraden — klick öppnar Git-panelen; i en arbetsyta med flera repon visas även växelpilen. Av behålls bara grenen och ändringsräknarna.',
         'preview.openFile': 'Öppna i filförhandsvisningen',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -5261,7 +5321,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Panel yerleşimi',
         'settings.placement.tab': 'Konuşma alanında Git sekmesini göster',
       'settings.composer.title': 'Giriş çubuğunda Git durumu',
-      'settings.composer.hint': 'Giriş çubuğu yanında dal ve değişiklik sayaçlarını gösterir — dal değiştirmek için tıklayın, Git paneliyle eşitlenir. Kapalıyken giriş çubuğu temiz kalır.',
+      'settings.composer.hint': 'Giriş çubuğu yanında depo ve dal gösterir — geçiş için tıklayın, Git paneliyle eşitlenir. Kapalıyken giriş çubuğu temiz kalır.',
+      'composer.repoHint': 'Depo değiştir',
       'composer.branchHint': 'Dal değiştir',
       'composer.detached': 'HEAD (ayrık)',
       'composer.changesHint': 'Commitlenmemiş değişiklikler',
@@ -5269,9 +5330,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Push bekleyen yerel commitler',
       'composer.inWorktree': 'Başka bir worktree’da checkout yapılmış',
       'composer.busy': 'Git işlemi sürüyor…',
+      'composer.openPanel': 'Git panelini aç',
         'settings.placement.tabHint': 'Kapatıldığında panel sağ kenar çubuğundan ve alt panelden açılabilir.',
         'settings.placement.immersive': 'Odaklanma modu (tam yükseklik, gizli giriş alanı)',
         'settings.placement.immersiveHint': 'Açıkken Git sekmesi tüm konuşma alanını kaplar ve giriş alanı gizlenir; onaylar ve sorular yine de görünür.',
+        'settings.placement.repoPill': 'Giriş çubuğunda depo hapını göster',
+        'settings.placement.repoPillHint': 'Depo adı hapı araç çubuğunun en solunda durur — tıklayınca Git paneli açılır; birden çok depolu çalışma alanında değiştirme oku da görünür. Kapalıyken yalnızca dal ve değişiklik sayaçları kalır.',
         'preview.openFile': 'Dosya önizlemesinde aç',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -5591,7 +5655,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Penempatan panel',
         'settings.placement.tab': 'Tampilkan tab Git di area percakapan',
       'settings.composer.title': 'Status Git di bilah masukan',
-      'settings.composer.hint': 'Menampilkan cabang dan penghitung perubahan di samping bilah masukan — klik untuk beralih cabang, tersinkron dengan panel Git. Matikan untuk menyembunyikannya.',
+      'settings.composer.hint': 'Menampilkan repositori dan cabang di samping bilah masukan — klik untuk beralih, tersinkron dengan panel Git. Matikan untuk menyembunyikannya.',
+      'composer.repoHint': 'Ganti repositori',
       'composer.branchHint': 'Ganti cabang',
       'composer.detached': 'HEAD (lepas)',
       'composer.changesHint': 'Perubahan yang belum di-commit',
@@ -5599,9 +5664,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commit lokal menunggu push',
       'composer.inWorktree': 'Sudah di-checkout di worktree lain',
       'composer.busy': 'Operasi Git sedang berjalan…',
+      'composer.openPanel': 'Buka panel Git',
         'settings.placement.tabHint': 'Dimatikan, panel tetap bisa dibuka dari bilah sisi kanan dan panel bawah.',
         'settings.placement.immersive': 'Mode imersif (tinggi penuh, kolom masukan tersembunyi)',
         'settings.placement.immersiveHint': 'Aktif: tab Git memenuhi seluruh tinggi area percakapan dan kolom masukan mengalah; persetujuan dan pertanyaan tetap tampil.',
+        'settings.placement.repoPill': 'Tampilkan pil repositori di bilah masukan',
+        'settings.placement.repoPillHint': 'Pil nama repositori berada di ujung kiri bilah alat — klik membuka panel Git; di ruang kerja dengan banyak repositori muncul juga panah pengganti. Dimatikan, hanya cabang dan penghitung perubahan yang tersisa.',
         'preview.openFile': 'Buka di pratinjau berkas',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -5921,7 +5989,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'Vị trí bảng',
         'settings.placement.tab': 'Hiện thẻ Git trong vùng hội thoại',
       'settings.composer.title': 'Trạng thái Git trên thanh nhập',
-      'settings.composer.hint': 'Hiện nhánh và số thay đổi bên cạnh thanh nhập — bấm để chuyển nhánh, đồng bộ với bảng Git. Tắt để ẩn đi.',
+      'settings.composer.hint': 'Hiện kho và nhánh bên cạnh thanh nhập — bấm để chuyển đổi, đồng bộ với bảng Git. Tắt để ẩn đi.',
+      'composer.repoHint': 'Chuyển kho',
       'composer.branchHint': 'Chuyển nhánh',
       'composer.detached': 'HEAD (tách rời)',
       'composer.changesHint': 'Thay đổi chưa commit',
@@ -5929,9 +5998,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'Commit cục bộ chờ đẩy lên',
       'composer.inWorktree': 'Đã được checkout ở worktree khác',
       'composer.busy': 'Đang chạy tác vụ Git…',
+      'composer.openPanel': 'Mở bảng Git',
         'settings.placement.tabHint': 'Tắt rồi, bảng vẫn mở được từ thanh bên phải và bảng dưới.',
         'settings.placement.immersive': 'Chế độ đắm chìm (chiều cao đầy đủ, ẩn ô nhập)',
         'settings.placement.immersiveHint': 'Bật: thẻ Git chiếm toàn bộ chiều cao vùng hội thoại và ô nhập thu vào; phê duyệt và câu hỏi vẫn hiển thị bình thường.',
+        'settings.placement.repoPill': 'Hiện viên kho trong thanh nhập',
+        'settings.placement.repoPillHint': 'Viên tên kho nằm ở đầu trái thanh công cụ — bấm để mở bảng Git; trong không gian làm việc nhiều kho còn có mũi tên chuyển kho. Tắt đi thì chỉ còn nhánh và số thay đổi.',
         'preview.openFile': 'Mở trong xem trước tệp',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -6251,7 +6323,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'موضع اللوحة',
         'settings.placement.tab': 'إظهار تبويب Git في منطقة المحادثة',
       'settings.composer.title': 'حالة Git في شريط الإدخال',
-      'settings.composer.hint': 'يعرض الفرع وعدّادات التغييرات بجانب شريط الإدخال — انقر لتبديل الفرع، ومتزامن مع لوحة Git. عند الإيقاف يبقى الشريط نظيفًا.',
+      'settings.composer.hint': 'يعرض المستودع والفرز بجانب شريط الإدخال — انقر للتبديل، ومتزامن مع لوحة Git. عند الإيقاف يبقى الشريط نظيفًا.',
+      'composer.repoHint': 'تبديل المستودع',
       'composer.branchHint': 'تبديل الفرع',
       'composer.detached': 'HEAD (منفصل)',
       'composer.changesHint': 'تغييرات غير ملتزَم بها',
@@ -6259,9 +6332,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'التزامات محلية بانتظار الدفع',
       'composer.inWorktree': 'مسحوب في شجرة عمل أخرى',
       'composer.busy': 'عملية Git جارية…',
+      'composer.openPanel': 'فتح لوحة Git',
         'settings.placement.tabHint': 'عند الإيقاف تبقى اللوحة متاحة من الشريط الجانبي الأيمن واللوحة السفلية.',
         'settings.placement.immersive': 'الوضع الغامر (ارتفاع كامل، إخفاء صندوق الكتابة)',
         'settings.placement.immersiveHint': 'عند التشغيل يملأ تبويب Git منطقة المحادثة بكامل ارتفاعها ويتراجع صندوق الكتابة؛ تظل الموافقات والأسئلة ظاهرة كالمعتاد.',
+        'settings.placement.repoPill': 'إظهار حبة المستودع في شريط الإدخال',
+        'settings.placement.repoPillHint': 'تظهر حبة اسم المستودع في أقصى يسار شريط الأدوات — انقر لفتح لوحة Git، وفي مساحة عمل بعدة مستودعات يظهر سهم التبديل أيضًا. عند الإيقاف يبقى الفرع وعدّادات التغييرات فقط.',
         'preview.openFile': 'افتح في معاينة الملف',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -6581,7 +6657,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'पैनल प्लेसमेंट',
         'settings.placement.tab': 'संवाद क्षेत्र में Git टैब दिखाएँ',
       'settings.composer.title': 'इनपुट बार में Git स्थिति',
-      'settings.composer.hint': 'इनपुट बार के बगल में शाखा और बदलाव गिनती दिखाता है — शाखा बदलने के लिए क्लिक करें, Git पैनल के साथ सिंक। बंद करने पर इनपुट बार साफ़ रहती है।',
+      'settings.composer.hint': 'इनपुट बार के बगल में रिपॉज़िटरी और शाखा दिखाता है — बदलने के लिए क्लिक करें, Git पैनल के साथ सिंक। बंद करने पर इनपुट बार साफ़ रहती है।',
+      'composer.repoHint': 'रिपॉज़िटरी बदलें',
       'composer.branchHint': 'शाखा बदलें',
       'composer.detached': 'HEAD (पृथक)',
       'composer.changesHint': 'बिना कमिट बदलाव',
@@ -6589,9 +6666,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'पुश के लिए प्रतीक्षारत स्थानीय कमिट',
       'composer.inWorktree': 'दूसरे वर्कट्री में चेकआउट',
       'composer.busy': 'Git कार्य चल रहा है…',
+      'composer.openPanel': 'Git पैनल खोलें',
         'settings.placement.tabHint': 'बंद करने पर भी पैनल दाएँ साइडबार और निचले पैनल से खुलता है।',
         'settings.placement.immersive': 'इमर्सिव मोड (पूरी ऊँचाई, छिपा इनपुट बॉक्स)',
         'settings.placement.immersiveHint': 'चालू होने पर Git टैब पूरे संवाद क्षेत्र की ऊँचाई घेर लेता है और इनपुट बॉक्स हट जाता है; अनुमोदन और प्रश्न फिर भी दिखते हैं।',
+        'settings.placement.repoPill': 'इनपुट बार में रिपॉज़िटरी पिल दिखाएँ',
+        'settings.placement.repoPillHint': 'रिपॉज़िटरी नाम की पिल टूलबार के सबसे बाएँ होती है — क्लिक करने पर Git पैनल खुलता है; कई रिपॉज़िटरी वाले वर्कस्पेस में बदलने का तीर भी दिखता है। बंद करने पर सिर्फ़ शाखा और बदलाव गिनती रहती है।',
         'preview.openFile': 'फ़ाइल पूर्वावलोकन में खोलें',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -6911,7 +6991,8 @@ window.__ModuleLoader__.load({
         'settings.placement.title': 'ตำแหน่งแผง',
         'settings.placement.tab': 'แสดงแท็บ Git ในพื้นที่บทสนทนา',
       'settings.composer.title': 'สถานะ Git ในแถบป้อนข้อความ',
-      'settings.composer.hint': 'แสดงแบรนช์และจำนวนการเปลี่ยนแปลงข้างแถบป้อนข้อความ — คลิกเพื่อสลับแบรนช์ และซิงก์กับแผง Git ปิดแล้วแถบจะสะอาด',
+      'settings.composer.hint': 'แสดงที่เก็บและแบรนช์ข้างแถบป้อนข้อความ — คลิกเพื่อสลับ และซิงก์กับแผง Git ปิดแล้วแถบจะสะอาด',
+      'composer.repoHint': 'สลับที่เก็บ',
       'composer.branchHint': 'สลับแบรนช์',
       'composer.detached': 'HEAD (แยกขาด)',
       'composer.changesHint': 'การเปลี่ยนแปลงที่ยังไม่คอมมิต',
@@ -6919,9 +7000,12 @@ window.__ModuleLoader__.load({
       'composer.aheadHint': 'คอมมิตในเครื่องรอพุช',
       'composer.inWorktree': 'ถูกเช็คเอาต์ในเวิร์กทรีอื่น',
       'composer.busy': 'กำลังดำเนินการ Git…',
+      'composer.openPanel': 'เปิดแผง Git',
         'settings.placement.tabHint': 'ปิดแล้วยังเปิดแผงจากแถบข้างขวาหรือแผงล่างได้',
         'settings.placement.immersive': 'โหมดดื่มด่ำ (เต็มความสูง, ซ่อนกล่องพิมพ์)',
         'settings.placement.immersiveHint': 'เมื่อเปิด แท็บ Git จะกินพื้นที่สูงทั้งหมดของบทสนทนาและกล่องพิมพ์จะถอยออก; การอนุมัติและคำถามยังแสดงตามปกติ',
+        'settings.placement.repoPill': 'แสดงแคปซูลที่เก็บในแถบป้อนข้อความ',
+        'settings.placement.repoPillHint': 'แคปซูลชื่อที่เก็บอยู่ซ้ายสุดของแถบเครื่องมือ — คลิกเพื่อเปิดแผง Git และในเวิร์กสเปซที่มีหลายที่เก็บจะมีลูกศรสลับที่เก็บด้วย ปิดแล้วจะเหลือแค่แบรนช์และจำนวนการเปลี่ยนแปลง',
         'preview.openFile': 'เปิดในตัวอย่างไฟล์',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -10103,6 +10187,45 @@ window.__ModuleLoader__.load({
               E('span', { className: 'dig-settings-glyph' }, E(Icon, { name: 'branch', size: 13 })),
               E('span', { id: inputId + '-label', className: 'dig-settings-label', onClick: toggle }, t('settings.composer.title'))),
             E('div', { className: 'dig-settings-subnote' }, t('settings.composer.hint')))
+        })(),
+        (() => {
+          /* Repository pill (v0.19.9, user request): the composer's own
+             repository chip — the one v0.20.0 deleted — is back behind this
+             switch, nested right under the master composer switch it belongs
+             to. Same optimistic-write contract as the rows above; the pill
+             reads composerRepoPill through composerRepoPillEnabled() and
+             appears/disappears live. Default ON. */
+          const field = 'composerRepoPill'
+          const inputId = 'dig-placement-' + field
+          const shown = placementShown(field)
+          const toggle = (event) => {
+            if (readOnly === true) { setNote(t('settings.rail.readonly')); return }
+            const fromControl = event !== undefined && event !== null && event.target !== null
+              && event.target !== undefined && typeof event.target.checked === 'boolean'
+              ? event.target.checked
+              : null
+            const wanted = placementTarget(field, fromControl)
+            intent.current[field] = wanted
+            dirty.current.set(field, wanted)
+            setPending((now) => Object.assign({}, now, { [field]: wanted }))
+            setNote('')
+            bump()
+            scheduleFlush()
+          }
+          return E('div', { key: field },
+            E('div', { className: 'dig-settings-row', 'data-placement-row': field },
+              E('input', {
+                id: inputId,
+                type: 'checkbox',
+                className: 'dig-settings-check',
+                'aria-labelledby': inputId + '-label',
+                checked: shown,
+                disabled: readOnly === true,
+                onChange: toggle,
+              }),
+              E('span', { className: 'dig-settings-glyph' }, E(Icon, { name: 'commit', size: 13 })),
+              E('span', { id: inputId + '-label', className: 'dig-settings-label', onClick: toggle }, t('settings.placement.repoPill'))),
+            E('div', { className: 'dig-settings-subnote' }, t('settings.placement.repoPillHint')))
         })()),
         /* Section 3 — the AI commit message (issue #6): model, reasoning and the
            prompt template. */
@@ -15059,6 +15182,10 @@ window.__ModuleLoader__.load({
       '.dig-cs-pill{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 8px;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);font-family:inherit;font-size:var(--dsh-content-font-size-secondary,13px);line-height:20px;white-space:nowrap;cursor:pointer}',
       '.dig-cs-pill:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.dig-cs-pill:disabled{cursor:default}',
+      // The repository pill's caret is its own button (open panel on the name,
+      // pick a checkout on the arrow): pulled tight against the name it still
+      // reads as one control, but the two hover targets stay separate.
+      '.dig-cs-caret{padding:0 4px;margin-left:-2px}',
       '.dig-cs-name{overflow:hidden;text-overflow:ellipsis;max-width:150px}',
       '.dig-cs-pill svg{flex:none}',
       '.dig-cs-badge{display:inline-flex;align-items:center;font-size:12px;line-height:20px;font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 3px;font-weight:500}',
@@ -15086,6 +15213,8 @@ window.__ModuleLoader__.load({
       '.dig-cs-item[data-current=true]{color:var(--dsw-alias-brand-primary)}',
       '.dig-cs-item svg{flex:none}',
       '.dig-cs-item-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.dig-cs-item-main{display:flex;flex-direction:column;min-width:0;flex:1}',
+      '.dig-cs-item-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:12px}',
       '.dig-cs-item-note{color:var(--dsw-alias-label-tertiary);font-size:11px;flex:none}',
       '.dig-cs-item-counts{display:inline-flex;gap:5px;margin-left:auto;flex:none;font-variant-numeric:tabular-nums;font-size:11px}',
       '.dig-cs-static{color:var(--dsw-alias-label-tertiary);cursor:default}',
@@ -15239,6 +15368,20 @@ window.__ModuleLoader__.load({
       return value !== false
     }
 
+    /* The repository pill's own switch (v0.19.9, user request): v0.20.0 deleted
+       the pill outright because it read as "a folder sitting in my composer";
+       the user wants it BACK, but controllable — so it is a placement row now.
+       Default ON (the request was to restore it), and the read contract is
+       identical to composerStatus's: row Config when the host serves it, on
+       before it answers. Turning it off leaves the branch pill and the ±/↑/↓
+       counters exactly where they were, which is the v0.20.0 look. */
+    function composerRepoPillEnabled() {
+      const ready = railFormReady()
+      if (ready === null) return true
+      const value = ready.value !== null && typeof ready.value === 'object' ? ready.value.composerRepoPill : undefined
+      return value !== false
+    }
+
     /* The pill is also the door into the Git tool window: clicking the
        repository name opens the panel in the RIGHT column and focuses it
        (user request 2026-10-19). Which seat draws that column is the host's
@@ -15285,6 +15428,15 @@ window.__ModuleLoader__.load({
     const COMPOSER_POLL_MS = 30000
     const COMPOSER_ERROR_TTL_MS = 6000
 
+    /* Windows paths ride backslashes, so both pill labels cut the leaf with
+       this slash-aware split instead of a bare forward-slash split — a drive
+       path must read as the leaf name, not the whole path. */
+    function baseNameOf(path) {
+      if (typeof path !== 'string' || path === '') return ''
+      const segments = path.split(/[\\/]/).filter((segment) => segment !== '')
+      return segments.length > 0 ? segments[segments.length - 1] : path
+    }
+
     /* The pill feeds the SAME keep-warm cache the panel and the prewarmer
        use (paintRepos / paintPage): a workspace the user has visited — by
        panel, by pill, or by the session-switch prewarm — re-paints the pill
@@ -15322,6 +15474,9 @@ window.__ModuleLoader__.load({
       const t = props.t
       const sessionId = typeof props.sessionId === 'string' && props.sessionId !== '' ? props.sessionId : 'default'
       const [enabled, setEnabled] = useState(() => composerStatusEnabled())
+      /* The pill's own switch rides the same notify walk, so the placement row
+         flips it live instead of waiting for a reload. */
+      const [repoPill, setRepoPill] = useState(() => composerRepoPillEnabled())
       const [cwd, setCwd] = useState(() => sessionCwdOf(ctx, sessionId))
       /* Warm first paint: a workspace the panel, the pill or the prewarmer
          has already visited starts from the keep-warm cache, so a session
@@ -15350,10 +15505,18 @@ window.__ModuleLoader__.load({
       /* The switch flips live through the same rail-config notify walk the
          settings card and the conversation tab ride. */
       useEffect(() => {
-        const sync = () => setEnabled(composerStatusEnabled())
+        const sync = () => { setEnabled(composerStatusEnabled()); setRepoPill(composerRepoPillEnabled()) }
         sync()
         return subscribeRailConfig(sync)
       }, [])
+
+      /* Switching the repository pill off must not leave its checkout picker
+         armed: the menu is not rendered while the pill is hidden, but it would
+         re-appear the moment the pill came back. */
+      useEffect(() => {
+        if (repoPill === true) return
+        setMenu((current) => (current === 'repo' ? null : current))
+      }, [repoPill])
 
       /* cwd follows the session list, exactly like ConversationPanel. */
       useEffect(() => {
@@ -15470,6 +15633,14 @@ window.__ModuleLoader__.load({
       if (enabled !== true) return null
       const data = repoState
       if (data === null || (data.isRepo !== true && (data.repos === undefined || data.repos.length === 0))) return null
+      const repoPaths = data.repos.map((repo) => repo.path)
+      const singleRepo = repoPaths.length <= 1
+      /* The pill shows the repository's OWN name — the origin URL's leaf
+         (summary.origin) — so a clone renamed on disk still reads as the
+         repo it came from; the folder basename is only the fallback for
+         repos without any remote. */
+      const originName = summary !== null && typeof summary.origin === 'string' && summary.origin !== '' ? summary.origin : ''
+      const repoName = originName !== '' ? originName : baseNameOf(repoRoot)
       const branchName = summary !== null && typeof summary.branch === 'string' && summary.branch !== '' ? summary.branch : null
       const detached = summary !== null && summary.detached === true
       const ahead = summary !== null && typeof summary.ahead === 'number' ? summary.ahead : 0
@@ -15513,13 +15684,43 @@ window.__ModuleLoader__.load({
         return seed !== undefined && seed.summary !== undefined && seed.summary !== null ? seed.summary : null
       }
 
-      /* v0.20.0 (user request): the repository pill is GONE from the input
-         bar. It duplicated the branch pill's job in a place the user reads as
-         "a folder sitting in my composer", and the panel door it doubled as
-         already exists on the rail / sidebar card. What stays is the part
-         that cannot be read anywhere else at a glance: the branch name plus
-         the ±/↑/↓ counters, and the branch checkout picker behind it. */
-      return E('div', { ref: rootRef, className: 'dig-cs-root', 'data-dsh-ide-git-status': '' },
+      const pickRepoRoot = (path) => {
+        setMenu(null)
+        setRepoRoot(path)
+        setSummary(seedSummaryOf(path))
+        setBranchList(null)
+        setTick((value) => value + 1)
+        rememberRepoShared(sessionId, path)
+      }
+
+      /* v0.19.9 (user request): the repository pill is back, but only when the
+         placement row says so. It stays the door into the tool window (name →
+         open the panel in the right column) and the caret keeps the checkout
+         picker (a single-repo workspace has nothing to pick, so the caret is
+         dropped and the whole pill is the door). Switch it off and the bar
+         reads exactly like v0.20.0: branch pill + ±/↑/↓ only. */
+      const openPanel = () => {
+        setMenu(null)
+        openGitSeat(ctx, 'panel', sessionId, cwd)
+      }
+
+      return E('div', { ref: rootRef, className: 'dig-cs-root', 'data-dsh-ide-git-status': '', 'data-repo-pill': repoPill === true ? 'on' : 'off' },
+        repoPill !== true ? null : E('button', {
+          type: 'button',
+          className: 'dig-cs-pill dig-cs-repo',
+          title: t('composer.openPanel'),
+          onClick: openPanel,
+        },
+          E(Icon, { name: 'commit', size: 13 }),
+          E('span', { className: 'dig-cs-name' }, repoName)),
+        repoPill !== true || singleRepo === true ? null : E('button', {
+          type: 'button',
+          className: 'dig-cs-pill dig-cs-caret',
+          title: t('composer.repoHint'),
+          'aria-label': t('composer.repoHint'),
+          onClick: () => { setMenu(menu === 'repo' ? null : 'repo') },
+        },
+          E(Icon, { name: 'chevron', size: 10 })),
         branchName !== null ? E('button', {
           type: 'button',
           className: 'dig-cs-pill',
@@ -15535,6 +15736,29 @@ window.__ModuleLoader__.load({
         behind > 0 ? E('span', { className: 'dig-cs-badge dig-cs-behind', title: t('composer.behindHint') }, '↓' + String(behind)) : null,
         ahead > 0 ? E('span', { className: 'dig-cs-badge dig-cs-ahead', title: t('composer.aheadHint') }, '↑' + String(ahead)) : null,
         error !== '' ? E('span', { className: 'dig-cs-error', title: error }, '×') : null,
+        repoPill === true && menu === 'repo' ? E('div', { className: 'dig-cs-menu', 'data-cordis-panel': '' },
+          /* v0.19.2: one row per checkout — the repository's own name first
+             (origin URL basename, falling back to the directory name), and the
+             single-level directory name as a small sub line only when the two
+             differ (two clones of one repository stay tellable apart). The
+             full path lives in the tooltip, not in the row. */
+          data.repos.map((row) => {
+            const dirName = baseNameOf(row.path)
+            const displayName = row.origin !== undefined && row.origin !== '' ? row.origin : dirName
+            return E('button', {
+              key: row.path,
+              type: 'button',
+              className: 'dig-cs-item',
+              'data-current': row.path === repoRoot ? 'true' : 'false',
+              title: row.path,
+              onClick: () => pickRepoRoot(row.path),
+            },
+              E(Icon, { name: 'commit', size: 11 }),
+              E('span', { className: 'dig-cs-item-main' },
+                E('span', { className: 'dig-cs-item-name' }, displayName),
+                dirName !== displayName ? E('span', { className: 'dig-cs-item-sub' }, dirName) : null))
+          }))
+          : null,
         menu === 'branch' ? (branchLoading === true || branchList === null
           ? E('div', { className: 'dig-cs-menu', 'data-cordis-panel': '' }, E('div', { className: 'dig-cs-item dig-cs-static' }, '…'))
           : E('div', { className: 'dig-cs-menu', 'data-cordis-panel': '' },

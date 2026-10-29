@@ -1761,12 +1761,13 @@ test('split + wrap rows share one source, and the preview carries a render bound
   assert.match(cssRule('.dig-preview-boundary'), /var\(--dsw-alias-label-secondary\)/, 'the fallback line stays quiet, not alarm-red')
 })
 
-test('the input bar carries the branch pill only — the repository pill is gone (user request)', () => {
-  // v0.20.0: the repository pill (commit glyph + repo name) was deleted from
-  // the composer tool row — the user read it as "a folder sitting in my input
-  // bar". The branch pill and the ±/↑/↓ counters stay, and the seat door it
-  // used to double as still lives on the rail button, so the helper is still
-  // exercised through the explorer seat.
+test('the repository pill is back behind its own placement switch (user request)', () => {
+  // v0.19.9: v0.20.0 deleted the composer's repository pill because the user
+  // read it as "a folder sitting in my input bar"; the same user then asked for
+  // it BACK — but controllable. So it is a placement row now (composerRepoPill,
+  // default ON) and BOTH states are first-class: on, the pill is the door into
+  // the tool window and the caret keeps the checkout picker; off, the bar reads
+  // exactly like v0.20.0 (branch pill + ±/↑/↓ counters).
   const helper = client.slice(client.indexOf('function gitSeatHost('), client.indexOf('const COMPOSER_POLL_MS'))
   assert.ok(helper.length > 0, 'the seat-door helper must exist')
   const better = helper.indexOf("door.service.openTab({ type: explorer ? TAB_EXPLORE_ID : TAB_ID, target: 'right' }")
@@ -1775,22 +1776,48 @@ test('the input bar carries the branch pill only — the repository pill is gone
   assert.ok(native > better, 'better-sidebar is asked first, the native seat second')
   assert.match(helper, /typeof betterSidebar\.openTab === 'function'/, 'the better-sidebar path is capability-gated')
   assert.match(helper, /typeof sidebarRight\.openTab === 'function'/, 'the native path is capability-gated too')
+  assert.match(client, /openGitSeat\(ctx, 'panel', sessionId, cwd\)/, 'the pill asks for the changes panel again')
   assert.match(client, /openGitSeat\(props\.ctx, 'explore', scope\.sessionId, scope\.cwd\)/,
-    'the rail button is the remaining caller of the seat door')
+    'the rail button keeps its own caller of the seat door')
 
-  // No repository label, no caret, no repository picker menu — and none of
-  // their now-dead strings (the tooltip keys went with them in every locale).
   const status = client.slice(client.indexOf('function ComposerGitStatus('), client.indexOf('function ConversationPanel('))
   assert.ok(status.length > 0, 'the composer status component must stay')
-  assert.doesNotMatch(status, /dig-cs-repo/, 'the repository pill is deleted')
-  assert.doesNotMatch(status, /dig-cs-caret/, 'its caret goes with it')
-  assert.doesNotMatch(status, /menu === 'repo'/, 'and so does the repository picker menu')
-  assert.doesNotMatch(status, /baseNameOf|pickRepoRoot/, 'the helpers only the repository pill used are gone')
-  assert.doesNotMatch(client, /'composer\.openPanel'/, 'the panel-door tooltip key is retired from every locale')
-  assert.doesNotMatch(client, /'composer\.repoHint'/, 'the switch-repository tooltip key is retired too')
-  assert.doesNotMatch(client, /\.dig-cs-caret\{/, 'the caret style rule is deleted with the button')
 
-  // What stays: the branch pill (its own checkout picker) and the counters.
+  // The pill, its caret, its picker and the helpers they need are all back…
+  assert.match(status, /className: 'dig-cs-pill dig-cs-repo'/, 'the repository pill is restored')
+  assert.match(status, /onClick: openPanel/, 'the repository name opens the panel')
+  assert.match(status, /title: t\('composer\.openPanel'\)/, 'and says so in its tooltip')
+  assert.match(status, /className: 'dig-cs-pill dig-cs-caret'/, 'the caret is its own button again')
+  assert.match(status, /setMenu\(menu === 'repo' \? null : 'repo'\)/, 'the caret still opens the checkout picker')
+  assert.match(status, /singleRepo === true \? null : E\('button'/, 'one checkout means no caret at all')
+  assert.match(status, /repoPill === true && menu === 'repo' \? E\('div', \{ className: 'dig-cs-menu'/, 'the checkout menu is drawn')
+  assert.match(client, /function baseNameOf\(path\)/, 'the slash-aware leaf helper is back')
+  assert.match(status, /pickRepoRoot/, 'and the checkout picker helper too')
+  assert.match(client, /\.dig-cs-caret\{/, 'the caret style rule is back')
+  assert.ok((client.split("'composer.openPanel'").length - 1) >= 21, 'the panel-door tooltip ships in every dictionary')
+  assert.ok((client.split("'composer.repoHint'").length - 1) >= 21, 'the switch-repository tooltip ships in every dictionary')
+
+  // …but every one of them answers to the placement switch, so "off" is a real
+  // state and not a half-rendered one.
+  assert.match(client, /function composerRepoPillEnabled\(\)/, 'the pill has its own config reader')
+  assert.match(client, /value\.composerRepoPill/, 'and reads the composerRepoPill row field')
+  assert.match(status, /useState\(\(\) => composerRepoPillEnabled\(\)\)/, 'the component seeds from it')
+  assert.match(status, /setRepoPill\(composerRepoPillEnabled\(\)\)/, 'and re-reads it when the card flips it')
+  assert.match(status, /repoPill !== true \? null : E\('button', \{\s*type: 'button',\s*className: 'dig-cs-pill dig-cs-repo'/,
+    'the pill renders only when the switch is on')
+  assert.match(status, /repoPill !== true \|\| singleRepo === true \? null : E\('button'/, 'the caret follows the same switch')
+  assert.match(status, /repoPill === true && menu === 'repo' \? E\('div', \{ className: 'dig-cs-menu'/, 'and so does its menu')
+
+  // The settings card carries the row, the host declares the field (an
+  // undeclared row-Config field is refused on write — see composerStatus).
+  assert.match(client, /t\('settings\.placement\.repoPill'\)/, 'the placement section has the row')
+  assert.match(client, /t\('settings\.placement\.repoPillHint'\)/, 'with its hint')
+  assert.ok((client.split("'settings.placement.repoPill'").length - 1) >= 21, 'the row label ships in every dictionary')
+  assert.ok((client.split("'settings.placement.repoPillHint'").length - 1) >= 21, 'the hint ships in every dictionary')
+  assert.match(host, /shape\.composerRepoPill = live\(schema\.boolean\(\)\.default\(true\)\)/,
+    'the host declares the field, and defaults it ON')
+
+  // What stays untouched either way: the branch pill and the counters.
   assert.match(status, /title: t\('composer\.branchHint'\)/, 'the branch pill still names its checkout picker')
   assert.match(status, /E\(Icon, \{ name: 'branch', size: 13 \}\)/, 'and still draws the branch glyph')
   assert.match(status, /dig-cs-changes/, 'the uncommitted counter stays')

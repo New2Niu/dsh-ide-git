@@ -83,7 +83,7 @@
 17. **面板有两面,`mode` 说了算,explorer 只从分支图标进**(v0.20.0 起,用户需求)。`Panel` 的 `props.mode`(`'changes'` 默认 | `'explore'`)决定画哪一面:
    - `changes`(默认页签)= **变更 + 提交框**,三种 chrome 下都是单列;body 类名保持 `dig-body dig-body-<chrome> dig-body-changes`——**chrome token 必须留在类名里**,`layout-probe` / `panes-probe` 靠它读布局判定;内容外层是 `dig-pane-main`(变更 + 内嵌 diff 兜底)。
    - `explore`(explorer 页签)= **分支树 | 提交图谱 | 提交详情**:`columns` 三栏并排(tree | log+diff | 详情列,详情列复用 `changes` 这个 pane key 的宽度与分隔条;未选中提交时显示 `detail.pickHint`),窄/堆叠时 tree 在上、log 与 detail 在中区互换、diff 在下。
-   - **入口唯一**:动作条上的 `tree` 动作。changes 面上 `label = t('rail.explore')`、`run = props.openExplore()`(宿主没有开门能力时 `available: false`,按钮**根本不渲染**);explore 面上同一个按钮是 `foldTree(!treeOpen)`。双通道开门收在 `gitSeatHost(ctx)` + `openGitSeat(ctx, seat, sessionId, cwd)` 一对 helper 里(better-sidebar `openTab({ type, target: 'right' })`;原生 `sidebarRight.openTab(kind)`);v0.20.0 起**唯一调用方就是这枚 `tree` 动作**(seat `'explore'`)——输入框那颗仓库胶囊已按用户要求删除,输入框里只剩分支胶囊 + ±/↑/↓ 计数。
+   - **入口唯一**:动作条上的 `tree` 动作。changes 面上 `label = t('rail.explore')`、`run = props.openExplore()`(宿主没有开门能力时 `available: false`,按钮**根本不渲染**);explore 面上同一个按钮是 `foldTree(!treeOpen)`。双通道开门收在 `gitSeatHost(ctx)` + `openGitSeat(ctx, seat, sessionId, cwd)` 一对 helper 里(better-sidebar `openTab({ type, target: 'right' })`;原生 `sidebarRight.openTab(kind)`)。调用方两个:这枚 `tree` 动作(seat `'explore'`),以及**输入框的仓库胶囊**(seat `'panel'`,v0.20.0 删、v0.19.9/同日恢复并由 `composerRepoPill` 开关控制,见设置 →「面板放置」;关掉后输入框只剩分支胶囊 + ±/↑/↓ 计数)。
    - **explorer 不许进任何目录**:底座侧 `hidden: true`(不进 `+` 菜单、不进开始页卡片),原生侧**不写 `guide`**(开始页只留一张 Git 卡片)——开始页多出一张卡就是回归。
    - 回归:**改到「有数据才出现」的 explorer chrome,必须跑 `layout-probe` / `panes-probe` / `conversation-probe`**(树 / 提交列表 / 详情现在只在这两面里画);`ssr-check` 会把两面各渲染一次,但它只覆盖初始态。
 
