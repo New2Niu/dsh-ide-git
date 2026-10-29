@@ -5,6 +5,13 @@
 
 ## Unreleased
 
+**类型**:feat(输入框只留分支胶囊;仓库胶囊按用户要求删除)
+
+- **feat 删掉输入框里的仓库胶囊**(用户要求,附截图):输入框工具条上那颗「commit 图标 + 仓库名」(`.dig-cs-pill.dig-cs-repo`,v0.19.x 加的「点仓库名开 Git 面板」)整颗删除——用户读它像「输入框左边塞了个文件夹」。随它一起下去的还有:那颗箭头切换按钮(`.dig-cs-caret`)、仓库选择菜单(`menu === 'repo'` 那一支)、只有它们用的 `pickRepoRoot` / `baseNameOf` 两个 helper、两条 `.dig-cs-item-main`·`.dig-cs-item-sub` 样式,以及文案键 `composer.openPanel` / `composer.repoHint`(21 门词典同步删除,不留死键)。
+- **保留**:分支胶囊(点开分支列表直接签出)、着色的 `±` 未提交 / `↓` 可拉取 / `↑` 待推送计数、错误提示 `×`,以及 `composerStatus` 开关(设置项如旧,默认开)。**开面板的入口不再经过输入框**:侧栏卡片 / `+` 菜单 / 开始页 Git 卡片 / 动作条的 `tree` 按钮。
+- **设置文案同步**:`settings.composer.hint` 21 门语言从「显示仓库与分支」改成「显示分支与变更计数」(zh-Hans / zh-Hant / 粵語照旧分三份,各自措辞)。
+- **验证**:`npm test` 119 项全绿(原「仓库名开面板」那条测试改写成回归守卫:仓库胶囊与其样式/菜单/helper/文案键都不得回归、分支胶囊与三色计数必须还在、`openGitSeat` 仍由动作条 `tree` 调用)。**客户端半改动,实例是软链到本仓库的**,硬刷新页面即生效(无需重启 `dsh web`,本次没动宿主半)。
+
 **类型**:docs(README 效果图换成两张真机图;AGENTS 记录新事实)
 
 - **docs 效果图**:README 的 `## 效果` / `## Screenshots` 换成用户提供的**两张真机全窗口截图**——`docs/screenshots/1-changes-commit-box.png`(默认页签:变更 + 提交框,右侧栏紧凑布局)与 `docs/screenshots/2-explorer-commits.png`(explorer 页签:分支与提交,提交列表 + 图谱),一图一面;图注只写图里看得见的东西(那张仓库是干净的,就写「没有未提交的变更」)。旧演示仓库那 6 张(`1-bottom-workbench.png` … `6-right-sidebar.png`)一并删除——它们拍的是旧版单页签布局。

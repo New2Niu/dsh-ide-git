@@ -1761,13 +1761,12 @@ test('split + wrap rows share one source, and the preview carries a render bound
   assert.match(cssRule('.dig-preview-boundary'), /var\(--dsw-alias-label-secondary\)/, 'the fallback line stays quiet, not alarm-red')
 })
 
-test('the composer repo pill opens the Git panel seat (user request)', () => {
-  // The repository name in the input bar doubles as the door into the tool
-  // window: clicking it opens the panel in the right column and focuses it
-  // (user request). Which seat draws that column is the host's call, so the
-  // order mirrors the registration rule — better-sidebar first (once loaded it
-  // OWNS the tab and our native seats are gone), the native right sidebar
-  // second. A host with neither leaves the click inert instead of throwing.
+test('the input bar carries the branch pill only — the repository pill is gone (user request)', () => {
+  // v0.20.0: the repository pill (commit glyph + repo name) was deleted from
+  // the composer tool row — the user read it as "a folder sitting in my input
+  // bar". The branch pill and the ±/↑/↓ counters stay, and the seat door it
+  // used to double as still lives on the rail button, so the helper is still
+  // exercised through the explorer seat.
   const helper = client.slice(client.indexOf('function gitSeatHost('), client.indexOf('const COMPOSER_POLL_MS'))
   assert.ok(helper.length > 0, 'the seat-door helper must exist')
   const better = helper.indexOf("door.service.openTab({ type: explorer ? TAB_EXPLORE_ID : TAB_ID, target: 'right' }")
@@ -1776,22 +1775,27 @@ test('the composer repo pill opens the Git panel seat (user request)', () => {
   assert.ok(native > better, 'better-sidebar is asked first, the native seat second')
   assert.match(helper, /typeof betterSidebar\.openTab === 'function'/, 'the better-sidebar path is capability-gated')
   assert.match(helper, /typeof sidebarRight\.openTab === 'function'/, 'the native path is capability-gated too')
-  assert.match(client, /openGitSeat\(ctx, 'panel', sessionId, cwd\)/, 'the pill asks for the changes panel')
+  assert.match(client, /openGitSeat\(props\.ctx, 'explore', scope\.sessionId, scope\.cwd\)/,
+    'the rail button is the remaining caller of the seat door')
 
-  // The name button opens the panel; the caret keeps the checkout picker. A
-  // single-repo workspace has nothing to pick, so the caret is dropped and the
-  // whole pill is the door — the old `disabled: singleRepo === true` spelling
-  // made that click dead (which is what the request was about).
-  const pill = client.slice(client.indexOf("className: 'dig-cs-pill dig-cs-repo'"), client.indexOf("menu === 'repo' ? E('div'"))
-  assert.match(pill, /onClick: openPanel/, 'the repository name opens the panel')
-  assert.match(pill, /title: t\('composer\.openPanel'\)/, 'and says so in its tooltip')
-  assert.match(pill, /className: 'dig-cs-pill dig-cs-caret'/, 'the caret is its own button')
-  assert.match(pill, /setMenu\(menu === 'repo' \? null : 'repo'\)/, 'the caret still opens the checkout picker')
-  assert.match(pill, /singleRepo === true \? null : E\('button', \{\s*type: 'button',\s*className: 'dig-cs-pill dig-cs-caret'/,
-    'one checkout means no caret at all')
-  assert.doesNotMatch(pill, /disabled: singleRepo === true/, 'a single-repo pill is a live button now')
-  assert.ok((client.split("'composer.openPanel'").length - 1) >= 21,
-    'the new tooltip ships in ZH + EN + every LOCALES entry')
+  // No repository label, no caret, no repository picker menu — and none of
+  // their now-dead strings (the tooltip keys went with them in every locale).
+  const status = client.slice(client.indexOf('function ComposerGitStatus('), client.indexOf('function ConversationPanel('))
+  assert.ok(status.length > 0, 'the composer status component must stay')
+  assert.doesNotMatch(status, /dig-cs-repo/, 'the repository pill is deleted')
+  assert.doesNotMatch(status, /dig-cs-caret/, 'its caret goes with it')
+  assert.doesNotMatch(status, /menu === 'repo'/, 'and so does the repository picker menu')
+  assert.doesNotMatch(status, /baseNameOf|pickRepoRoot/, 'the helpers only the repository pill used are gone')
+  assert.doesNotMatch(client, /'composer\.openPanel'/, 'the panel-door tooltip key is retired from every locale')
+  assert.doesNotMatch(client, /'composer\.repoHint'/, 'the switch-repository tooltip key is retired too')
+  assert.doesNotMatch(client, /\.dig-cs-caret\{/, 'the caret style rule is deleted with the button')
+
+  // What stays: the branch pill (its own checkout picker) and the counters.
+  assert.match(status, /title: t\('composer\.branchHint'\)/, 'the branch pill still names its checkout picker')
+  assert.match(status, /E\(Icon, \{ name: 'branch', size: 13 \}\)/, 'and still draws the branch glyph')
+  assert.match(status, /dig-cs-changes/, 'the uncommitted counter stays')
+  assert.match(status, /dig-cs-behind/, 'the pullable counter stays')
+  assert.match(status, /dig-cs-ahead/, 'the to-push counter stays')
 })
 
 test('the panel is two faces: 变更+提交框, and an IDE explorer in its own tab (user request)', () => {
