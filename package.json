@@ -1,6 +1,6 @@
 {
   "name": "dsh-ide-git",
-  "version": "0.19.8",
+  "version": "0.29.0",
   "description": "DSH plugin: an IDE-grade Git tool window as a native dsh-better-sidebar tab — branch tree, commit graph, changes, commit details, JetBrains-style actions, in the right sidebar and the bottom panel. | DSH 插件:IDE 级 Git 工具窗口,以 dsh-better-sidebar 原生 Tab 挂载——分支树 / 提交图谱 / 变更与提交详情 / JetBrains 风格操作,右侧栏与底部面板双布局自适应。",
   "type": "module",
   "repository": {
@@ -18,8 +18,8 @@
     "./locale/*.json": "./locale/*.json"
   },
   "engines": {
-    "node": ">=18",
-    "dsh": ">=0.1.6-alpha.2"
+    "node": ">=24.9.0",
+    "dsh": ">=0.2.2-rc.1"
   },
   "dsh": {
     "bundle": {
@@ -29,6 +29,7 @@
       "inject": [
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-client-modules",
         "@deepseek-ai/dsh-client-ui-conversation"
       ],
@@ -39,6 +40,7 @@
     "icon.svg",
     "locale",
     "src/index.js",
+    "src/host",
     "src/client.js",
     "cordis.patch.yml",
     "dsh.plugin.json",
@@ -48,7 +50,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test tests/smoke.mjs tests/api.test.mjs tests/graph.test.mjs tests/repos.test.mjs",
+    "test": "node --test tests/smoke.mjs tests/api.test.mjs tests/graph.test.mjs tests/repos.test.mjs tests/date-format.test.mjs",
     "version": "node -e \"const fs=require('fs');const m=JSON.parse(fs.readFileSync('dsh.plugin.json','utf8'));const v=JSON.parse(fs.readFileSync('package.json','utf8')).version;m.version=v;fs.writeFileSync('dsh.plugin.json',JSON.stringify(m,null,2)+'\\n')\" && git add dsh.plugin.json",
     "probe:settings-card": "node scripts/settings-card-probe.mjs"
   },
@@ -66,7 +68,7 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh": ">=0.1.6-alpha.2",
+    "@deepseek-ai/dsh": ">=0.2.2-rc.1",
     "dsh-better-sidebar": ">=0.12.0"
   },
   "peerDependenciesMeta": {

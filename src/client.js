@@ -9,8 +9,8 @@
  * chrome:
  *
  *   columns  wide and tall enough : repo/branch bar | tree | graph | changes
- *   stack    narrow and tall      : changes over graph, collapsible tree
- *   compact  short or very narrow : one header row + a Changes/History switch
+ *   stack    narrow and tall      : changes over a tabbed history/diff window
+ *   compact  very narrow          : changes on top + the same tabbed window
  *
  * Theming: no hard-coded surfaces. Every surface is a --dsw-alias-* token, so
  * transparent themes and background plugins (dsh-any-background) show through,
@@ -97,6 +97,8 @@ window.__ModuleLoader__.load({
       'repo.nested': '子仓库',
       'repo.none': '当前工作区不是 Git 仓库',
       'repo.pick': '选择要查看的仓库',
+      'repo.filter': '搜索仓库',
+      'picker.empty': '没有匹配项',
       'repo.empty': '这个工作区下没有找到 Git 仓库',
       'repo.switch': '切换仓库',
       'branch.switch': '切换分支',
@@ -172,13 +174,16 @@ window.__ModuleLoader__.load({
       'action.fullscreen': '全屏',
       'action.exitFullscreen': '退出全屏',
       'action.newBranchFrom': '从该分支新建分支...',
+      'action.setUpstream': '设置上游…',
+      'action.unsetUpstream': '取消上游',
+      'action.createLocalBranch': '创建本地分支…',
       'action.newBranchHere': '在此新建分支...',
       'action.rename': '重命名...',
       'action.delete': '删除',
       'action.mergeIntoCurrent': '合并到当前分支',
       'action.rebaseCurrentOnto': '将当前分支变基到此',
       'action.compare': '与当前分支比较',
-      'action.update': '更新(Fetch)',
+      'action.update': '拉取',
       'action.push': '推送',
       'action.newTag': '新建标签...',
       'action.cherryPick': '优选(Cherry-Pick)',
@@ -230,6 +235,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': '全部提交...',
       'more.undoCommit': '撤销上次提交',
       'more.rebaseAbort': '中止变基',
+      'more.mergeAbort': '中止合并',
       'more.commitStagedAmend': '提交已暂存文件(修改)...',
       'more.commitAllAmend': '全部提交(修改)...',
       'more.commitStagedSign': '提交已暂存文件(已签收)...',
@@ -245,6 +251,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': '从所有远程抓取',
       'more.deleteRemoteBranch': '删除远程分支...',
       'more.publish': '发布分支...',
+      'more.setUpstreamHead': '设置当前分支上游…',
+      'more.unsetUpstreamHead': '取消当前分支上游',
       'more.addRemote': '添加远程...',
       'more.removeRemote': '删除远程...',
       'more.stashTracked': '贮藏(仅已跟踪)',
@@ -299,8 +307,9 @@ window.__ModuleLoader__.load({
       'explore.description': '分支树、提交列表与提交详情(IDE 风格)',
       'rail.openSettings': '打开插件设置',
       'settings.card.title': 'Git 工具窗口设置',
-      'settings.card.desc': '面板放置、动作条按钮与 AI 提交信息',
+      'settings.card.desc': '面板放置、动作条按钮、日期格式与 AI 提交信息',
       'settings.placement.title': '面板放置',
+      'settings.history.title': '历史列表',
       'settings.placement.tab': '在主对话区显示 Git 标签页',
       'settings.composer.title': '输入框 Git 状态',
       'settings.composer.hint': '在输入框工具条显示仓库与分支(可点击切换,与 Git 面板联动);关闭后输入框不再显示。',
@@ -308,6 +317,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': '切换分支',
       'composer.detached': 'HEAD(游离)',
       'composer.changesHint': '未提交变更数',
+      'composer.fileHint': '新增 {a} · 删除 {d} 个文件',
+      'composer.linesHint': '+{ins} −{del} 行',
+      'modelRoute.pick': '选择模型',
+      'modelRoute.trigger': 'AI 提交信息模型',
+      'modelRoute.modelRow': '模型',
+      'modelRoute.effortRow': '思考',
+      'modelRoute.effortDefault': '跟随默认',
+      'modelRoute.empty': '暂无可用模型',
       'composer.behindHint': '远程新提交(可拉取)',
       'composer.aheadHint': '本地待推送提交',
       'composer.inWorktree': '已被其他工作树签出',
@@ -318,6 +335,11 @@ window.__ModuleLoader__.load({
       'settings.placement.immersiveHint': '开启后 Git 标签页占满整个会话区高度,输入框自动收起;审批与提问仍会正常显示。',
       'settings.placement.repoPill': '在输入框显示仓库胶囊',
       'settings.placement.repoPillHint': '仓库名胶囊在工具条最左侧,点击打开 Git 面板;多仓库工作区还会多出一个切换箭号。关闭后输入框只留分支与变更计数。',
+      'settings.date.label': '日期格式',
+      'settings.date.relative': '相对时间 (4h / 22h)',
+      'settings.date.absolute': '绝对时间 (11-05 10:42)',
+      'settings.diff.inline': '在面板内预览差异',
+      'settings.diff.inlineHint': '开启后差异在 Git 面板内打开，可使用左右分栏与自动换行；关闭后交给侧边栏的 diff 预览。',
       'preview.openFile': '打开文件预览',
       'lf.added': '+{count}',
       'lf.deleted': '-{count}',
@@ -333,7 +355,8 @@ window.__ModuleLoader__.load({
       'preview.hint': '点击文件或提交的「显示差异」,差异会在侧边栏这里打开。',
       'preview.boundary': '预览渲染出错——请重载页面,或反馈这个问题。',
       'settings.rail.title': '动作条',
-      'settings.rail.hint': '勾选要显示在动作条上的动作;顺序固定为默认顺序,取消勾选即隐藏。',
+      'settings.rail.hint': '勾选要显示在动作条上的动作；取消勾选即隐藏。拖动排序请用面板内的「动作条设置」。',
+      'settings.rail.loading': '正在加载设置…',
       'settings.rail.unavailable': '当前宿主没有设置服务,请用面板内的「动作条设置」。',
       'settings.commit.title': 'AI 提交信息',
       'settings.commit.model': '使用的模型',
@@ -364,6 +387,19 @@ window.__ModuleLoader__.load({
       'rail.hide': '隐藏',
       'action.unavailable': '当前状态不可用',
       'filter.branch': '分支',
+      'history.scope': '范围',
+      'history.scopeCurrent': '当前分支',
+      'history.scopeAll': '全部分支',
+      'merge.title': '合并 {branch}',
+      'merge.into': '把 {branch} 合并进当前分支',
+      'merge.modeDefault': '默认',
+      'merge.modeNoFf': '--no-ff',
+      'merge.modeSquash': '--squash',
+      'merge.modeNoCommit': '--no-commit',
+      'merge.hint.default': '能快进时直接快进，不生成合并提交。',
+      'merge.hint.noFf': '总是生成一个合并提交，历史里能看出这次合并。',
+      'merge.hint.squash': '把 {branch} 的改动合成一个待提交的变更，不保留它的提交历史。',
+      'merge.hint.noCommit': '生成合并结果但停在提交前，方便检查或补充改动。',
       'filter.user': '用户',
       'history.me': '我',
       'filter.date': '日期',
@@ -402,14 +438,43 @@ window.__ModuleLoader__.load({
       'operation.revert': '还原进行中',
       'operation.bisect': '二分定位进行中',
       'operation.hint': '该仓库还有一个多步操作没有结束,先完成或中止它再执行分支级操作',
+        'worktrees.title': '工作树',
+        'worktrees.new': '新建工作树',
+        'worktrees.prune': '清理失效记录',
+        'worktrees.back': '返回',
+        'worktrees.current': '当前',
+        'worktrees.primary': '主工作树',
+        'worktrees.locked': '已锁定',
+        'worktrees.prunable': '可清理',
+        'worktrees.detached': '游离 HEAD',
+        'worktrees.open': '在面板中打开',
+        'worktrees.remove': '移除工作树',
+        'worktrees.removeConfirm': '移除工作树 {path}?',
+        'worktrees.removeDirty': '工作树 {path} 还有未提交的改动。强制移除会永久丢弃这些改动,确定?',
+        'worktrees.path': '路径',
+        'worktrees.branch': '分支',
+        'worktrees.newBranch': '新分支',
+        'worktrees.existingBranch': '已有分支',
+        'worktrees.base': '起点',
+        'worktrees.create': '创建',
+        'worktrees.empty': '没有工作树',
+        'worktrees.pruneConfirm': '清理已在磁盘上消失的工作树记录?',
+        'toast.worktreeAdded': '已创建工作树 {path}',
+        'toast.worktreeRemoved': '已移除工作树 {path}',
+        'toast.worktreePruned': '已清理失效的工作树记录',
       'confirm.title': '确认操作',
       'confirm.cancel': '取消',
       'confirm.ok': '确定',
       'prompt.newBranch': '新分支名(将创建并签出)',
+      'prompt.createTracking': '从远程分支创建本地分支',
       'prompt.renameBranch': '重命名分支',
       'prompt.newTag': '新标签名',
       'prompt.fromHead': '当前 HEAD',
       'error.dismiss': '关闭',
+      'error.pushRejected': '推送被拒绝：远程分支上有你本地没有的提交。请先「同步」（拉取并推送），或拉取合并后再推送。',
+      'error.pullDiverged': '本地和远程各有新提交，无法快进。请用「拉取」合并，或改用「拉取(变基)」。',
+      'error.pullConflict': '拉取时发生冲突：请在「变更」里解决冲突文件并提交，然后继续。',
+      'error.pullDirty': '拉取会覆盖本地未提交的更改：请先提交或贮藏这些更改。',
       'status.loading': '正在读取...',
       'status.busy': '处理中...',
       'counts.staged': '已暂存 {n}',
@@ -424,6 +489,10 @@ window.__ModuleLoader__.load({
       'resetHard.confirm': '硬重置到 {hash}?未提交的更改会丢失。',
       'resetSoft.confirm': '将 HEAD 重置到 {hash}(保留工作区更改)?',
       'checkoutCommit.confirm': '签出提交 {hash}?(分离头指针)',
+      'seg.changes': '变更 {n}',
+      'seg.history': '历史',
+      'settings.history.visible': '在默认面显示历史列表',
+      'settings.history.visibleHint': '默认关闭;打开后默认面下方出现「历史 / 差异」双页签。提交列表始终在 explorer 页签里。',
     }
 
     const EN = {
@@ -434,6 +503,8 @@ window.__ModuleLoader__.load({
       'repo.nested': 'nested',
       'repo.none': 'This workspace is not a Git repository',
       'repo.pick': 'Pick a repository to inspect',
+      'repo.filter': 'Search repositories',
+      'picker.empty': 'No matches',
       'repo.empty': 'No Git repository found in this workspace',
       'repo.switch': 'Switch repository',
       'branch.switch': 'Switch branch',
@@ -506,13 +577,16 @@ window.__ModuleLoader__.load({
       'action.fullscreen': 'Full screen',
       'action.exitFullscreen': 'Exit full screen',
       'action.newBranchFrom': 'New branch from here...',
+      'action.setUpstream': 'Set Upstream…',
+      'action.unsetUpstream': 'Unset Upstream',
+      'action.createLocalBranch': 'Create Local Branch…',
       'action.newBranchHere': 'New branch here...',
       'action.rename': 'Rename...',
       'action.delete': 'Delete',
       'action.mergeIntoCurrent': 'Merge into current branch',
       'action.rebaseCurrentOnto': 'Rebase current branch onto this',
       'action.compare': 'Compare with current branch',
-      'action.update': 'Update (fetch)',
+      'action.update': 'Pull',
       'action.push': 'Push',
       'action.newTag': 'New tag...',
       'action.cherryPick': 'Cherry-pick',
@@ -564,6 +638,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Commit All...',
       'more.undoCommit': 'Undo Last Commit',
       'more.rebaseAbort': 'Abort Rebase',
+      'more.mergeAbort': 'Abort Merge',
       'more.commitStagedAmend': 'Commit Staged (Amend)...',
       'more.commitAllAmend': 'Commit All (Amend)...',
       'more.commitStagedSign': 'Commit Staged (Signed Off)...',
@@ -579,6 +654,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Fetch from All Remotes',
       'more.deleteRemoteBranch': 'Delete Remote Branch...',
       'more.publish': 'Publish Branch...',
+      'more.setUpstreamHead': 'Set Upstream for Current Branch…',
+      'more.unsetUpstreamHead': 'Unset Upstream of Current Branch',
       'more.addRemote': 'Add Remote...',
       'more.removeRemote': 'Remove Remote...',
       'more.stashTracked': 'Stash (Tracked Only)',
@@ -633,8 +710,9 @@ window.__ModuleLoader__.load({
       'explore.description': 'Branch tree, commit list and commit details (IDE style)',
       'rail.openSettings': 'Open plugin settings',
       'settings.card.title': 'Git tool window settings',
-      'settings.card.desc': 'Placement, action rail buttons and AI commit message',
+      'settings.card.desc': 'Placement, action rail buttons, date format and AI commit message',
       'settings.placement.title': 'Placement',
+      'settings.history.title': 'History list',
       'settings.placement.tab': 'Show the Git tab in the conversation area',
       'settings.composer.title': 'Git status in the input bar',
       'settings.composer.hint': 'Show repository and branch beside the composer tool row — click to switch, synced with the Git panel. Off, the input bar stays clean.',
@@ -642,6 +720,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Switch branch',
       'composer.detached': 'HEAD (detached)',
       'composer.changesHint': 'Uncommitted changes',
+      'composer.fileHint': '{a} added · {d} deleted files',
+      'composer.linesHint': '+{ins} −{del} lines',
+      'modelRoute.pick': 'Pick a model',
+      'modelRoute.trigger': 'AI commit message model',
+      'modelRoute.modelRow': 'Model',
+      'modelRoute.effortRow': 'Reasoning',
+      'modelRoute.effortDefault': 'Follow default',
+      'modelRoute.empty': 'No models available',
       'composer.behindHint': 'New upstream commits (pullable)',
       'composer.aheadHint': 'Local commits waiting to push',
       'composer.inWorktree': 'Checked out in another worktree',
@@ -652,6 +738,11 @@ window.__ModuleLoader__.load({
       'settings.placement.immersiveHint': 'On, the Git tab fills the whole conversation area and the composer steps aside; approvals and questions still show.',
       'settings.placement.repoPill': 'Show the repository pill in the input bar',
       'settings.placement.repoPillHint': 'The repository pill sits at the far left of the tool row — click it to open the Git panel; a multi-repository workspace also gets a switch caret. Off, the input bar keeps only the branch and the change counters.',
+      'settings.date.label': 'Date format',
+      'settings.date.relative': 'Relative (4h / 22h)',
+      'settings.date.absolute': 'Absolute (11-05 10:42)',
+      'settings.diff.inline': 'Preview diffs in the panel',
+      'settings.diff.inlineHint': 'On, diffs open inside the Git panel with split view and line wrap. Off, the sidebar\'s diff preview takes over.',
       'preview.openFile': 'Open in the file preview',
       'lf.added': '+{count}',
       'lf.deleted': '-{count}',
@@ -667,7 +758,8 @@ window.__ModuleLoader__.load({
       'preview.hint': 'Click “Show diff” on a file or commit — the diff opens here in the sidebar.',
       'preview.boundary': 'The preview failed to render — reload the page, or report an issue.',
       'settings.rail.title': 'Action rail',
-      'settings.rail.hint': 'Tick the actions shown on the rail. The order is fixed; unticking one hides it.',
+      'settings.rail.hint': 'Tick the actions shown on the rail; unticking one hides it. Reorder them in the panel’s “Action rail settings”.',
+      'settings.rail.loading': 'Loading settings…',
       'settings.rail.unavailable': 'This host has no settings service; use the in-panel “Action rail settings”.',
       'settings.commit.title': 'AI commit message',
       'settings.commit.model': 'Model',
@@ -698,6 +790,19 @@ window.__ModuleLoader__.load({
       'rail.hide': 'Hide',
       'action.unavailable': 'Not available in the current state',
       'filter.branch': 'Branch',
+      'history.scope': 'Scope',
+      'history.scopeCurrent': 'Current branch',
+      'history.scopeAll': 'All branches',
+      'merge.title': 'Merge {branch}',
+      'merge.into': 'Merge {branch} into the current branch',
+      'merge.modeDefault': 'Default',
+      'merge.modeNoFf': '--no-ff',
+      'merge.modeSquash': '--squash',
+      'merge.modeNoCommit': '--no-commit',
+      'merge.hint.default': 'Fast-forwards when possible, without a merge commit.',
+      'merge.hint.noFf': 'Always creates a merge commit, so the merge stays visible in history.',
+      'merge.hint.squash': 'Combines the changes from {branch} into one staged change, without its commit history.',
+      'merge.hint.noCommit': 'Prepares the merge and stops before committing, so you can review or adjust it.',
       'filter.user': 'User',
       'history.me': 'Me',
       'filter.date': 'Date',
@@ -736,14 +841,43 @@ window.__ModuleLoader__.load({
       'operation.revert': 'Revert in progress',
       'operation.bisect': 'Bisect in progress',
       'operation.hint': 'This repository still has a multi-step operation open — finish or abort it before branch-level actions',
+        'worktrees.title': 'Worktrees',
+        'worktrees.new': 'New worktree',
+        'worktrees.prune': 'Prune stale entries',
+        'worktrees.back': 'Back',
+        'worktrees.current': 'Current',
+        'worktrees.primary': 'Primary',
+        'worktrees.locked': 'Locked',
+        'worktrees.prunable': 'Prunable',
+        'worktrees.detached': 'Detached HEAD',
+        'worktrees.open': 'Open in panel',
+        'worktrees.remove': 'Remove worktree',
+        'worktrees.removeConfirm': 'Remove worktree {path}?',
+        'worktrees.removeDirty': 'Worktree {path} has uncommitted changes. Force removal permanently discards them. Continue?',
+        'worktrees.path': 'Path',
+        'worktrees.branch': 'Branch',
+        'worktrees.newBranch': 'New branch',
+        'worktrees.existingBranch': 'Existing branch',
+        'worktrees.base': 'Start point',
+        'worktrees.create': 'Create',
+        'worktrees.empty': 'No worktrees',
+        'worktrees.pruneConfirm': 'Prune worktree records whose directories are gone?',
+        'toast.worktreeAdded': 'Created worktree {path}',
+        'toast.worktreeRemoved': 'Removed worktree {path}',
+        'toast.worktreePruned': 'Pruned stale worktree records',
       'confirm.title': 'Confirm',
       'confirm.cancel': 'Cancel',
       'confirm.ok': 'OK',
       'prompt.newBranch': 'New branch name (created and checked out)',
+      'prompt.createTracking': 'Create a local branch from the remote one',
       'prompt.renameBranch': 'Rename branch',
       'prompt.newTag': 'New tag name',
       'prompt.fromHead': 'current HEAD',
       'error.dismiss': 'Dismiss',
+      'error.pushRejected': 'Push rejected: the remote branch has commits you do not have. Sync (pull and push), or pull (merge) and push again.',
+      'error.pullDiverged': 'Local and remote have both moved, so a fast-forward is impossible. Pull with merge, or use Pull (Rebase).',
+      'error.pullConflict': 'Pull stopped on conflicts: resolve the conflicted files under Changes, then commit.',
+      'error.pullDirty': 'Pull would overwrite uncommitted local changes. Commit or stash them first.',
       'status.loading': 'Reading...',
       'status.busy': 'Working...',
       'counts.staged': 'Staged {n}',
@@ -758,6 +892,10 @@ window.__ModuleLoader__.load({
       'resetHard.confirm': 'Hard reset to {hash}? Uncommitted changes are lost.',
       'resetSoft.confirm': 'Move HEAD to {hash} (working tree kept)?',
       'checkoutCommit.confirm': 'Check out commit {hash}? (detached HEAD)',
+      'seg.changes': 'Changes {n}',
+      'seg.history': 'History',
+      'settings.history.visible': 'Show the history list on the default tab',
+      'settings.history.visibleHint': 'Off by default. Turn it on to show the tabbed history | diff window below the changes list; the commit list always lives in the explorer tab.',
     }
 
     /* Third-language dictionaries, keyed by lowercase BCP-47 tag. Every entry
@@ -776,6 +914,8 @@ window.__ModuleLoader__.load({
         'repo.nested': '巢狀',
         'repo.none': '呢個工作區唔係 Git 存放庫',
         'repo.pick': '揀一個存放庫嚟睇',
+        'repo.filter': '搵存放庫',
+        'picker.empty': '冇相符項目',
         'repo.empty': '呢個工作區搵唔到 Git 存放庫',
         'repo.switch': '切換存放庫',
         'branch.switch': '切換分支',
@@ -848,13 +988,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': '全螢幕',
         'action.exitFullscreen': '結束全螢幕',
         'action.newBranchFrom': '由此新建分支...',
+        'action.setUpstream': '設定上游…',
+        'action.unsetUpstream': '取消上游',
+        'action.createLocalBranch': '建立本地分支…',
         'action.newBranchHere': '喺呢度新建分支...',
         'action.rename': '重新命名...',
         'action.delete': '刪除',
         'action.mergeIntoCurrent': '合併到當前分支',
         'action.rebaseCurrentOnto': '將當前分支變基到此',
         'action.compare': '同當前分支比較',
-        'action.update': '更新(抓取)',
+      'action.update': '拉取',
         'action.push': '推送',
         'action.newTag': '新建標籤...',
         'action.cherryPick': '揀選',
@@ -906,6 +1049,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': '全部提交...',
       'more.undoCommit': '撤銷上次提交',
       'more.rebaseAbort': '中止變基',
+      'more.mergeAbort': '中止合併',
       'more.commitStagedAmend': '提交已暫存檔案(修改)...',
       'more.commitAllAmend': '全部提交(修改)...',
       'more.commitStagedSign': '提交已暫存檔案(已簽收)...',
@@ -921,6 +1065,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': '從所有遠端抓取',
       'more.deleteRemoteBranch': '刪除遠端分支...',
       'more.publish': '發布分支...',
+      'more.setUpstreamHead': '設定目前分支上游…',
+      'more.unsetUpstreamHead': '取消目前分支上游',
       'more.addRemote': '新增遠端...',
       'more.removeRemote': '刪除遠端...',
       'more.stashTracked': '儲存(僅已追蹤)',
@@ -975,8 +1121,9 @@ window.__ModuleLoader__.load({
         'explore.description': '分支樹、提交清單與提交詳情(IDE 風格)',
         'rail.openSettings': '開啟外掛設定',
         'settings.card.title': 'Git 工具視窗設定',
-        'settings.card.desc': '面板放置、動作列按鈕與 AI 提交訊息',
+        'settings.card.desc': '面板放置、動作列按鈕、日期格式與 AI 提交訊息',
         'settings.placement.title': '面板放置',
+        'settings.history.title': '歷史列表',
         'settings.placement.tab': '喺主對話區顯示 Git 分頁',
       'settings.composer.title': '輸入框 Git 狀態',
       'settings.composer.hint': '喺輸入框工具列顯示儲存庫同分支(可以點擊切換,同 Git 面板聯動);關閉之後輸入框就唔會再顯示。',
@@ -984,6 +1131,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': '切換分支',
       'composer.detached': 'HEAD(游離)',
       'composer.changesHint': '未提交變更數',
+      'composer.fileHint': '新增 {a} · 刪除 {d} 個檔案',
+      'composer.linesHint': '+{ins} −{del} 行',
+      'modelRoute.pick': '選擇模型',
+      'modelRoute.trigger': 'AI 提交訊息模型',
+      'modelRoute.modelRow': '模型',
+      'modelRoute.effortRow': '思考',
+      'modelRoute.effortDefault': '跟隨預設',
+      'modelRoute.empty': '暫無可用模型',
       'composer.behindHint': '遠端新提交(可以拉取)',
       'composer.aheadHint': '本地等待推送提交',
       'composer.inWorktree': '已經喺其他工作樹簽出',
@@ -994,6 +1149,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個會話區高度,輸入框自動收起;審批與提問仍會正常顯示。',
         'settings.placement.repoPill': '喺輸入框顯示倉庫膠囊',
         'settings.placement.repoPillHint': '倉庫名膠囊喺工具列最左邊,點擊開啟 Git 面板;多倉庫工作區仲會有切換箭咀。關閉之後輸入框只留分支同變更計數。',
+        'settings.date.label': '日期格式',
+        'settings.date.relative': '相對時間 (4h / 22h)',
+        'settings.date.absolute': '絕對時間 (11-05 10:42)',
+        'settings.diff.inline': '喺面板內預覽差異',
+        'settings.diff.inlineHint': '開啟之後差異喺 Git 面板內開啟，可以用左右分欄同自動換行；關閉之後交畀側邊欄嘅 diff 預覽。',
         'preview.openFile': '開啟檔案預覽',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -1009,7 +1169,8 @@ window.__ModuleLoader__.load({
         'preview.hint': '喺檔案或提交撳「顯示差異」,差異就會喺側邊欄度開啟。',
         'preview.boundary': '預覽渲染出錯——請重新載入頁面,或者回報呢個問題。',
         'settings.rail.title': '動作列',
-        'settings.rail.hint': '勾選要顯示在動作列上的動作;順序固定,取消勾選即隱藏。',
+        'settings.rail.hint': '勾選要顯示在動作列上的動作；取消勾選即隱藏。拖曳排序請用面板內的「動作條設定」。',
+        'settings.rail.loading': '正在載入設定…',
         'settings.rail.unavailable': '目前宿主沒有設定服務,請用面板內的「動作條設定」。',
         'settings.commit.title': 'AI 提交訊息',
         'settings.commit.model': '使用嘅模型',
@@ -1040,6 +1201,19 @@ window.__ModuleLoader__.load({
         'rail.hide': '隱藏',
         'action.unavailable': '當前狀態下唔可用',
         'filter.branch': '分支',
+        'history.scope': '範圍',
+        'history.scopeCurrent': '目前分支',
+        'history.scopeAll': '全部分支',
+        'merge.title': '合併 {branch}',
+        'merge.into': '將 {branch} 合併進目前分支',
+        'merge.modeDefault': '預設',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': '可以快進時直接快進，唔會產生合併提交。',
+        'merge.hint.noFf': '總是產生合併提交，歷史裡可以睇到這次合併。',
+        'merge.hint.squash': '將 {branch} 的改動合成一個待提交的變更，唔保留它的提交歷史。',
+        'merge.hint.noCommit': '產生合併結果但停在提交前，方便檢查或補充改動。',
         'filter.user': '提交者',
         'history.me': '我',
         'filter.date': '日期',
@@ -1078,14 +1252,43 @@ window.__ModuleLoader__.load({
         'operation.revert': '還原進行中',
         'operation.bisect': 'Bisect 進行中',
         'operation.hint': '呢個存放庫仲有未完成嘅多步操作 —— 請先完成或中止,再進行分支層級嘅操作',
+        'worktrees.title': '工作樹',
+        'worktrees.new': '新增工作樹',
+        'worktrees.prune': '清理失效記錄',
+        'worktrees.back': '返回',
+        'worktrees.current': '目前',
+        'worktrees.primary': '主工作樹',
+        'worktrees.locked': '已鎖定',
+        'worktrees.prunable': '可清理',
+        'worktrees.detached': '分離 HEAD',
+        'worktrees.open': '喺面板打開',
+        'worktrees.remove': '移除工作樹',
+        'worktrees.removeConfirm': '移除工作樹 {path}?',
+        'worktrees.removeDirty': '工作樹 {path} 仲有未提交嘅改動。強制移除會永久丟棄呢啲改動,確定?',
+        'worktrees.path': '路徑',
+        'worktrees.branch': '分支',
+        'worktrees.newBranch': '新分支',
+        'worktrees.existingBranch': '現有分支',
+        'worktrees.base': '起點',
+        'worktrees.create': '建立',
+        'worktrees.empty': '冇工作樹',
+        'worktrees.pruneConfirm': '清理喺磁碟上已經消失嘅工作樹記錄?',
+        'toast.worktreeAdded': '已建立工作樹 {path}',
+        'toast.worktreeRemoved': '已移除工作樹 {path}',
+        'toast.worktreePruned': '已清理失效嘅工作樹記錄',
         'confirm.title': '確認',
         'confirm.cancel': '取消',
         'confirm.ok': '確定',
         'prompt.newBranch': '新分支名(建立並簽出)',
+        'prompt.createTracking': '從遠端分支建立本地分支',
         'prompt.renameBranch': '重新命名分支',
         'prompt.newTag': '新標籤名',
         'prompt.fromHead': '當前 HEAD',
         'error.dismiss': '關閉',
+        'error.pushRejected': '推送被拒絕:遠端分支有啲你本地冇嘅提交。請先同步(拉取並推送),或者拉取合併之後再推送。',
+        'error.pullDiverged': '本地同遠端各有新提交,唔可以快進。請用「拉取」合併,或者改用「拉取(變基)」。',
+        'error.pullConflict': '拉取時有衝突:喺「變更」入面解決衝突檔案並提交,然後繼續。',
+        'error.pullDirty': '拉取會覆蓋本地未提交嘅改動:請先提交或者貯藏呢啲改動。',
         'status.loading': '讀取中...',
         'status.busy': '處理中...',
         'counts.staged': '已暫存 {n}',
@@ -1100,6 +1303,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': '硬重置到 {hash}?未提交嘅變更會遺失。',
         'resetSoft.confirm': '將 HEAD 移到 {hash}(保留工作區)?',
         'checkoutCommit.confirm': '簽出提交 {hash}?(detached HEAD)',
+        'seg.history': '歷史',
+        'seg.changes': '變更 {n}',
+        'settings.history.visible': '喺預設面顯示歷史清單',
+        'settings.history.visibleHint': '預設關閉:預設頁籤只放「變更 + 提交框」;開啟後下方出現「歷史 / 差異」雙頁籤。提交清單喺 explorer 頁籤一直可見。',
       },
       /* locale: zh-tw */
       'zh-tw': {
@@ -1110,6 +1317,8 @@ window.__ModuleLoader__.load({
         'repo.nested': '巢狀',
         'repo.none': '這個工作區不是 Git 版本庫',
         'repo.pick': '選擇要檢視的版本庫',
+        'repo.filter': '搜尋版本庫',
+        'picker.empty': '沒有相符項目',
         'repo.empty': '這個工作區找不到 Git 版本庫',
         'repo.switch': '切換版本庫',
         'branch.switch': '切換分支',
@@ -1182,13 +1391,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': '全螢幕',
         'action.exitFullscreen': '結束全螢幕',
         'action.newBranchFrom': '由此新建分支...',
+        'action.setUpstream': '設定上游…',
+        'action.unsetUpstream': '取消上游',
+        'action.createLocalBranch': '建立本地分支…',
         'action.newBranchHere': '在此新建分支...',
         'action.rename': '重新命名...',
         'action.delete': '刪除',
         'action.mergeIntoCurrent': '合併到目前分支',
         'action.rebaseCurrentOnto': '將目前分支變基到此',
         'action.compare': '與目前分支比較',
-        'action.update': '更新(抓取)',
+      'action.update': '拉取',
         'action.push': '推送',
         'action.newTag': '新建標籤...',
         'action.cherryPick': '揀選',
@@ -1240,6 +1452,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': '全部提交...',
       'more.undoCommit': '復原上次提交',
       'more.rebaseAbort': '中止變基',
+      'more.mergeAbort': '中止合併',
       'more.commitStagedAmend': '提交已暫存檔案(修改)...',
       'more.commitAllAmend': '全部提交(修改)...',
       'more.commitStagedSign': '提交已暫存檔案(已簽核)...',
@@ -1255,6 +1468,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': '從所有遠端擷取',
       'more.deleteRemoteBranch': '刪除遠端分支...',
       'more.publish': '發佈分支...',
+      'more.setUpstreamHead': '設定目前分支上游…',
+      'more.unsetUpstreamHead': '取消目前分支上游',
       'more.addRemote': '新增遠端...',
       'more.removeRemote': '移除遠端...',
       'more.stashTracked': '擱置(僅已追蹤)',
@@ -1309,8 +1524,9 @@ window.__ModuleLoader__.load({
         'explore.description': '分支樹、提交清單與提交詳情(IDE 風格)',
         'rail.openSettings': '開啟外掛設定',
         'settings.card.title': 'Git 工具視窗設定',
-        'settings.card.desc': '面板放置、動作列按鈕與 AI 提交訊息',
+        'settings.card.desc': '面板放置、動作列按鈕、日期格式與 AI 提交訊息',
         'settings.placement.title': '面板放置',
+        'settings.history.title': '歷史列表',
         'settings.placement.tab': '在主對話區顯示 Git 分頁',
       'settings.composer.title': '輸入框 Git 狀態',
       'settings.composer.hint': '在輸入框工具列顯示儲存庫與分支(可點擊切換,並與 Git 面板連動);關閉後輸入框不再顯示。',
@@ -1318,6 +1534,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': '切換分支',
       'composer.detached': 'HEAD(分離)',
       'composer.changesHint': '未提交變更數',
+      'composer.fileHint': '新增 {a} · 刪除 {d} 個檔案',
+      'composer.linesHint': '+{ins} −{del} 行',
+      'modelRoute.pick': '選擇模型',
+      'modelRoute.trigger': 'AI 提交訊息模型',
+      'modelRoute.modelRow': '模型',
+      'modelRoute.effortRow': '思考',
+      'modelRoute.effortDefault': '跟隨預設',
+      'modelRoute.empty': '暫無可用模型',
       'composer.behindHint': '遠端新提交(可拉取)',
       'composer.aheadHint': '本地待推送提交',
       'composer.inWorktree': '已被其他工作樹簽出',
@@ -1328,6 +1552,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個對話區高度,輸入框自動收起;審核與提問仍會正常顯示。',
         'settings.placement.repoPill': '在輸入框顯示儲存庫膠囊',
         'settings.placement.repoPillHint': '儲存庫名膠囊顯示在工具列最左側,點擊可開啟 Git 面板;多儲存庫工作區還會出現切換箭號。關閉後輸入框只留分支與變更計數。',
+        'settings.date.label': '日期格式',
+        'settings.date.relative': '相對時間 (4h / 22h)',
+        'settings.date.absolute': '絕對時間 (11-05 10:42)',
+        'settings.diff.inline': '在面板內預覽差異',
+        'settings.diff.inlineHint': '開啟後差異在 Git 面板內開啟，可使用左右分欄與自動換行；關閉後交給側邊欄的 diff 預覽。',
         'preview.openFile': '開啟檔案預覽',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -1343,7 +1572,8 @@ window.__ModuleLoader__.load({
         'preview.hint': '點選檔案或提交的「顯示差異」,差異就會在側邊欄開啟。',
         'preview.boundary': '預覽算繪出錯——請重新載入頁面,或回報這個問題。',
         'settings.rail.title': '動作列',
-        'settings.rail.hint': '勾選要顯示在動作列上的動作;順序固定,取消勾選即隱藏。',
+        'settings.rail.hint': '勾選要顯示在動作列上的動作；取消勾選即隱藏。拖曳排序請用面板內的「動作條設定」。',
+        'settings.rail.loading': '正在載入設定…',
         'settings.rail.unavailable': '目前宿主沒有設定服務,請用面板內的「動作條設定」。',
         'settings.commit.title': 'AI 提交訊息',
         'settings.commit.model': '使用的模型',
@@ -1374,6 +1604,19 @@ window.__ModuleLoader__.load({
         'rail.hide': '隱藏',
         'action.unavailable': '目前狀態下無法使用',
         'filter.branch': '分支',
+        'history.scope': '範圍',
+        'history.scopeCurrent': '目前分支',
+        'history.scopeAll': '全部分支',
+        'merge.title': '合併 {branch}',
+        'merge.into': '將 {branch} 合併進目前分支',
+        'merge.modeDefault': '預設',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': '可以快進時直接快進，不產生合併提交。',
+        'merge.hint.noFf': '總是產生合併提交，歷史裡能看到這次合併。',
+        'merge.hint.squash': '將 {branch} 的改動合成一個待提交的變更，不保留它的提交歷史。',
+        'merge.hint.noCommit': '產生合併結果但停在提交前，方便檢查或補充改動。',
         'filter.user': '提交者',
         'history.me': '我',
         'filter.date': '日期',
@@ -1412,14 +1655,43 @@ window.__ModuleLoader__.load({
         'operation.revert': '還原進行中',
         'operation.bisect': 'Bisect 進行中',
         'operation.hint': '這個版本庫仍有未完成的多步驟操作 —— 請先完成或中止,再進行分支層級的操作',
+        'worktrees.title': '工作樹',
+        'worktrees.new': '新增工作樹',
+        'worktrees.prune': '清理失效記錄',
+        'worktrees.back': '返回',
+        'worktrees.current': '目前',
+        'worktrees.primary': '主工作樹',
+        'worktrees.locked': '已鎖定',
+        'worktrees.prunable': '可清理',
+        'worktrees.detached': '分離 HEAD',
+        'worktrees.open': '在面板中開啟',
+        'worktrees.remove': '移除工作樹',
+        'worktrees.removeConfirm': '移除工作樹 {path}?',
+        'worktrees.removeDirty': '工作樹 {path} 還有未提交的變更。強制移除會永久捨棄這些變更,確定?',
+        'worktrees.path': '路徑',
+        'worktrees.branch': '分支',
+        'worktrees.newBranch': '新分支',
+        'worktrees.existingBranch': '現有分支',
+        'worktrees.base': '起點',
+        'worktrees.create': '建立',
+        'worktrees.empty': '沒有工作樹',
+        'worktrees.pruneConfirm': '清理已在磁碟上消失的工作樹記錄?',
+        'toast.worktreeAdded': '已建立工作樹 {path}',
+        'toast.worktreeRemoved': '已移除工作樹 {path}',
+        'toast.worktreePruned': '已清理失效的工作樹記錄',
         'confirm.title': '確認',
         'confirm.cancel': '取消',
         'confirm.ok': '確定',
         'prompt.newBranch': '新分支名稱(建立並簽出)',
+        'prompt.createTracking': '從遠端分支建立本地分支',
         'prompt.renameBranch': '重新命名分支',
         'prompt.newTag': '新標籤名稱',
         'prompt.fromHead': '目前 HEAD',
         'error.dismiss': '關閉',
+        'error.pushRejected': '推送被拒絕：遠端分支上有你本機沒有的提交。請先同步（拉取並推送），或拉取合併後再推送。',
+        'error.pullDiverged': '本機與遠端各有新提交，無法快進。請用「拉取」合併，或改用「拉取（變基）」。',
+        'error.pullConflict': '拉取時發生衝突：請在「變更」中解決衝突檔案並提交，然後繼續。',
+        'error.pullDirty': '拉取會覆蓋本機未提交的變更：請先提交或貯藏這些變更。',
         'status.loading': '讀取中...',
         'status.busy': '處理中...',
         'counts.staged': '已暫存 {n}',
@@ -1434,6 +1706,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': '硬重置到 {hash}?未提交的變更會遺失。',
         'resetSoft.confirm': '將 HEAD 移到 {hash}(保留工作區)?',
         'checkoutCommit.confirm': '簽出提交 {hash}?(detached HEAD)',
+        'seg.history': '歷史',
+        'seg.changes': '變更 {n}',
+        'settings.history.visible': '在預設面顯示歷史清單',
+        'settings.history.visibleHint': '預設關閉:預設頁籤只放「變更 + 提交框」;開啟後下方出現「歷史 / 差異」雙頁籤。提交清單喺 explorer 頁籤一直可見。',
       },
       /* locale: zh-mo */
       'zh-mo': {
@@ -1444,6 +1720,8 @@ window.__ModuleLoader__.load({
         'repo.nested': '巢狀',
         'repo.none': '呢個工作區唔係 Git 存放庫',
         'repo.pick': '揀一個存放庫嚟睇',
+        'repo.filter': '搵存放庫',
+        'picker.empty': '冇相符項目',
         'repo.empty': '呢個工作區搵唔到 Git 存放庫',
         'repo.switch': '切換存放庫',
         'branch.switch': '切換分支',
@@ -1516,13 +1794,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': '全螢幕',
         'action.exitFullscreen': '結束全螢幕',
         'action.newBranchFrom': '由此新建分支...',
+        'action.setUpstream': '設定上游…',
+        'action.unsetUpstream': '取消上游',
+        'action.createLocalBranch': '建立本地分支…',
         'action.newBranchHere': '喺呢度新建分支...',
         'action.rename': '重新命名...',
         'action.delete': '刪除',
         'action.mergeIntoCurrent': '合併到當前分支',
         'action.rebaseCurrentOnto': '將當前分支變基到此',
         'action.compare': '同當前分支比較',
-        'action.update': '更新(抓取)',
+      'action.update': '拉取',
         'action.push': '推送',
         'action.newTag': '新建標籤...',
         'action.cherryPick': '揀選',
@@ -1574,6 +1855,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': '全部提交...',
       'more.undoCommit': '撤銷上次提交',
       'more.rebaseAbort': '中止變基',
+      'more.mergeAbort': '中止合併',
       'more.commitStagedAmend': '提交已暫存檔案(修改)...',
       'more.commitAllAmend': '全部提交(修改)...',
       'more.commitStagedSign': '提交已暫存檔案(已簽收)...',
@@ -1589,6 +1871,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': '從所有遠端抓取',
       'more.deleteRemoteBranch': '刪除遠端分支...',
       'more.publish': '發布分支...',
+      'more.setUpstreamHead': '設定目前分支上游…',
+      'more.unsetUpstreamHead': '取消目前分支上游',
       'more.addRemote': '新增遠端...',
       'more.removeRemote': '刪除遠端...',
       'more.stashTracked': '儲存(僅已追蹤)',
@@ -1643,8 +1927,9 @@ window.__ModuleLoader__.load({
         'explore.description': '分支樹、提交清單與提交詳情(IDE 風格)',
         'rail.openSettings': '開啟外掛設定',
         'settings.card.title': 'Git 工具視窗設定',
-        'settings.card.desc': '面板放置、動作列按鈕與 AI 提交訊息',
+        'settings.card.desc': '面板放置、動作列按鈕、日期格式與 AI 提交訊息',
         'settings.placement.title': '面板放置',
+        'settings.history.title': '歷史列表',
         'settings.placement.tab': '喺主對話區顯示 Git 分頁',
       'settings.composer.title': '輸入框 Git 狀態',
       'settings.composer.hint': '喺輸入框工具列顯示儲存庫同分支(可以點擊切換,同 Git 面板聯動);關閉之後輸入框就唔會再顯示。',
@@ -1652,6 +1937,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': '切換分支',
       'composer.detached': 'HEAD(游離)',
       'composer.changesHint': '未提交變更數',
+      'composer.fileHint': '新增 {a} · 刪除 {d} 個檔案',
+      'composer.linesHint': '+{ins} −{del} 行',
+      'modelRoute.pick': '選擇模型',
+      'modelRoute.trigger': 'AI 提交訊息模型',
+      'modelRoute.modelRow': '模型',
+      'modelRoute.effortRow': '思考',
+      'modelRoute.effortDefault': '跟隨預設',
+      'modelRoute.empty': '暫無可用模型',
       'composer.behindHint': '遠端新提交(可以拉取)',
       'composer.aheadHint': '本地等待推送提交',
       'composer.inWorktree': '已經喺其他工作樹簽出',
@@ -1662,6 +1955,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個會話區高度,輸入框自動收起;審批與提問仍會正常顯示。',
         'settings.placement.repoPill': '喺輸入框顯示儲存庫膠囊',
         'settings.placement.repoPillHint': '儲存庫名膠囊喺工具列最左邊,點擊開啟 Git 面板;多儲存庫工作區仲會有切換箭咀。關閉之後輸入框只留分支同變更計數。',
+        'settings.date.label': '日期格式',
+        'settings.date.relative': '相對時間 (4h / 22h)',
+        'settings.date.absolute': '絕對時間 (11-05 10:42)',
+        'settings.diff.inline': '在面板內預覽差異',
+        'settings.diff.inlineHint': '開啟後差異在 Git 面板內開啟，可使用左右分欄與自動換行；關閉後交給側邊欄的 diff 預覽。',
         'preview.openFile': '開啟檔案預覽',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -1677,7 +1975,8 @@ window.__ModuleLoader__.load({
         'preview.hint': '喺檔案或提交撳「顯示差異」,差異就會喺側邊欄度開啟。',
         'preview.boundary': '預覽渲染出錯——請重新載入頁面,或者回報呢個問題。',
         'settings.rail.title': '動作列',
-        'settings.rail.hint': '勾選要顯示在動作列上的動作;順序固定,取消勾選即隱藏。',
+        'settings.rail.hint': '勾選要顯示在動作列上的動作；取消勾選即隱藏。拖曳排序請用面板內的「動作條設定」。',
+        'settings.rail.loading': '正在載入設定…',
         'settings.rail.unavailable': '目前宿主沒有設定服務,請用面板內的「動作條設定」。',
         'settings.commit.title': 'AI 提交訊息',
         'settings.commit.model': '使用的模型',
@@ -1708,6 +2007,19 @@ window.__ModuleLoader__.load({
         'rail.hide': '隱藏',
         'action.unavailable': '當前狀態下唔可用',
         'filter.branch': '分支',
+        'history.scope': '範圍',
+        'history.scopeCurrent': '目前分支',
+        'history.scopeAll': '全部分支',
+        'merge.title': '合併 {branch}',
+        'merge.into': '將 {branch} 合併進目前分支',
+        'merge.modeDefault': '預設',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': '可以快進時直接快進，唔會產生合併提交。',
+        'merge.hint.noFf': '總是產生合併提交，歷史裡可以睇到這次合併。',
+        'merge.hint.squash': '將 {branch} 的改動合成一個待提交的變更，唔保留它的提交歷史。',
+        'merge.hint.noCommit': '產生合併結果但停在提交前，方便檢查或補充改動。',
         'filter.user': '提交者',
         'history.me': '我',
         'filter.date': '日期',
@@ -1746,14 +2058,43 @@ window.__ModuleLoader__.load({
         'operation.revert': '還原進行中',
         'operation.bisect': 'Bisect 進行中',
         'operation.hint': '呢個存放庫仲有未完成嘅多步操作 —— 請先完成或中止,再進行分支層級嘅操作',
+        'worktrees.title': '工作樹',
+        'worktrees.new': '新增工作樹',
+        'worktrees.prune': '清理失效記錄',
+        'worktrees.back': '返回',
+        'worktrees.current': '目前',
+        'worktrees.primary': '主工作樹',
+        'worktrees.locked': '已鎖定',
+        'worktrees.prunable': '可清理',
+        'worktrees.detached': '分離 HEAD',
+        'worktrees.open': '在面板中開啟',
+        'worktrees.remove': '移除工作樹',
+        'worktrees.removeConfirm': '移除工作樹 {path}?',
+        'worktrees.removeDirty': '工作樹 {path} 還有未提交的變更。強制移除會永久捨棄這些變更,確定?',
+        'worktrees.path': '路徑',
+        'worktrees.branch': '分支',
+        'worktrees.newBranch': '新分支',
+        'worktrees.existingBranch': '現有分支',
+        'worktrees.base': '起點',
+        'worktrees.create': '建立',
+        'worktrees.empty': '沒有工作樹',
+        'worktrees.pruneConfirm': '清理已在磁碟上消失的工作樹記錄?',
+        'toast.worktreeAdded': '已建立工作樹 {path}',
+        'toast.worktreeRemoved': '已移除工作樹 {path}',
+        'toast.worktreePruned': '已清理失效的工作樹記錄',
         'confirm.title': '確認',
         'confirm.cancel': '取消',
         'confirm.ok': '確定',
         'prompt.newBranch': '新分支名(建立並簽出)',
+        'prompt.createTracking': '從遠端分支建立本地分支',
         'prompt.renameBranch': '重新命名分支',
         'prompt.newTag': '新標籤名',
         'prompt.fromHead': '當前 HEAD',
         'error.dismiss': '關閉',
+        'error.pushRejected': '推送被拒絕:遠端分支有啲你本地冇嘅提交。請先同步(拉取並推送),或者拉取合併之後再推送。',
+        'error.pullDiverged': '本地同遠端各有新提交,唔可以快進。請用「拉取」合併,或者改用「拉取(變基)」。',
+        'error.pullConflict': '拉取時有衝突:喺「變更」入面解決衝突檔案並提交,然後繼續。',
+        'error.pullDirty': '拉取會覆蓋本地未提交嘅改動:請先提交或者貯藏呢啲改動。',
         'status.loading': '讀取中...',
         'status.busy': '處理中...',
         'counts.staged': '已暫存 {n}',
@@ -1768,6 +2109,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': '硬重置到 {hash}?未提交嘅變更會遺失。',
         'resetSoft.confirm': '將 HEAD 移到 {hash}(保留工作區)?',
         'checkoutCommit.confirm': '簽出提交 {hash}?(detached HEAD)',
+        'seg.history': '歷史',
+        'seg.changes': '變更 {n}',
+        'settings.history.visible': '喺預設面顯示歷史清單',
+        'settings.history.visibleHint': '預設關閉:預設頁籤只放「變更 + 提交框」;開啟後下方出現「歷史 / 差異」雙頁籤。',
       },
       /* locale: ja */
       'ja': {
@@ -1778,6 +2123,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'ネスト',
         'repo.none': 'このワークスペースは Git リポジトリではありません',
         'repo.pick': '確認するリポジトリを選択',
+        'repo.filter': 'リポジトリを検索',
+        'picker.empty': '一致する項目がありません',
         'repo.empty': 'このワークスペースに Git リポジトリが見つかりません',
         'repo.switch': 'リポジトリを切り替え',
         'branch.switch': 'ブランチを切り替え',
@@ -1850,13 +2197,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': '全画面',
         'action.exitFullscreen': '全画面を終了',
         'action.newBranchFrom': 'ここから新しいブランチ...',
+        'action.setUpstream': '上流を設定…',
+        'action.unsetUpstream': '上流を解除',
+        'action.createLocalBranch': 'ローカルブランチを作成…',
         'action.newBranchHere': 'ここに新しいブランチ...',
         'action.rename': '名前を変更...',
         'action.delete': '削除',
         'action.mergeIntoCurrent': '現在のブランチにマージ',
         'action.rebaseCurrentOnto': '現在のブランチをここにリベース',
         'action.compare': '現在のブランチと比較',
-        'action.update': '更新(フェッチ)',
+      'action.update': 'プル',
         'action.push': 'プッシュ',
         'action.newTag': '新しいタグ...',
         'action.cherryPick': 'チェリーピック',
@@ -1908,6 +2258,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'すべてコミット...',
       'more.undoCommit': '最後のコミットを取り消す',
       'more.rebaseAbort': 'リベースを中止',
+      'more.mergeAbort': 'マージを中止',
       'more.commitStagedAmend': 'ステージ済みをコミット(修正)...',
       'more.commitAllAmend': 'すべてコミット(修正)...',
       'more.commitStagedSign': 'ステージ済みをコミット(署名)...',
@@ -1923,6 +2274,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': '全リモートからフェッチ',
       'more.deleteRemoteBranch': 'リモートブランチを削除...',
       'more.publish': 'ブランチを公開...',
+      'more.setUpstreamHead': '現在のブランチの上流を設定…',
+      'more.unsetUpstreamHead': '現在のブランチの上流を解除',
       'more.addRemote': 'リモートを追加...',
       'more.removeRemote': 'リモートを削除...',
       'more.stashTracked': 'スタッシュ(追跡済みのみ)',
@@ -1977,8 +2330,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'ブランチツリー・コミット一覧・コミット詳細(IDE 風)',
         'rail.openSettings': 'プラグイン設定を開く',
         'settings.card.title': 'Gitツールウィンドウの設定',
-        'settings.card.desc': 'パネル配置、アクションレールのボタンと AI コミットメッセージ',
+        'settings.card.desc': 'パネル配置、アクションレールのボタン、日付形式、AI コミットメッセージ',
         'settings.placement.title': 'パネル配置',
+        'settings.history.title': '履歴リスト',
         'settings.placement.tab': '会話エリアに Git タブを表示',
       'settings.composer.title': '入力欄の Git ステータス',
       'settings.composer.hint': '入力欄ツールバーにリポジトリとブランチを表示します(クリックで切り替え、Git パネルと連動)。オフにすると入力欄には表示されません。',
@@ -1986,6 +2340,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'ブランチを切り替え',
       'composer.detached': 'HEAD(切断)',
       'composer.changesHint': '未コミットの変更数',
+      'composer.fileHint': '追加 {a} · 削除 {d} ファイル',
+      'composer.linesHint': '+{ins} −{del} 行',
+      'modelRoute.pick': 'モデルを選択',
+      'modelRoute.trigger': 'AI コミットメッセージのモデル',
+      'modelRoute.modelRow': 'モデル',
+      'modelRoute.effortRow': '思考',
+      'modelRoute.effortDefault': 'デフォルトに従う',
+      'modelRoute.empty': '利用可能なモデルがありません',
       'composer.behindHint': 'リモートの新規コミット(取得可能)',
       'composer.aheadHint': 'プッシュ待ちのローカルコミット',
       'composer.inWorktree': '別のワークツリーでチェックアウト中',
@@ -1996,6 +2358,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'オンにすると Git タブが会話エリアの高さいっぱいに広がり、入力欄は引っ込みます。承認や質問は通常どおり表示されます。',
         'settings.placement.repoPill': '入力欄にリポジトリのピルを表示',
         'settings.placement.repoPillHint': 'リポジトリ名のピルをツールバーの左端に表示します。クリックで Git パネルを開き、複数リポジトリのワークスペースでは切り替え矢印も表示されます。オフにすると入力欄はブランチと変更数のみになります。',
+        'settings.date.label': '日付形式',
+        'settings.date.relative': '相対（4h / 22h）',
+        'settings.date.absolute': '絶対（11-05 10:42）',
+        'settings.diff.inline': 'パネル内で差分をプレビュー',
+        'settings.diff.inlineHint': 'オンの場合、差分は Git パネル内で開き、左右分割と折り返しを使用できます。オフの場合はサイドバーの差分プレビューに任せます。',
         'preview.openFile': 'ファイルプレビューを開く',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -2011,7 +2378,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'ファイルやコミットの「差分を表示」をクリックすると、差分がここに開きます。',
         'preview.boundary': 'プレビューの描画に失敗しました——ページを再読み込みするか、問題を報告してください。',
         'settings.rail.title': 'レール',
-        'settings.rail.hint': 'レールに表示する操作にチェックを入れてください。順序は固定で、チェックを外すと非表示になります。',
+        'settings.rail.hint': 'レールに表示する操作にチェックを入れてください。チェックを外すと非表示になります。並べ替えはパネルの「アクションレール設定」で行えます。',
+        'settings.rail.loading': '設定を読み込んでいます…',
         'settings.rail.unavailable': 'このホストには設定サービスがないため、パネル内の「アクションレール設定」を使ってください。',
         'settings.commit.title': 'AI コミットメッセージ',
         'settings.commit.model': '使用するモデル',
@@ -2042,6 +2410,19 @@ window.__ModuleLoader__.load({
         'rail.hide': '非表示',
         'action.unavailable': '現在の状態では使用できません',
         'filter.branch': 'ブランチ',
+        'history.scope': '範囲',
+        'history.scopeCurrent': '現在のブランチ',
+        'history.scopeAll': 'すべてのブランチ',
+        'merge.title': '{branch} をマージ',
+        'merge.into': '{branch} を現在のブランチにマージ',
+        'merge.modeDefault': 'デフォルト',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': '可能な場合はファストフォワードし、マージコミットを作成しません。',
+        'merge.hint.noFf': '常にマージコミットを作成し、履歴にマージを残します。',
+        'merge.hint.squash': '{branch} の変更をコミット履歴を残さず、1 つのステージ済み変更にまとめます。',
+        'merge.hint.noCommit': 'マージ結果を用意してコミット直前で止め、確認や修正ができるようにします。',
         'filter.user': 'コミット者',
         'history.me': '自分',
         'filter.date': '日付',
@@ -2080,14 +2461,43 @@ window.__ModuleLoader__.load({
         'operation.revert': '打ち消し中',
         'operation.bisect': 'bisect 中',
         'operation.hint': 'このリポジトリには未完了の多段階操作があります —— ブランチ操作の前に完了または中止してください',
+        'worktrees.title': 'ワークツリー',
+        'worktrees.new': '新しいワークツリー',
+        'worktrees.prune': '古い記録を整理',
+        'worktrees.back': '戻る',
+        'worktrees.current': '現在',
+        'worktrees.primary': 'メイン',
+        'worktrees.locked': 'ロック中',
+        'worktrees.prunable': '整理可能',
+        'worktrees.detached': '分離 HEAD',
+        'worktrees.open': 'パネルで開く',
+        'worktrees.remove': 'ワークツリーを削除',
+        'worktrees.removeConfirm': 'ワークツリー {path} を削除しますか?',
+        'worktrees.removeDirty': 'ワークツリー {path} には未コミットの変更があります。強制削除するとこれらの変更は完全に失われます。続行しますか?',
+        'worktrees.path': 'パス',
+        'worktrees.branch': 'ブランチ',
+        'worktrees.newBranch': '新しいブランチ',
+        'worktrees.existingBranch': '既存のブランチ',
+        'worktrees.base': '開始点',
+        'worktrees.create': '作成',
+        'worktrees.empty': 'ワークツリーはありません',
+        'worktrees.pruneConfirm': 'ディスク上に存在しないワークツリーの記録を整理しますか?',
+        'toast.worktreeAdded': 'ワークツリー {path} を作成しました',
+        'toast.worktreeRemoved': 'ワークツリー {path} を削除しました',
+        'toast.worktreePruned': '古いワークツリー記録を整理しました',
         'confirm.title': '確認',
         'confirm.cancel': 'キャンセル',
         'confirm.ok': 'OK',
         'prompt.newBranch': '新しいブランチ名(作成してチェックアウト)',
+        'prompt.createTracking': 'リモートブランチからローカルブランチを作成',
         'prompt.renameBranch': 'ブランチ名を変更',
         'prompt.newTag': '新しいタグ名',
         'prompt.fromHead': '現在の HEAD',
         'error.dismiss': '閉じる',
+        'error.pushRejected': 'プッシュが拒否されました：リモートブランチにローカルにないコミットがあります。先に同期（プルしてプッシュ）するか、プル（マージ）してから再プッシュしてください。',
+        'error.pullDiverged': 'ローカルとリモートの両方に新しいコミットがあり、fast-forward できません。「プル」（マージ）または「プル（リベース）」を使ってください。',
+        'error.pullConflict': 'プルで競合が発生しました。「変更」で競合ファイルを解決してコミットしてから続行してください。',
+        'error.pullDirty': 'プルするとローカルの未コミット変更が上書きされます。先にコミットするかスタッシュしてください。',
         'status.loading': '読み込み中...',
         'status.busy': '処理中...',
         'counts.staged': 'ステージ済み {n}',
@@ -2102,6 +2512,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': '{hash} にハードリセットしますか?未コミットの変更は失われます。',
         'resetSoft.confirm': 'HEAD を {hash} に移動しますか(ワークツリーは保持)?',
         'checkoutCommit.confirm': 'コミット {hash} をチェックアウトしますか?(detached HEAD)',
+        'seg.history': '履歴',
+        'seg.changes': '変更 {n}',
+        'settings.history.visible': '既定タブに履歴リストを表示',
+        'settings.history.visibleHint': '既定は非表示:既定タブは「変更 + コミット欄」のみ。オンにすると下部に「履歴 / 差分」タブが表示されます。コミット一覧は explorer タブに常にあります。',
       },
       /* locale: ko */
       'ko': {
@@ -2112,6 +2526,8 @@ window.__ModuleLoader__.load({
         'repo.nested': '중첩',
         'repo.none': '이 워크스페이스는 Git 저장소가 아닙니다',
         'repo.pick': '확인할 저장소를 선택하세요',
+        'repo.filter': '저장소 검색',
+        'picker.empty': '일치하는 항목이 없습니다',
         'repo.empty': '이 워크스페이스에서 Git 저장소를 찾을 수 없습니다',
         'repo.switch': '저장소 전환',
         'branch.switch': '브랜치 전환',
@@ -2184,13 +2600,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': '전체 화면',
         'action.exitFullscreen': '전체 화면 종료',
         'action.newBranchFrom': '여기서 새 브랜치...',
+        'action.setUpstream': '업스트림 설정…',
+        'action.unsetUpstream': '업스트림 해제',
+        'action.createLocalBranch': '로컬 브랜치 만들기…',
         'action.newBranchHere': '여기에 새 브랜치...',
         'action.rename': '이름 바꾸기...',
         'action.delete': '삭제',
         'action.mergeIntoCurrent': '현재 브랜치로 병합',
         'action.rebaseCurrentOnto': '현재 브랜치를 여기로 리베이스',
         'action.compare': '현재 브랜치와 비교',
-        'action.update': '업데이트(페치)',
+      'action.update': '풀',
         'action.push': '푸시',
         'action.newTag': '새 태그...',
         'action.cherryPick': '체리픽',
@@ -2242,6 +2661,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': '모두 커밋...',
       'more.undoCommit': '마지막 커밋 취소',
       'more.rebaseAbort': '리베이스 중단',
+      'more.mergeAbort': '병합 중단',
       'more.commitStagedAmend': '스테이지된 파일 커밋(수정)...',
       'more.commitAllAmend': '모두 커밋(수정)...',
       'more.commitStagedSign': '스테이지된 파일 커밋(서명)...',
@@ -2257,6 +2677,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': '모든 원격에서 페치',
       'more.deleteRemoteBranch': '원격 브랜치 삭제...',
       'more.publish': '브랜치 게시...',
+      'more.setUpstreamHead': '현재 브랜치 업스트림 설정…',
+      'more.unsetUpstreamHead': '현재 브랜치 업스트림 해제',
       'more.addRemote': '원격 추가...',
       'more.removeRemote': '원격 제거...',
       'more.stashTracked': '스태시(추적된 파일만)',
@@ -2311,8 +2733,9 @@ window.__ModuleLoader__.load({
         'explore.description': '브랜치 트리, 커밋 목록, 커밋 상세(IDE 스타일)',
         'rail.openSettings': '플러그인 설정 열기',
         'settings.card.title': 'Git 도구 창 설정',
-        'settings.card.desc': '패널 배치, 액션 레일 버튼 및 AI 커밋 메시지',
+        'settings.card.desc': '패널 배치, 액션 레일 버튼, 날짜 형식 및 AI 커밋 메시지',
         'settings.placement.title': '패널 배치',
+        'settings.history.title': '기록 목록',
         'settings.placement.tab': '대화 영역에 Git 탭 표시',
       'settings.composer.title': '입력창 Git 상태',
       'settings.composer.hint': '입력창 도구 모음에 저장소와 브랜치를 표시합니다(클릭하여 전환, Git 패널과 연동). 끄면 입력창에 표시되지 않습니다.',
@@ -2320,6 +2743,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': '브랜치 전환',
       'composer.detached': 'HEAD(분리됨)',
       'composer.changesHint': '커밋되지 않은 변경 수',
+      'composer.fileHint': '추가 {a} · 삭제 {d}개 파일',
+      'composer.linesHint': '+{ins} −{del}줄',
+      'modelRoute.pick': '모델 선택',
+      'modelRoute.trigger': 'AI 커밋 메시지 모델',
+      'modelRoute.modelRow': '모델',
+      'modelRoute.effortRow': '추론',
+      'modelRoute.effortDefault': '기본값 따르기',
+      'modelRoute.empty': '사용 가능한 모델이 없습니다',
       'composer.behindHint': '원격 새 커밋(가져오기 가능)',
       'composer.aheadHint': '푸시 대기 중인 로컬 커밋',
       'composer.inWorktree': '다른 작업 트리에서 체크아웃됨',
@@ -2330,6 +2761,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': '켜면 Git 탭이 대화 영역 전체 높이를 차지하고 입력창은 숨겨집니다. 승인과 질문은 정상적으로 표시됩니다.',
         'settings.placement.repoPill': '입력창에 저장소 알약 표시',
         'settings.placement.repoPillHint': '도구 모음 맨 왼쪽에 저장소 이름 알약을 표시합니다. 클릭하면 Git 패널이 열리고, 여러 저장소 워크스페이스에서는 전환 화살표도 나타납니다. 끄면 입력창에는 브랜치와 변경 수만 남습니다.',
+        'settings.date.label': '날짜 형식',
+        'settings.date.relative': '상대 (4h / 22h)',
+        'settings.date.absolute': '절대 (11-05 10:42)',
+        'settings.diff.inline': '패널에서 차이 미리보기',
+        'settings.diff.inlineHint': '켜면 차이가 Git 패널 안에서 열리고 좌우 분할과 자동 줄바꿈을 사용할 수 있습니다. 끄면 사이드바의 차이 미리보기로 넘깁니다.',
         'preview.openFile': '파일 미리보기로 열기',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -2345,7 +2781,8 @@ window.__ModuleLoader__.load({
         'preview.hint': '파일이나 커밋의 「차이 보기」를 클릭하면 차이가 사이드바 여기에 열립니다.',
         'preview.boundary': '미리보기 렌더링에 실패했습니다 — 페이지를 새로고침하거나 문제를 보고해 주세요.',
         'settings.rail.title': '레일',
-        'settings.rail.hint': '레일에 표시할 동작을 선택하세요. 순서는 고정이며 선택을 해제하면 숨겨집니다.',
+        'settings.rail.hint': '레일에 표시할 동작을 선택하세요. 선택을 해제하면 숨겨집니다. 순서는 패널의 “액션 레일 설정”에서 바꿀 수 있습니다.',
+        'settings.rail.loading': '설정을 불러오는 중…',
         'settings.rail.unavailable': '이 호스트에는 설정 서비스가 없으므로 패널의 "액션 레일 설정"을 사용하세요.',
         'settings.commit.title': 'AI 커밋 메시지',
         'settings.commit.model': '사용할 모델',
@@ -2376,6 +2813,19 @@ window.__ModuleLoader__.load({
         'rail.hide': '숨기기',
         'action.unavailable': '현재 상태에서는 사용할 수 없습니다',
         'filter.branch': '브랜치',
+        'history.scope': '범위',
+        'history.scopeCurrent': '현재 브랜치',
+        'history.scopeAll': '모든 브랜치',
+        'merge.title': '{branch} 병합',
+        'merge.into': '{branch}을(를) 현재 브랜치에 병합',
+        'merge.modeDefault': '기본',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': '가능하면 빨리 감기하고 병합 커밋을 만들지 않습니다.',
+        'merge.hint.noFf': '항상 병합 커밋을 만들어 기록에 병합이 남습니다.',
+        'merge.hint.squash': '{branch}의 변경을 커밋 기록 없이 하나의 스테이징된 변경으로 합칩니다.',
+        'merge.hint.noCommit': '병합 결과를 만들고 커밋 직전에 멈춰 검토하거나 수정할 수 있습니다.',
         'filter.user': '작성자',
         'history.me': '나',
         'filter.date': '날짜',
@@ -2414,14 +2864,43 @@ window.__ModuleLoader__.load({
         'operation.revert': '되돌리기 진행 중',
         'operation.bisect': 'bisect 진행 중',
         'operation.hint': '이 저장소에 아직 끝나지 않은 다단계 작업이 있습니다 —— 브랜치 작업 전에 완료하거나 중단하세요',
+        'worktrees.title': '워크트리',
+        'worktrees.new': '새 워크트리',
+        'worktrees.prune': '오래된 기록 정리',
+        'worktrees.back': '뒤로',
+        'worktrees.current': '현재',
+        'worktrees.primary': '기본',
+        'worktrees.locked': '잠김',
+        'worktrees.prunable': '정리 가능',
+        'worktrees.detached': '분리된 HEAD',
+        'worktrees.open': '패널에서 열기',
+        'worktrees.remove': '워크트리 제거',
+        'worktrees.removeConfirm': '워크트리 {path}을(를) 제거할까요?',
+        'worktrees.removeDirty': '워크트리 {path}에 커밋되지 않은 변경 사항이 있습니다. 강제 제거하면 이 변경 사항이 영구적으로 사라집니다. 계속할까요?',
+        'worktrees.path': '경로',
+        'worktrees.branch': '브랜치',
+        'worktrees.newBranch': '새 브랜치',
+        'worktrees.existingBranch': '기존 브랜치',
+        'worktrees.base': '시작점',
+        'worktrees.create': '만들기',
+        'worktrees.empty': '워크트리가 없습니다',
+        'worktrees.pruneConfirm': '디스크에서 사라진 워크트리 기록을 정리할까요?',
+        'toast.worktreeAdded': '워크트리 {path}을(를) 만들었습니다',
+        'toast.worktreeRemoved': '워크트리 {path}을(를) 제거했습니다',
+        'toast.worktreePruned': '오래된 워크트리 기록을 정리했습니다',
         'confirm.title': '확인',
         'confirm.cancel': '취소',
         'confirm.ok': '확인',
         'prompt.newBranch': '새 브랜치 이름(생성 후 체크아웃)',
+        'prompt.createTracking': '원격 브랜치에서 로컬 브랜치 만들기',
         'prompt.renameBranch': '브랜치 이름 바꾸기',
         'prompt.newTag': '새 태그 이름',
         'prompt.fromHead': '현재 HEAD',
         'error.dismiss': '닫기',
+        'error.pushRejected': '푸시가 거부되었습니다: 원격 브랜치에 로컬에 없는 커밋이 있습니다. 먼저 동기화(풀 후 푸시)하거나 풀(병합)한 뒤 다시 푸시하세요.',
+        'error.pullDiverged': '로컬과 원격에 각각 새 커밋이 있어 fast-forward할 수 없습니다. 풀(병합) 또는 풀(리베이스)을 사용하세요.',
+        'error.pullConflict': '풀 중 충돌이 발생했습니다. "변경"에서 충돌 파일을 해결하고 커밋한 뒤 계속하세요.',
+        'error.pullDirty': '풀을 하면 로컬의 커밋되지 않은 변경이 덮어써집니다. 먼저 커밋하거나 스태시하세요.',
         'status.loading': '읽는 중...',
         'status.busy': '처리 중...',
         'counts.staged': '스테이지됨 {n}',
@@ -2436,6 +2915,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': '{hash}로 하드 리셋할까요? 커밋하지 않은 변경 사항은 사라집니다.',
         'resetSoft.confirm': 'HEAD를 {hash}로 옮길까요(워크트리 유지)?',
         'checkoutCommit.confirm': '커밋 {hash}을(를) 체크아웃할까요?(detached HEAD)',
+        'seg.history': '기록',
+        'seg.changes': '변경 {n}',
+        'settings.history.visible': '기본 탭에 기록 목록 표시',
+        'settings.history.visibleHint': '기본값은 숨김:기본 탭에는 변경 + 커밋 상자만 표시됩니다. 켜면 아래에 「기록 / 차이」탭이 나타납니다. 커밋 목록은 explorer 탭에 항상 있습니다.',
       },
       /* locale: de */
       'de': {
@@ -2446,6 +2929,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'verschachtelt',
         'repo.none': 'Dieser Arbeitsbereich ist kein Git-Repository',
         'repo.pick': 'Repository zum Ansehen wählen',
+        'repo.filter': 'Repositories durchsuchen',
+        'picker.empty': 'Keine Treffer',
         'repo.empty': 'In diesem Arbeitsbereich wurde kein Git-Repository gefunden',
         'repo.switch': 'Repository wechseln',
         'branch.switch': 'Branch wechseln',
@@ -2518,13 +3003,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Vollbild',
         'action.exitFullscreen': 'Vollbild beenden',
         'action.newBranchFrom': 'Neuer Branch von hier...',
+        'action.setUpstream': 'Upstream festlegen …',
+        'action.unsetUpstream': 'Upstream entfernen',
+        'action.createLocalBranch': 'Lokalen Branch erstellen …',
         'action.newBranchHere': 'Neuer Branch hier...',
         'action.rename': 'Umbenennen...',
         'action.delete': 'Löschen',
         'action.mergeIntoCurrent': 'In aktuellen Branch mergen',
         'action.rebaseCurrentOnto': 'Aktuellen Branch hierauf rebasen',
         'action.compare': 'Mit aktuellem Branch vergleichen',
-        'action.update': 'Aktualisieren (fetch)',
+      'action.update': 'Pull',
         'action.push': 'Push',
         'action.newTag': 'Neuer Tag...',
         'action.cherryPick': 'Cherry-Pick',
@@ -2576,6 +3064,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Alles committen...',
       'more.undoCommit': 'Letzten Commit zurücknehmen',
       'more.rebaseAbort': 'Rebase abbrechen',
+      'more.mergeAbort': 'Merge abbrechen',
       'more.commitStagedAmend': 'Staged committen (Amend)...',
       'more.commitAllAmend': 'Alles committen (Amend)...',
       'more.commitStagedSign': 'Staged committen (Signed Off)...',
@@ -2591,6 +3080,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Von allen Remotes holen',
       'more.deleteRemoteBranch': 'Remote-Branch löschen...',
       'more.publish': 'Branch veröffentlichen...',
+      'more.setUpstreamHead': 'Upstream des aktuellen Branch festlegen …',
+      'more.unsetUpstreamHead': 'Upstream des aktuellen Branch entfernen',
       'more.addRemote': 'Remote hinzufügen...',
       'more.removeRemote': 'Remote entfernen...',
       'more.stashTracked': 'Stash (nur getrackt)',
@@ -2645,8 +3136,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Branch-Baum, Commit-Liste und Commit-Details (IDE-Stil)',
         'rail.openSettings': 'Plugin-Einstellungen öffnen',
         'settings.card.title': 'Git-Werkzeugfenster-Einstellungen',
-        'settings.card.desc': 'Panel-Platzierung, Aktionsleisten-Schaltflächen und KI-Commit-Nachricht',
+        'settings.card.desc': 'Panel-Platzierung, Aktionsleisten-Schaltflächen, Datumsformat und KI-Commit-Nachricht',
         'settings.placement.title': 'Panel-Platzierung',
+        'settings.history.title': 'Verlaufsliste',
         'settings.placement.tab': 'Git-Tab im Gesprächsbereich anzeigen',
       'settings.composer.title': 'Git-Status in der Eingabeleiste',
       'settings.composer.hint': 'Repository und Zweig neben der Eingabeleiste zeigen — anklickbar zum Wechseln, mit dem Git-Panel synchron. Aus schaltet die Anzeige ab.',
@@ -2654,6 +3146,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Zweig wechseln',
       'composer.detached': 'HEAD (detached)',
       'composer.changesHint': 'Uncommittete Änderungen',
+      'composer.fileHint': '{a} hinzugefügt · {d} gelöscht',
+      'composer.linesHint': '+{ins} −{del} Zeilen',
+      'modelRoute.pick': 'Modell wählen',
+      'modelRoute.trigger': 'Modell für KI-Commits',
+      'modelRoute.modelRow': 'Modell',
+      'modelRoute.effortRow': 'Denken',
+      'modelRoute.effortDefault': 'Standard folgen',
+      'modelRoute.empty': 'Keine Modelle verfügbar',
       'composer.behindHint': 'Neue Upstream-Commits (abrufbar)',
       'composer.aheadHint': 'Lokale Commits zum Pushen',
       'composer.inWorktree': 'In anderem Worktree ausgecheckt',
@@ -2664,6 +3164,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Eingeschaltet füllt der Git-Tab die gesamte Gesprächshöhe und das Eingabefeld weicht zurück; Freigaben und Rückfragen bleiben sichtbar.',
         'settings.placement.repoPill': 'Repository-Pille in der Eingabeleiste zeigen',
         'settings.placement.repoPillHint': 'Die Repository-Pille sitzt ganz links in der Werkzeugleiste — Klick öffnet das Git-Panel; in einem Workspace mit mehreren Repositories erscheint zusätzlich der Wechselpfeil. Aus bleiben nur Zweig und Änderungszähler.',
+        'settings.date.label': 'Datumsformat',
+        'settings.date.relative': 'Relativ (4h / 22h)',
+        'settings.date.absolute': 'Absolut (11-05 10:42)',
+        'settings.diff.inline': 'Diffs im Panel anzeigen',
+        'settings.diff.inlineHint': 'Ein: Diffs öffnen im Git-Panel, mit geteilter Ansicht und Zeilenumbruch. Aus: Die Diff-Vorschau der Seitenleiste übernimmt.',
         'preview.openFile': 'In der Dateivorschau öffnen',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -2679,7 +3184,8 @@ window.__ModuleLoader__.load({
         'preview.hint': '„Diff anzeigen“ an einer Datei oder einem Commit öffnet den Diff hier in der Seitenleiste.',
         'preview.boundary': 'Die Vorschau konnte nicht gerendert werden – Seite neu laden oder das Problem melden.',
         'settings.rail.title': 'Aktionsleiste',
-        'settings.rail.hint': 'Die auf der Leiste sichtbaren Aktionen ankreuzen. Die Reihenfolge ist fest; abwählen blendet eine aus.',
+        'settings.rail.hint': 'Die auf der Leiste sichtbaren Aktionen ankreuzen; abwählen blendet eine aus. Die Reihenfolge ändern Sie in den „Aktionsleisten-Einstellungen“ im Panel.',
+        'settings.rail.loading': 'Einstellungen werden geladen…',
         'settings.rail.unavailable': 'Dieser Host hat keinen Einstellungsdienst; nutze die „Aktionsleisten-Einstellungen“ im Panel.',
         'settings.commit.title': 'KI-Commit-Nachricht',
         'settings.commit.model': 'Modell',
@@ -2710,6 +3216,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Ausblenden',
         'action.unavailable': 'Im aktuellen Zustand nicht verfügbar',
         'filter.branch': 'Branch',
+        'history.scope': 'Umfang',
+        'history.scopeCurrent': 'Aktueller Branch',
+        'history.scopeAll': 'Alle Branches',
+        'merge.title': '{branch} mergen',
+        'merge.into': '{branch} in den aktuellen Branch mergen',
+        'merge.modeDefault': 'Standard',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Führt wenn möglich einen Fast-Forward aus, ohne Merge-Commit.',
+        'merge.hint.noFf': 'Erstellt immer einen Merge-Commit, damit der Merge in der Historie sichtbar bleibt.',
+        'merge.hint.squash': 'Fasst die Änderungen von {branch} zu einer gestagten Änderung zusammen, ohne ihre Commit-Historie.',
+        'merge.hint.noCommit': 'Bereitet den Merge vor und stoppt vor dem Commit, damit du ihn prüfen oder anpassen kannst.',
         'filter.user': 'Autor',
         'history.me': 'Ich',
         'filter.date': 'Datum',
@@ -2748,14 +3267,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Revert läuft',
         'operation.bisect': 'Bisect läuft',
         'operation.hint': 'In diesem Repository läuft noch eine mehrstufige Operation —— bitte zuerst abschließen oder abbrechen',
+        'worktrees.title': 'Worktrees',
+        'worktrees.new': 'Neuer Worktree',
+        'worktrees.prune': 'Verwaiste Einträge bereinigen',
+        'worktrees.back': 'Zurück',
+        'worktrees.current': 'Aktuell',
+        'worktrees.primary': 'Primär',
+        'worktrees.locked': 'Gesperrt',
+        'worktrees.prunable': 'Bereinigbar',
+        'worktrees.detached': 'Losgelöster HEAD',
+        'worktrees.open': 'Im Panel öffnen',
+        'worktrees.remove': 'Worktree entfernen',
+        'worktrees.removeConfirm': 'Worktree {path} entfernen?',
+        'worktrees.removeDirty': 'Worktree {path} hat nicht committete Änderungen. Erzwungenes Entfernen verwirft sie dauerhaft. Fortfahren?',
+        'worktrees.path': 'Pfad',
+        'worktrees.branch': 'Branch',
+        'worktrees.newBranch': 'Neuer Branch',
+        'worktrees.existingBranch': 'Vorhandener Branch',
+        'worktrees.base': 'Startpunkt',
+        'worktrees.create': 'Erstellen',
+        'worktrees.empty': 'Keine Worktrees',
+        'worktrees.pruneConfirm': 'Einträge für nicht mehr vorhandene Worktrees bereinigen?',
+        'toast.worktreeAdded': 'Worktree {path} erstellt',
+        'toast.worktreeRemoved': 'Worktree {path} entfernt',
+        'toast.worktreePruned': 'Verwaiste Worktree-Einträge bereinigt',
         'confirm.title': 'Bestätigen',
         'confirm.cancel': 'Abbrechen',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Name des neuen Branch (wird erstellt und ausgecheckt)',
+        'prompt.createTracking': 'Lokalen Branch aus dem Remote-Branch erstellen',
         'prompt.renameBranch': 'Branch umbenennen',
         'prompt.newTag': 'Name des neuen Tags',
         'prompt.fromHead': 'aktuelles HEAD',
         'error.dismiss': 'Schließen',
+        'error.pushRejected': 'Push abgelehnt: Der Remote-Branch enthält Commits, die lokal fehlen. Zuerst synchronisieren (Pull und Push) oder pullen (Merge) und dann erneut pushen.',
+        'error.pullDiverged': 'Lokal und remote sind beide weitergezogen; ein Fast-Forward ist unmöglich. Mit Merge pullen oder Pull (Rebase) verwenden.',
+        'error.pullConflict': 'Pull wurde wegen Konflikten gestoppt: Konfliktdateien unter „Änderungen“ auflösen, committen und dann fortfahren.',
+        'error.pullDirty': 'Pull würde lokale, nicht committete Änderungen überschreiben. Zuerst committen oder stashen.',
         'status.loading': 'Wird gelesen...',
         'status.busy': 'Arbeitet...',
         'counts.staged': 'Vorgemerkt {n}',
@@ -2770,6 +3318,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Hart auf {hash} zurücksetzen? Nicht committete Änderungen gehen verloren.',
         'resetSoft.confirm': 'HEAD auf {hash} verschieben (Arbeitsbaum bleibt)?',
         'checkoutCommit.confirm': 'Commit {hash} auschecken? (detached HEAD)',
+        'seg.history': 'Verlauf',
+        'seg.changes': 'Änderungen {n}',
+        'settings.history.visible': 'Verlaufsliste im Standard-Tab anzeigen',
+        'settings.history.visibleHint': 'Standardmäßig aus:der Standard-Tab zeigt dann nur Änderungen + Commit-Feld. Eingeschaltet erscheint darunter das Fenster mit den Tabs Verlauf | Diff. Die Commit-Liste bleibt im Explorer-Tab.',
       },
       /* locale: fr */
       'fr': {
@@ -2780,6 +3332,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'imbriqué',
         'repo.none': 'Cet espace de travail n\'est pas un dépôt Git',
         'repo.pick': 'Choisir un dépôt à inspecter',
+        'repo.filter': 'Rechercher des dépôts',
+        'picker.empty': 'Aucun résultat',
         'repo.empty': 'Aucun dépôt Git trouvé dans cet espace de travail',
         'repo.switch': 'Changer de dépôt',
         'branch.switch': 'Changer de branche',
@@ -2852,13 +3406,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Plein écran',
         'action.exitFullscreen': 'Quitter le plein écran',
         'action.newBranchFrom': 'Nouvelle branche depuis ici...',
+        'action.setUpstream': 'Définir l\'upstream…',
+        'action.unsetUpstream': 'Retirer l\'upstream',
+        'action.createLocalBranch': 'Créer une branche locale…',
         'action.newBranchHere': 'Nouvelle branche ici...',
         'action.rename': 'Renommer...',
         'action.delete': 'Supprimer',
         'action.mergeIntoCurrent': 'Fusionner dans la branche courante',
         'action.rebaseCurrentOnto': 'Rebaser la branche courante sur celle-ci',
         'action.compare': 'Comparer avec la branche courante',
-        'action.update': 'Mettre à jour (fetch)',
+      'action.update': 'Tirer',
         'action.push': 'Pousser',
         'action.newTag': 'Nouvelle étiquette...',
         'action.cherryPick': 'Cherry-pick',
@@ -2910,6 +3467,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Tout committer...',
       'more.undoCommit': 'Annuler le dernier commit',
       'more.rebaseAbort': 'Abandonner le rebase',
+      'more.mergeAbort': 'Abandonner la fusion',
       'more.commitStagedAmend': 'Commit indexé (Amend)...',
       'more.commitAllAmend': 'Tout committer (Amend)...',
       'more.commitStagedSign': 'Commit indexé (Signé)...',
@@ -2925,6 +3483,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Récupérer de tous les distants',
       'more.deleteRemoteBranch': 'Supprimer la branche distante...',
       'more.publish': 'Publier la branche...',
+      'more.setUpstreamHead': 'Définir l\'upstream de la branche courante…',
+      'more.unsetUpstreamHead': 'Retirer l\'upstream de la branche courante',
       'more.addRemote': 'Ajouter un distant...',
       'more.removeRemote': 'Supprimer le distant...',
       'more.stashTracked': 'Remisage (suivis seulement)',
@@ -2979,8 +3539,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Arborescence des branches, liste des commits et détails (style IDE)',
         'rail.openSettings': 'Ouvrir les réglages du plugin',
         'settings.card.title': 'Paramètres de la fenêtre d’outils Git',
-        'settings.card.desc': 'Placement du panneau, boutons de la barre d’actions et message de commit par IA',
+        'settings.card.desc': 'Placement du panneau, boutons de la barre d’actions, format de date et message de commit par IA',
         'settings.placement.title': 'Placement du panneau',
+        'settings.history.title': 'Liste d’historique',
         'settings.placement.tab': 'Afficher l’onglet Git dans la zone de conversation',
       'settings.composer.title': 'Statut Git dans la barre de saisie',
       'settings.composer.hint': 'Affiche le dépôt et la branche à côté de la barre de saisie — cliquables pour basculer, synchronisés avec le panneau Git. Désactivé, la barre reste épurée.',
@@ -2988,6 +3549,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Changer de branche',
       'composer.detached': 'HEAD (détaché)',
       'composer.changesHint': 'Modifications non commitées',
+      'composer.fileHint': '{a} ajoutés · {d} supprimés',
+      'composer.linesHint': '+{ins} −{del} lignes',
+      'modelRoute.pick': 'Choisir un modèle',
+      'modelRoute.trigger': 'Modèle des messages de commit IA',
+      'modelRoute.modelRow': 'Modèle',
+      'modelRoute.effortRow': 'Raisonnement',
+      'modelRoute.effortDefault': 'Suivre la valeur par défaut',
+      'modelRoute.empty': 'Aucun modèle disponible',
       'composer.behindHint': 'Nouveaux commits amont (récupérables)',
       'composer.aheadHint': 'Commits locaux en attente d’envoi',
       'composer.inWorktree': 'Extrait dans un autre arbre de travail',
@@ -2998,6 +3567,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Activé, l’onglet Git occupe toute la hauteur de la conversation et la zone de saisie s’efface ; approbations et questions restent visibles.',
         'settings.placement.repoPill': 'Afficher la pastille de dépôt dans la barre de saisie',
         'settings.placement.repoPillHint': 'La pastille du dépôt se place à l’extrême gauche de la barre d’outils — un clic ouvre le panneau Git ; dans un espace de travail multi-dépôts, une flèche de bascule apparaît aussi. Désactivé, il ne reste que la branche et les compteurs.',
+        'settings.date.label': 'Format de date',
+        'settings.date.relative': 'Relatif (4h / 22h)',
+        'settings.date.absolute': 'Absolu (11-05 10:42)',
+        'settings.diff.inline': 'Aperçu des diffs dans le panneau',
+        'settings.diff.inlineHint': 'Activé, les diffs s’ouvrent dans le panneau Git, avec vue scindée et retour à la ligne. Désactivé, l’aperçu diff de la barre latérale prend le relais.',
         'preview.openFile': 'Ouvrir dans l’aperçu du fichier',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3013,7 +3587,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Cliquez sur « Afficher le diff » sur un fichier ou un commit : le diff s’ouvre ici, dans la barre latérale.',
         'preview.boundary': 'L\'aperçu n\'a pas pu être affiché — rechargez la page ou signalez le problème.',
         'settings.rail.title': 'Barre d’actions',
-        'settings.rail.hint': 'Cochez les actions affichées sur la barre. L’ordre est fixe ; décocher masque une action.',
+        'settings.rail.hint': 'Cochez les actions affichées sur la barre ; décocher masque une action. Réordonnez-les dans « Réglages de la barre d’actions » du panneau.',
+        'settings.rail.loading': 'Chargement des réglages…',
         'settings.rail.unavailable': 'Cet hôte n’a pas de service de réglages ; utilisez « Réglages de la barre d’actions » dans le panneau.',
         'settings.commit.title': 'Message de commit par IA',
         'settings.commit.model': 'Modèle',
@@ -3044,6 +3619,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Masquer',
         'action.unavailable': 'Indisponible dans l\'état actuel',
         'filter.branch': 'Branche',
+        'history.scope': 'Portée',
+        'history.scopeCurrent': 'Branche actuelle',
+        'history.scopeAll': 'Toutes les branches',
+        'merge.title': 'Fusionner {branch}',
+        'merge.into': 'Fusionner {branch} dans la branche actuelle',
+        'merge.modeDefault': 'Par défaut',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Avance rapidement quand c\'est possible, sans commit de fusion.',
+        'merge.hint.noFf': 'Crée toujours un commit de fusion, pour que la fusion reste visible dans l\'historique.',
+        'merge.hint.squash': 'Regroupe les modifications de {branch} en une seule modification indexée, sans son historique de commits.',
+        'merge.hint.noCommit': 'Prépare la fusion et s\'arrête avant le commit, pour que vous puissiez la vérifier ou l\'ajuster.',
         'filter.user': 'Auteur',
         'history.me': 'Moi',
         'filter.date': 'Date',
@@ -3082,14 +3670,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Annulation en cours',
         'operation.bisect': 'Bisect en cours',
         'operation.hint': 'Ce dépôt a encore une opération multi-étapes en cours —— terminez-la ou abandonnez-la avant les actions de branche',
+        'worktrees.title': 'Arbres de travail',
+        'worktrees.new': 'Nouvel arbre de travail',
+        'worktrees.prune': 'Nettoyer les entrées obsolètes',
+        'worktrees.back': 'Retour',
+        'worktrees.current': 'Actuel',
+        'worktrees.primary': 'Principal',
+        'worktrees.locked': 'Verrouillé',
+        'worktrees.prunable': 'Nettoyable',
+        'worktrees.detached': 'HEAD détaché',
+        'worktrees.open': 'Ouvrir dans le panneau',
+        'worktrees.remove': 'Supprimer l’arbre de travail',
+        'worktrees.removeConfirm': 'Supprimer l’arbre de travail {path}?',
+        'worktrees.removeDirty': 'L’arbre de travail {path} contient des modifications non validées. Une suppression forcée les perdra définitivement. Continuer?',
+        'worktrees.path': 'Chemin',
+        'worktrees.branch': 'Branche',
+        'worktrees.newBranch': 'Nouvelle branche',
+        'worktrees.existingBranch': 'Branche existante',
+        'worktrees.base': 'Point de départ',
+        'worktrees.create': 'Créer',
+        'worktrees.empty': 'Aucun arbre de travail',
+        'worktrees.pruneConfirm': 'Nettoyer les enregistrements des arbres de travail disparus du disque?',
+        'toast.worktreeAdded': 'Arbre de travail {path} créé',
+        'toast.worktreeRemoved': 'Arbre de travail {path} supprimé',
+        'toast.worktreePruned': 'Enregistrements obsolètes nettoyés',
         'confirm.title': 'Confirmer',
         'confirm.cancel': 'Annuler',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Nom de la nouvelle branche (créée et extraite)',
+        'prompt.createTracking': 'Créer une branche locale depuis la branche distante',
         'prompt.renameBranch': 'Renommer la branche',
         'prompt.newTag': 'Nom de la nouvelle étiquette',
         'prompt.fromHead': 'HEAD courant',
         'error.dismiss': 'Fermer',
+        'error.pushRejected': 'Push refusé : la branche distante contient des commits absents en local. Synchronisez (pull puis push) ou faites un pull (merge), puis poussez à nouveau.',
+        'error.pullDiverged': 'Local et distant ont tous deux avancé ; le fast-forward est impossible. Faites un pull (merge) ou un pull (rebase).',
+        'error.pullConflict': 'Le pull s\'est arrêté sur des conflits : résolvez les fichiers en conflit dans « Modifications », puis validez.',
+        'error.pullDirty': 'Le pull écraserait des modifications locales non validées. Validez-les ou remisez-les d\'abord.',
         'status.loading': 'Lecture...',
         'status.busy': 'En cours...',
         'counts.staged': 'Indexé {n}',
@@ -3104,6 +3721,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Réinitialisation dure sur {hash} ? Les modifications non validées sont perdues.',
         'resetSoft.confirm': 'Déplacer HEAD sur {hash} (arbre de travail conservé) ?',
         'checkoutCommit.confirm': 'Extraire le commit {hash} ? (HEAD détachée)',
+        'seg.history': 'Historique',
+        'seg.changes': 'Modifications {n}',
+        'settings.history.visible': 'Afficher l\'historique dans l\'onglet par défaut',
+        'settings.history.visibleHint': 'Désactivé par défaut:l\'onglet par défaut ne montre alors que les modifications + la boîte de commit. Activé, la fenêtre à onglets Historique | Diff apparaît en dessous. La liste des commits reste dans l\'onglet explorer.',
       },
       /* locale: ru */
       'ru': {
@@ -3114,6 +3735,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'вложенный',
         'repo.none': 'Эта рабочая область не является репозиторием Git',
         'repo.pick': 'Выберите репозиторий для просмотра',
+        'repo.filter': 'Поиск репозиториев',
+        'picker.empty': 'Нет совпадений',
         'repo.empty': 'В этой рабочей области репозиторий Git не найден',
         'repo.switch': 'Сменить репозиторий',
         'branch.switch': 'Сменить ветку',
@@ -3186,13 +3809,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Полный экран',
         'action.exitFullscreen': 'Выйти из полного экрана',
         'action.newBranchFrom': 'Новая ветка отсюда...',
+        'action.setUpstream': 'Задать upstream…',
+        'action.unsetUpstream': 'Убрать upstream',
+        'action.createLocalBranch': 'Создать локальную ветку…',
         'action.newBranchHere': 'Новая ветка здесь...',
         'action.rename': 'Переименовать...',
         'action.delete': 'Удалить',
         'action.mergeIntoCurrent': 'Влить в текущую ветку',
         'action.rebaseCurrentOnto': 'Перебазировать текущую ветку сюда',
         'action.compare': 'Сравнить с текущей веткой',
-        'action.update': 'Обновить (fetch)',
+      'action.update': 'Забрать',
         'action.push': 'Отправить',
         'action.newTag': 'Новый тег...',
         'action.cherryPick': 'Cherry-pick',
@@ -3244,6 +3870,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Фиксация всего...',
       'more.undoCommit': 'Отменить последнюю фиксацию',
       'more.rebaseAbort': 'Прервать перебазирование',
+      'more.mergeAbort': 'Прервать слияние',
       'more.commitStagedAmend': 'Фиксация индексированного (Amend)...',
       'more.commitAllAmend': 'Фиксация всего (Amend)...',
       'more.commitStagedSign': 'Фиксация индексированного (С подписью)...',
@@ -3259,6 +3886,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Изъять со всех серверов',
       'more.deleteRemoteBranch': 'Удалить ветвь на сервере...',
       'more.publish': 'Опубликовать ветвь...',
+      'more.setUpstreamHead': 'Задать upstream текущей ветки…',
+      'more.unsetUpstreamHead': 'Убрать upstream текущей ветки',
       'more.addRemote': 'Добавить сервер...',
       'more.removeRemote': 'Удалить сервер...',
       'more.stashTracked': 'Отложить (только отслеживаемое)',
@@ -3313,8 +3942,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Дерево веток, список коммитов и подробности (стиль IDE)',
         'rail.openSettings': 'Открыть настройки плагина',
         'settings.card.title': 'Настройки окна инструментов Git',
-        'settings.card.desc': 'Размещение панели, кнопки панели действий и сообщение коммита от ИИ',
+        'settings.card.desc': 'Размещение панели, кнопки панели действий, формат даты и сообщение коммита от ИИ',
         'settings.placement.title': 'Размещение панели',
+        'settings.history.title': 'Список истории',
         'settings.placement.tab': 'Показывать вкладку Git в области диалога',
       'settings.composer.title': 'Статус Git в строке ввода',
       'settings.composer.hint': 'Показывает репозиторий и ветку рядом с панелью ввода — клик переключает, синхронно с панелью Git. Выключено — строка ввода остаётся чистой.',
@@ -3322,6 +3952,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Сменить ветку',
       'composer.detached': 'HEAD (отделён)',
       'composer.changesHint': 'Незакоммиченные изменения',
+      'composer.fileHint': 'добавлено: {a} · удалено: {d}',
+      'composer.linesHint': '+{ins} −{del} строк',
+      'modelRoute.pick': 'Выбрать модель',
+      'modelRoute.trigger': 'Модель сообщений коммитов ИИ',
+      'modelRoute.modelRow': 'Модель',
+      'modelRoute.effortRow': 'Рассуждение',
+      'modelRoute.effortDefault': 'По умолчанию',
+      'modelRoute.empty': 'Нет доступных моделей',
       'composer.behindHint': 'Новые коммиты upstream (можно забрать)',
       'composer.aheadHint': 'Локальные коммиты, ожидающие отправки',
       'composer.inWorktree': 'Выверен в другом worktree',
@@ -3332,6 +3970,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Во включённом виде вкладка Git занимает всю высоту области диалога, поле ввода скрывается; подтверждения и вопросы остаются на виду.',
         'settings.placement.repoPill': 'Показывать пилюлю репозитория в строке ввода',
         'settings.placement.repoPillHint': 'Пилюля с именем репозитория стоит у левого края панели инструментов — клик открывает панель Git; в рабочем пространстве с несколькими репозиториями появляется ещё стрелка переключения. Выключено — остаются только ветка и счётчики изменений.',
+        'settings.date.label': 'Формат даты',
+        'settings.date.relative': 'Относительное время (4h / 22h)',
+        'settings.date.absolute': 'Абсолютное время (11-05 10:42)',
+        'settings.diff.inline': 'Просмотр различий в панели',
+        'settings.diff.inlineHint': 'Включено: различия открываются в панели Git с разделённым видом и переносом строк. Выключено: показ переходит к боковой панели.',
         'preview.openFile': 'Открыть в предпросмотре файла',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3347,7 +3990,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Нажмите «Показать различия» у файла или коммита — различия откроются здесь, в боковой панели.',
         'preview.boundary': 'Не удалось отобразить предпросмотр — перезагрузите страницу или сообщите о проблеме.',
         'settings.rail.title': 'Панель действий',
-        'settings.rail.hint': 'Отметьте действия, показываемые на панели. Порядок фиксирован; снятие флажка скрывает действие.',
+        'settings.rail.hint': 'Отметьте действия, показываемые на панели; снятие флажка скрывает действие. Порядок меняется в «Настройках панели действий» в панели.',
+        'settings.rail.loading': 'Загрузка настроек…',
         'settings.rail.unavailable': 'На этом хосте нет службы настроек; используйте «Настройки панели действий» в панели.',
         'settings.commit.title': 'Сообщение коммита от ИИ',
         'settings.commit.model': 'Модель',
@@ -3378,6 +4022,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Скрыть',
         'action.unavailable': 'Недоступно в текущем состоянии',
         'filter.branch': 'Ветка',
+        'history.scope': 'Область',
+        'history.scopeCurrent': 'Текущая ветка',
+        'history.scopeAll': 'Все ветки',
+        'merge.title': 'Слить {branch}',
+        'merge.into': 'Слить {branch} в текущую ветку',
+        'merge.modeDefault': 'По умолчанию',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Выполняет fast-forward, когда это возможно, без коммита слияния.',
+        'merge.hint.noFf': 'Всегда создаёт коммит слияния, чтобы слияние осталось в истории.',
+        'merge.hint.squash': 'Объединяет изменения {branch} в одно подготовленное изменение без истории коммитов.',
+        'merge.hint.noCommit': 'Готовит слияние и останавливается перед коммитом, чтобы его можно было проверить или дополнить.',
         'filter.user': 'Автор',
         'history.me': 'Я',
         'filter.date': 'Дата',
@@ -3416,14 +4073,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Идёт отмена коммита',
         'operation.bisect': 'Идёт bisect',
         'operation.hint': 'В этом репозитории ещё не завершена многошаговая операция —— завершите или прервите её перед действиями с ветками',
+        'worktrees.title': 'Рабочие деревья',
+        'worktrees.new': 'Новое рабочее дерево',
+        'worktrees.prune': 'Очистить устаревшие записи',
+        'worktrees.back': 'Назад',
+        'worktrees.current': 'Текущее',
+        'worktrees.primary': 'Основное',
+        'worktrees.locked': 'Заблокировано',
+        'worktrees.prunable': 'Можно очистить',
+        'worktrees.detached': 'Отсоединённый HEAD',
+        'worktrees.open': 'Открыть в панели',
+        'worktrees.remove': 'Удалить рабочее дерево',
+        'worktrees.removeConfirm': 'Удалить рабочее дерево {path}?',
+        'worktrees.removeDirty': 'В рабочем дереве {path} есть незакоммиченные изменения. Принудительное удаление безвозвратно их удалит. Продолжить?',
+        'worktrees.path': 'Путь',
+        'worktrees.branch': 'Ветка',
+        'worktrees.newBranch': 'Новая ветка',
+        'worktrees.existingBranch': 'Существующая ветка',
+        'worktrees.base': 'Начальная точка',
+        'worktrees.create': 'Создать',
+        'worktrees.empty': 'Нет рабочих деревьев',
+        'worktrees.pruneConfirm': 'Очистить записи рабочих деревьев, исчезнувших с диска?',
+        'toast.worktreeAdded': 'Рабочее дерево {path} создано',
+        'toast.worktreeRemoved': 'Рабочее дерево {path} удалено',
+        'toast.worktreePruned': 'Устаревшие записи очищены',
         'confirm.title': 'Подтверждение',
         'confirm.cancel': 'Отмена',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Имя новой ветки (будет создана и выбрана)',
+        'prompt.createTracking': 'Создать локальную ветку из удалённой',
         'prompt.renameBranch': 'Переименовать ветку',
         'prompt.newTag': 'Имя нового тега',
         'prompt.fromHead': 'текущий HEAD',
         'error.dismiss': 'Закрыть',
+        'error.pushRejected': 'Push отклонён: в удалённой ветке есть коммиты, которых нет локально. Сначала синхронизируйтесь (pull и push) или выполните pull (merge), затем повторите push.',
+        'error.pullDiverged': 'Локальная и удалённая ветки разошлись; fast-forward невозможен. Используйте pull (merge) или pull (rebase).',
+        'error.pullConflict': 'Pull остановился из-за конфликтов: разрешите конфликтные файлы в «Изменениях» и закоммитьте их.',
+        'error.pullDirty': 'Pull перезапишет незакоммиченные локальные изменения. Сначала закоммитьте или спрячьте их.',
         'status.loading': 'Чтение...',
         'status.busy': 'Работа...',
         'counts.staged': 'В индексе {n}',
@@ -3438,6 +4124,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Жёсткий сброс на {hash}? Незакоммиченные изменения будут потеряны.',
         'resetSoft.confirm': 'Переместить HEAD на {hash} (рабочее дерево сохранится)?',
         'checkoutCommit.confirm': 'Переключиться на коммит {hash}? (detached HEAD)',
+        'seg.history': 'История',
+        'seg.changes': 'Изменения {n}',
+        'settings.history.visible': 'Показывать историю на вкладке по умолчанию',
+        'settings.history.visibleHint': 'По умолчанию выключено:на вкладке только изменения + поле коммита. При включении ниже появляется окно с вкладками История | Diff. Список коммитов всегда доступен во вкладке explorer.',
       },
       /* locale: pt */
       'pt': {
@@ -3448,6 +4138,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'aninhado',
         'repo.none': 'Esta área de trabalho não é um repositório Git',
         'repo.pick': 'Escolha um repositório para inspecionar',
+        'repo.filter': 'Pesquisar repositórios',
+        'picker.empty': 'Nenhum resultado',
         'repo.empty': 'Nenhum repositório Git encontrado nesta área de trabalho',
         'repo.switch': 'Trocar de repositório',
         'branch.switch': 'Trocar de branch',
@@ -3520,13 +4212,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Tela cheia',
         'action.exitFullscreen': 'Sair da tela cheia',
         'action.newBranchFrom': 'Nova branch a partir daqui...',
+        'action.setUpstream': 'Definir upstream…',
+        'action.unsetUpstream': 'Remover upstream',
+        'action.createLocalBranch': 'Criar branch local…',
         'action.newBranchHere': 'Nova branch aqui...',
         'action.rename': 'Renomear...',
         'action.delete': 'Excluir',
         'action.mergeIntoCurrent': 'Mesclar na branch atual',
         'action.rebaseCurrentOnto': 'Rebasear a branch atual sobre esta',
         'action.compare': 'Comparar com a branch atual',
-        'action.update': 'Atualizar (fetch)',
+      'action.update': 'Puxar',
         'action.push': 'Enviar',
         'action.newTag': 'Nova tag...',
         'action.cherryPick': 'Cherry-pick',
@@ -3578,6 +4273,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Commit de tudo...',
       'more.undoCommit': 'Desfazer último commit',
       'more.rebaseAbort': 'Abortar rebase',
+      'more.mergeAbort': 'Abortar merge',
       'more.commitStagedAmend': 'Commit em staging (Amend)...',
       'more.commitAllAmend': 'Commit de tudo (Amend)...',
       'more.commitStagedSign': 'Commit em staging (Assinado)...',
@@ -3593,6 +4289,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Fetch de todos os remotos',
       'more.deleteRemoteBranch': 'Eliminar ramo remoto...',
       'more.publish': 'Publicar ramificação...',
+      'more.setUpstreamHead': 'Definir upstream da branch atual…',
+      'more.unsetUpstreamHead': 'Remover upstream da branch atual',
       'more.addRemote': 'Adicionar remoto...',
       'more.removeRemote': 'Remover remoto...',
       'more.stashTracked': 'Stash (apenas rastreados)',
@@ -3647,8 +4345,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Árvore de branches, lista de commits e detalhes (estilo IDE)',
         'rail.openSettings': 'Abrir configurações do plugin',
         'settings.card.title': 'Configurações da janela de ferramentas Git',
-        'settings.card.desc': 'Posição do painel, botões da barra de ações e mensagem de commit por IA',
+        'settings.card.desc': 'Posição do painel, botões da barra de ações, formato de data e mensagem de commit por IA',
         'settings.placement.title': 'Posição do painel',
+        'settings.history.title': 'Lista de histórico',
         'settings.placement.tab': 'Mostrar a aba Git na área de conversa',
       'settings.composer.title': 'Status do Git na barra de entrada',
       'settings.composer.hint': 'Mostra repositório e branch ao lado da barra de entrada — clique para alternar, em sincronia com o painel Git. Desligado, a barra fica limpa.',
@@ -3656,6 +4355,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Trocar branch',
       'composer.detached': 'HEAD (destacado)',
       'composer.changesHint': 'Alterações não commitadas',
+      'composer.fileHint': '{a} adicionados · {d} removidos',
+      'composer.linesHint': '+{ins} −{del} linhas',
+      'modelRoute.pick': 'Escolher modelo',
+      'modelRoute.trigger': 'Modelo da mensagem de commit por IA',
+      'modelRoute.modelRow': 'Modelo',
+      'modelRoute.effortRow': 'Raciocínio',
+      'modelRoute.effortDefault': 'Seguir o padrão',
+      'modelRoute.empty': 'Nenhum modelo disponível',
       'composer.behindHint': 'Novos commits remotos (para pull)',
       'composer.aheadHint': 'Commits locais aguardando push',
       'composer.inWorktree': 'Em checkout em outra worktree',
@@ -3666,6 +4373,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Ativado, a aba Git ocupa toda a altura da conversa e o campo de entrada fica de lado; aprovações e perguntas continuam visíveis.',
         'settings.placement.repoPill': 'Mostrar a pílula do repositório na barra de entrada',
         'settings.placement.repoPillHint': 'A pílula com o nome do repositório fica na ponta esquerda da barra de ferramentas — o clique abre o painel Git; em espaços de trabalho com vários repositórios aparece também a seta de troca. Desligado, sobram apenas a branch e os contadores.',
+        'settings.date.label': 'Formato de data',
+        'settings.date.relative': 'Relativo (4h / 22h)',
+        'settings.date.absolute': 'Absoluto (11-05 10:42)',
+        'settings.diff.inline': 'Pré-visualizar diferenças no painel',
+        'settings.diff.inlineHint': 'Ligado, as diferenças abrem no painel Git, com vista dividida e quebra de linha. Desligado, a pré-visualização da barra lateral assume.',
         'preview.openFile': 'Abrir na pré-visualização do arquivo',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3681,7 +4393,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Clique em “Mostrar diff” num arquivo ou commit — o diff abre aqui, na barra lateral.',
         'preview.boundary': 'Falha ao renderizar a pré-visualização — recarregue a página ou relate o problema.',
         'settings.rail.title': 'Barra de ações',
-        'settings.rail.hint': 'Marque as ações exibidas na barra. A ordem é fixa; desmarcar oculta uma ação.',
+        'settings.rail.hint': 'Marque as ações exibidas na barra; desmarcar oculta uma ação. A ordem é ajustada em «Configurações da barra de ações» no painel.',
+        'settings.rail.loading': 'Carregando configurações…',
         'settings.rail.unavailable': 'Este host não tem serviço de configurações; use «Configurações da barra de ações» no painel.',
         'settings.commit.title': 'Mensagem de commit por IA',
         'settings.commit.model': 'Modelo',
@@ -3712,6 +4425,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Ocultar',
         'action.unavailable': 'Indisponível no estado atual',
         'filter.branch': 'Branch',
+        'history.scope': 'Escopo',
+        'history.scopeCurrent': 'Branch atual',
+        'history.scopeAll': 'Todos os branches',
+        'merge.title': 'Mesclar {branch}',
+        'merge.into': 'Mesclar {branch} no branch atual',
+        'merge.modeDefault': 'Padrão',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Avança rapidamente quando possível, sem commit de merge.',
+        'merge.hint.noFf': 'Sempre cria um commit de merge, para que o merge fique visível no histórico.',
+        'merge.hint.squash': 'Combina as alterações de {branch} em uma única alteração preparada, sem o histórico de commits.',
+        'merge.hint.noCommit': 'Prepara o merge e para antes do commit, para você revisar ou ajustar.',
         'filter.user': 'Autor',
         'history.me': 'Eu',
         'filter.date': 'Data',
@@ -3750,14 +4476,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Reversão em andamento',
         'operation.bisect': 'Bisect em andamento',
         'operation.hint': 'Este repositório ainda tem uma operação de várias etapas aberta —— conclua ou aborte antes das ações de branch',
+        'worktrees.title': 'Árvores de trabalho',
+        'worktrees.new': 'Nova árvore de trabalho',
+        'worktrees.prune': 'Limpar registros obsoletos',
+        'worktrees.back': 'Voltar',
+        'worktrees.current': 'Atual',
+        'worktrees.primary': 'Principal',
+        'worktrees.locked': 'Bloqueada',
+        'worktrees.prunable': 'Limpável',
+        'worktrees.detached': 'HEAD destacado',
+        'worktrees.open': 'Abrir no painel',
+        'worktrees.remove': 'Remover árvore de trabalho',
+        'worktrees.removeConfirm': 'Remover a árvore de trabalho {path}?',
+        'worktrees.removeDirty': 'A árvore de trabalho {path} tem alterações não commitadas. A remoção forçada irá descartá-las permanentemente. Continuar?',
+        'worktrees.path': 'Caminho',
+        'worktrees.branch': 'Branch',
+        'worktrees.newBranch': 'Nova branch',
+        'worktrees.existingBranch': 'Branch existente',
+        'worktrees.base': 'Ponto de partida',
+        'worktrees.create': 'Criar',
+        'worktrees.empty': 'Nenhuma árvore de trabalho',
+        'worktrees.pruneConfirm': 'Limpar registros de árvores de trabalho que não existem mais no disco?',
+        'toast.worktreeAdded': 'Árvore de trabalho {path} criada',
+        'toast.worktreeRemoved': 'Árvore de trabalho {path} removida',
+        'toast.worktreePruned': 'Registros obsoletos limpos',
         'confirm.title': 'Confirmar',
         'confirm.cancel': 'Cancelar',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Nome da nova branch (criada e com checkout)',
+        'prompt.createTracking': 'Criar branch local a partir da remota',
         'prompt.renameBranch': 'Renomear branch',
         'prompt.newTag': 'Nome da nova tag',
         'prompt.fromHead': 'HEAD atual',
         'error.dismiss': 'Fechar',
+        'error.pushRejected': 'Push rejeitado: o branch remoto tem commits que não existem localmente. Sincronize (pull e push) ou faça pull (merge) e envie novamente.',
+        'error.pullDiverged': 'Local e remoto avançaram; o fast-forward é impossível. Use pull (merge) ou pull (rebase).',
+        'error.pullConflict': 'O pull parou em conflitos: resolva os arquivos em conflito em "Alterações" e faça o commit.',
+        'error.pullDirty': 'O pull sobrescreveria alterações locais não commitadas. Faça commit ou stash primeiro.',
         'status.loading': 'Lendo...',
         'status.busy': 'Trabalhando...',
         'counts.staged': 'Preparado {n}',
@@ -3772,6 +4527,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Redefinição forçada para {hash}? Alterações não commitadas serão perdidas.',
         'resetSoft.confirm': 'Mover HEAD para {hash} (árvore de trabalho mantida)?',
         'checkoutCommit.confirm': 'Fazer checkout do commit {hash}? (HEAD destacado)',
+        'seg.history': 'Histórico',
+        'seg.changes': 'Alterações {n}',
+        'settings.history.visible': 'Mostrar o histórico na aba padrão',
+        'settings.history.visibleHint': 'Desligado por padrão:a aba padrão mostra apenas alterações + caixa de commit. Ao ligar, surge abaixo a janela com abas Histórico | Diff. A lista de commits continua na aba explorer.',
       },
       /* locale: it */
       'it': {
@@ -3782,6 +4541,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'annidato',
         'repo.none': 'Questa area di lavoro non è un repository Git',
         'repo.pick': 'Scegli un repository da esaminare',
+        'repo.filter': 'Cerca repository',
+        'picker.empty': 'Nessuna corrispondenza',
         'repo.empty': 'Nessun repository Git trovato in questa area di lavoro',
         'repo.switch': 'Cambia repository',
         'branch.switch': 'Cambia branch',
@@ -3854,13 +4615,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Schermo intero',
         'action.exitFullscreen': 'Esci da schermo intero',
         'action.newBranchFrom': 'Nuovo branch da qui...',
+        'action.setUpstream': 'Imposta upstream…',
+        'action.unsetUpstream': 'Rimuovi upstream',
+        'action.createLocalBranch': 'Crea branch locale…',
         'action.newBranchHere': 'Nuovo branch qui...',
         'action.rename': 'Rinomina...',
         'action.delete': 'Elimina',
         'action.mergeIntoCurrent': 'Unisci nel branch corrente',
         'action.rebaseCurrentOnto': 'Rebase del branch corrente su questo',
         'action.compare': 'Confronta con il branch corrente',
-        'action.update': 'Aggiorna (fetch)',
+      'action.update': 'Pull',
         'action.push': 'Push',
         'action.newTag': 'Nuovo tag...',
         'action.cherryPick': 'Cherry-pick',
@@ -3912,6 +4676,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Esegui commit di tutto...',
       'more.undoCommit': 'Annulla ultimo commit',
       'more.rebaseAbort': 'Interrompi rebase',
+      'more.mergeAbort': 'Interrompi merge',
       'more.commitStagedAmend': 'Commit in staging (Amend)...',
       'more.commitAllAmend': 'Commit di tutto (Amend)...',
       'more.commitStagedSign': 'Commit in staging (Firmato)...',
@@ -3927,6 +4692,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Fetch da tutti i remoti',
       'more.deleteRemoteBranch': 'Elimina branch remoto...',
       'more.publish': 'Pubblica branch...',
+      'more.setUpstreamHead': 'Imposta upstream del branch corrente…',
+      'more.unsetUpstreamHead': 'Rimuovi upstream del branch corrente',
       'more.addRemote': 'Aggiungi remoto...',
       'more.removeRemote': 'Rimuovi remoto...',
       'more.stashTracked': 'Stash (solo tracciati)',
@@ -3981,8 +4748,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Albero dei branch, elenco dei commit e dettagli (stile IDE)',
         'rail.openSettings': 'Apri le impostazioni del plugin',
         'settings.card.title': 'Impostazioni della finestra strumenti Git',
-        'settings.card.desc': 'Posizione del pannello, pulsanti della barra azioni e messaggio di commit con IA',
+        'settings.card.desc': 'Posizione del pannello, pulsanti della barra azioni, formato data e messaggio di commit con IA',
         'settings.placement.title': 'Posizione del pannello',
+        'settings.history.title': 'Elenco cronologia',
         'settings.placement.tab': 'Mostra la scheda Git nell’area conversazione',
       'settings.composer.title': 'Stato Git nella barra di inserimento',
       'settings.composer.hint': 'Mostra repository e ramo accanto alla barra di inserimento — cliccabili per cambiare, sincronizzati con il pannello Git. Disattivato, la barra resta pulita.',
@@ -3990,6 +4758,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Cambia ramo',
       'composer.detached': 'HEAD (staccato)',
       'composer.changesHint': 'Modifiche non ancora committate',
+      'composer.fileHint': '{a} aggiunti · {d} eliminati',
+      'composer.linesHint': '+{ins} −{del} righe',
+      'modelRoute.pick': 'Scegli modello',
+      'modelRoute.trigger': 'Modello dei messaggi di commit IA',
+      'modelRoute.modelRow': 'Modello',
+      'modelRoute.effortRow': 'Ragionamento',
+      'modelRoute.effortDefault': 'Segui il predefinito',
+      'modelRoute.empty': 'Nessun modello disponibile',
       'composer.behindHint': 'Nuovi commit upstream (scaricabili)',
       'composer.aheadHint': 'Commit locali in attesa di push',
       'composer.inWorktree': 'Estratto in un altro worktree',
@@ -4000,6 +4776,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Attiva, la scheda Git occupa tutta l’altezza della conversazione e la barra di input resta nascosta; approvazioni e domande restano visibili.',
         'settings.placement.repoPill': 'Mostra la pill del repository nella barra di inserimento',
         'settings.placement.repoPillHint': 'La pill con il nome del repository sta all’estrema sinistra della barra degli strumenti — il clic apre il pannello Git; nei workspace con più repository compare anche la freccia di cambio. Disattivato, restano solo ramo e contatori.',
+        'settings.date.label': 'Formato data',
+        'settings.date.relative': 'Relativo (4h / 22h)',
+        'settings.date.absolute': 'Assoluto (11-05 10:42)',
+        'settings.diff.inline': 'Anteprima delle differenze nel pannello',
+        'settings.diff.inlineHint': 'Attivo: le differenze si aprono nel pannello Git, con vista affiancata e ritorno a capo. Disattivo: subentra l’anteprima della barra laterale.',
         'preview.openFile': 'Apri nell’anteprima del file',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -4015,7 +4796,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Fai clic su «Mostra diff» su un file o un commit: il diff si apre qui, nella barra laterale.',
         'preview.boundary': 'Impossibile visualizzare l\'anteprima — ricarica la pagina o segnala il problema.',
         'settings.rail.title': 'Barra delle azioni',
-        'settings.rail.hint': 'Seleziona le azioni mostrate sulla barra. L’ordine è fisso; deselezionando se ne nasconde una.',
+        'settings.rail.hint': 'Seleziona le azioni mostrate sulla barra; deselezionando se ne nasconde una. Riordinale in «Impostazioni barra azioni» nel pannello.',
+        'settings.rail.loading': 'Caricamento impostazioni…',
         'settings.rail.unavailable': 'Questo host non ha un servizio di impostazioni; usa «Impostazioni barra azioni» nel pannello.',
         'settings.commit.title': 'Messaggio di commit con IA',
         'settings.commit.model': 'Modello',
@@ -4046,6 +4828,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Nascondi',
         'action.unavailable': 'Non disponibile nello stato attuale',
         'filter.branch': 'Branch',
+        'history.scope': 'Ambito',
+        'history.scopeCurrent': 'Branch corrente',
+        'history.scopeAll': 'Tutti i branch',
+        'merge.title': 'Unisci {branch}',
+        'merge.into': 'Unisci {branch} nel branch corrente',
+        'merge.modeDefault': 'Predefinito',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Esegue un fast-forward quando possibile, senza commit di merge.',
+        'merge.hint.noFf': 'Crea sempre un commit di merge, così il merge resta visibile nella cronologia.',
+        'merge.hint.squash': 'Combina le modifiche di {branch} in un\'unica modifica preparata, senza la cronologia dei commit.',
+        'merge.hint.noCommit': 'Prepara il merge e si ferma prima del commit, così puoi controllarlo o modificarlo.',
         'filter.user': 'Autore',
         'history.me': 'Io',
         'filter.date': 'Data',
@@ -4084,14 +4879,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Annullamento in corso',
         'operation.bisect': 'Bisect in corso',
         'operation.hint': 'Questo repository ha ancora un’operazione a più passaggi aperta —— completala o interrompila prima delle azioni sui branch',
+        'worktrees.title': 'Alberi di lavoro',
+        'worktrees.new': 'Nuovo albero di lavoro',
+        'worktrees.prune': 'Pulisci record obsoleti',
+        'worktrees.back': 'Indietro',
+        'worktrees.current': 'Attuale',
+        'worktrees.primary': 'Principale',
+        'worktrees.locked': 'Bloccato',
+        'worktrees.prunable': 'Pulibile',
+        'worktrees.detached': 'HEAD scollegato',
+        'worktrees.open': 'Apri nel pannello',
+        'worktrees.remove': 'Rimuovi albero di lavoro',
+        'worktrees.removeConfirm': 'Rimuovere l’albero di lavoro {path}?',
+        'worktrees.removeDirty': 'L’albero di lavoro {path} ha modifiche non committate. La rimozione forzata le eliminerà definitivamente. Continuare?',
+        'worktrees.path': 'Percorso',
+        'worktrees.branch': 'Branch',
+        'worktrees.newBranch': 'Nuovo branch',
+        'worktrees.existingBranch': 'Branch esistente',
+        'worktrees.base': 'Punto di partenza',
+        'worktrees.create': 'Crea',
+        'worktrees.empty': 'Nessun albero di lavoro',
+        'worktrees.pruneConfirm': 'Pulisci i record degli alberi di lavoro scomparsi dal disco?',
+        'toast.worktreeAdded': 'Albero di lavoro {path} creato',
+        'toast.worktreeRemoved': 'Albero di lavoro {path} rimosso',
+        'toast.worktreePruned': 'Record obsoleti puliti',
         'confirm.title': 'Conferma',
         'confirm.cancel': 'Annulla',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Nome del nuovo branch (creato e messo in checkout)',
+        'prompt.createTracking': 'Crea un branch locale dal branch remoto',
         'prompt.renameBranch': 'Rinomina il branch',
         'prompt.newTag': 'Nome del nuovo tag',
         'prompt.fromHead': 'HEAD corrente',
         'error.dismiss': 'Chiudi',
+        'error.pushRejected': 'Push rifiutato: il branch remoto contiene commit assenti in locale. Sincronizza (pull e push) oppure esegui pull (merge) e riprova.',
+        'error.pullDiverged': 'Locale e remoto sono avanzati entrambi; il fast-forward è impossibile. Usa pull (merge) o pull (rebase).',
+        'error.pullConflict': 'Il pull si è fermato per conflitti: risolvi i file in conflitto in "Modifiche", poi esegui il commit.',
+        'error.pullDirty': 'Il pull sovrascriverebbe modifiche locali non committate. Esegui prima commit o stash.',
         'status.loading': 'Lettura...',
         'status.busy': 'In corso...',
         'counts.staged': 'In stage {n}',
@@ -4106,6 +4930,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Reset forzato a {hash}? Le modifiche non committate andranno perse.',
         'resetSoft.confirm': 'Spostare HEAD a {hash} (albero di lavoro mantenuto)?',
         'checkoutCommit.confirm': 'Fare checkout del commit {hash}? (HEAD scollegato)',
+        'seg.history': 'Cronologia',
+        'seg.changes': 'Modifiche {n}',
+        'settings.history.visible': 'Mostra la cronologia nella scheda predefinita',
+        'settings.history.visibleHint': 'Disattivato per impostazione predefinita:la scheda contiene solo modifiche + riquadro di commit. Attivandolo appare la finestra con le schede Cronologia | Diff. La cronologia resta nella scheda explorer.',
       },
       /* locale: nl */
       'nl': {
@@ -4116,6 +4944,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'genest',
         'repo.none': 'Deze werkruimte is geen Git-repository',
         'repo.pick': 'Kies een repository om te bekijken',
+        'repo.filter': 'Repositories zoeken',
+        'picker.empty': 'Geen resultaten',
         'repo.empty': 'Geen Git-repository gevonden in deze werkruimte',
         'repo.switch': 'Wissel van repository',
         'branch.switch': 'Wissel van branch',
@@ -4188,13 +5018,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Volledig scherm',
         'action.exitFullscreen': 'Volledig scherm sluiten',
         'action.newBranchFrom': 'Nieuwe branch vanaf hier...',
+        'action.setUpstream': 'Upstream instellen…',
+        'action.unsetUpstream': 'Upstream verwijderen',
+        'action.createLocalBranch': 'Lokale branch maken…',
         'action.newBranchHere': 'Nieuwe branch hier...',
         'action.rename': 'Hernoemen...',
         'action.delete': 'Verwijderen',
         'action.mergeIntoCurrent': 'Samenvoegen in huidige branch',
         'action.rebaseCurrentOnto': 'Huidige branch rebasen op deze',
         'action.compare': 'Vergelijken met huidige branch',
-        'action.update': 'Bijwerken (fetch)',
+      'action.update': 'Pull',
         'action.push': 'Pushen',
         'action.newTag': 'Nieuwe tag...',
         'action.cherryPick': 'Cherry-pick',
@@ -4246,6 +5079,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Alles committen...',
       'more.undoCommit': 'Laatste commit ongedaan maken',
       'more.rebaseAbort': 'Rebase afbreken',
+      'more.mergeAbort': 'Merge afbreken',
       'more.commitStagedAmend': 'Staged committen (Amend)...',
       'more.commitAllAmend': 'Alles committen (Amend)...',
       'more.commitStagedSign': 'Staged committen (Getekend)...',
@@ -4261,6 +5095,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Van alle remotes halen',
       'more.deleteRemoteBranch': 'Remote branch verwijderen...',
       'more.publish': 'Branch publiceren...',
+      'more.setUpstreamHead': 'Upstream instellen voor huidige branch…',
+      'more.unsetUpstreamHead': 'Upstream van huidige branch verwijderen',
       'more.addRemote': 'Remote toevoegen...',
       'more.removeRemote': 'Remote verwijderen...',
       'more.stashTracked': 'Stash (alleen gevolgd)',
@@ -4315,8 +5151,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Branch-boom, commitlijst en commitdetails (IDE-stijl)',
         'rail.openSettings': 'Plugin-instellingen openen',
         'settings.card.title': 'Instellingen van het Git-werkvenster',
-        'settings.card.desc': 'Paneelplaatsing, knoppen van de actiebalk en AI-commitbericht',
+        'settings.card.desc': 'Paneelplaatsing, knoppen van de actiebalk, datumnotatie en AI-commitbericht',
         'settings.placement.title': 'Paneelplaatsing',
+        'settings.history.title': 'Geschiedenislist',
         'settings.placement.tab': 'Git-tabblad in het gespreksgebied tonen',
       'settings.composer.title': 'Git-status in de invoerbalk',
       'settings.composer.hint': 'Toont repository en branch naast de invoerbalk — klikbaar om te wisselen, gesynchroniseerd met het Git-paneel. Uit houdt de balk schoon.',
@@ -4324,6 +5161,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Branch wisselen',
       'composer.detached': 'HEAD (los)',
       'composer.changesHint': 'Ongecommitte wijzigingen',
+      'composer.fileHint': '{a} toegevoegd · {d} verwijderd',
+      'composer.linesHint': '+{ins} −{del} regels',
+      'modelRoute.pick': 'Kies een model',
+      'modelRoute.trigger': 'Model voor AI-commitberichten',
+      'modelRoute.modelRow': 'Model',
+      'modelRoute.effortRow': 'Redeneren',
+      'modelRoute.effortDefault': 'Standaard volgen',
+      'modelRoute.empty': 'Geen modellen beschikbaar',
       'composer.behindHint': 'Nieuwe upstream-commits (op te halen)',
       'composer.aheadHint': 'Lokale commits die wachten op push',
       'composer.inWorktree': 'Uitgecheckt in een andere worktree',
@@ -4334,6 +5179,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Aan: het Git-tabblad vult de hele gespreksruimte en het invoerveld wijkt; goedkeuringen en vragen blijven zichtbaar.',
         'settings.placement.repoPill': 'Repository-pil in de invoerbalk tonen',
         'settings.placement.repoPillHint': 'De pil met de repositorynaam staat links in de werkbalk — klikken opent het Git-paneel; in een workspace met meerdere repositories verschijnt ook de wisselpijl. Uit blijven alleen branch en tellers over.',
+        'settings.date.label': 'Datumnotatie',
+        'settings.date.relative': 'Relatief (4h / 22h)',
+        'settings.date.absolute': 'Absoluut (11-05 10:42)',
+        'settings.diff.inline': 'Diffs in het paneel bekijken',
+        'settings.diff.inlineHint': 'Aan: diffs openen in het Git-paneel, met gesplitste weergave en regelterugloop. Uit: de diff-voorvertoning in de zijbalk neemt het over.',
         'preview.openFile': 'Openen in de bestandsvoorbeeld',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -4349,7 +5199,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Klik op „Diff tonen“ bij een bestand of commit — de diff opent hier in de zijbalk.',
         'preview.boundary': 'De voorvertoning kon niet worden weergegeven — herlaad de pagina of meld het probleem.',
         'settings.rail.title': 'Actiebalk',
-        'settings.rail.hint': 'Vink de acties aan die op de balk verschijnen. De volgorde ligt vast; uitvinken verbergt er een.',
+        'settings.rail.hint': 'Vink de acties aan die op de balk verschijnen; uitvinken verbergt er een. De volgorde wijzig je in “Actiebalk-instellingen” in het paneel.',
+        'settings.rail.loading': 'Instellingen laden…',
         'settings.rail.unavailable': 'Deze host heeft geen instellingenservice; gebruik "Actiebalk-instellingen" in het paneel.',
         'settings.commit.title': 'AI-commitbericht',
         'settings.commit.model': 'Model',
@@ -4380,6 +5231,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Verbergen',
         'action.unavailable': 'Niet beschikbaar in de huidige staat',
         'filter.branch': 'Branch',
+        'history.scope': 'Bereik',
+        'history.scopeCurrent': 'Huidige branch',
+        'history.scopeAll': 'Alle branches',
+        'merge.title': '{branch} mergen',
+        'merge.into': '{branch} in de huidige branch mergen',
+        'merge.modeDefault': 'Standaard',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Voert indien mogelijk een fast-forward uit, zonder merge-commit.',
+        'merge.hint.noFf': 'Maakt altijd een merge-commit, zodat de merge zichtbaar blijft in de geschiedenis.',
+        'merge.hint.squash': 'Voegt de wijzigingen van {branch} samen tot één klaargezette wijziging, zonder de commitgeschiedenis.',
+        'merge.hint.noCommit': 'Bereidt de merge voor en stopt vóór de commit, zodat je hem kunt controleren of aanpassen.',
         'filter.user': 'Auteur',
         'history.me': 'Ik',
         'filter.date': 'Datum',
@@ -4418,14 +5282,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Terugdraaien bezig',
         'operation.bisect': 'Bisect bezig',
         'operation.hint': 'Deze repository heeft nog een meerstapsbewerking openstaan —— rond die af of breek die af voordat je branchacties uitvoert',
+        'worktrees.title': 'Werkbomen',
+        'worktrees.new': 'Nieuwe werkboom',
+        'worktrees.prune': 'Verouderde records opschonen',
+        'worktrees.back': 'Terug',
+        'worktrees.current': 'Huidige',
+        'worktrees.primary': 'Primair',
+        'worktrees.locked': 'Vergrendeld',
+        'worktrees.prunable': 'Opschoonbaar',
+        'worktrees.detached': 'Losgekoppelde HEAD',
+        'worktrees.open': 'In paneel openen',
+        'worktrees.remove': 'Werkboom verwijderen',
+        'worktrees.removeConfirm': 'Werkboom {path} verwijderen?',
+        'worktrees.removeDirty': 'Werkboom {path} heeft niet-gecommitte wijzigingen. Geforceerd verwijderen gooit ze definitief weg. Doorgaan?',
+        'worktrees.path': 'Pad',
+        'worktrees.branch': 'Branch',
+        'worktrees.newBranch': 'Nieuwe branch',
+        'worktrees.existingBranch': 'Bestaande branch',
+        'worktrees.base': 'Startpunt',
+        'worktrees.create': 'Aanmaken',
+        'worktrees.empty': 'Geen werkbomen',
+        'worktrees.pruneConfirm': 'Records van werkbomen die niet meer op schijf staan opschonen?',
+        'toast.worktreeAdded': 'Werkboom {path} aangemaakt',
+        'toast.worktreeRemoved': 'Werkboom {path} verwijderd',
+        'toast.worktreePruned': 'Verouderde werkboomrecords opgeschoond',
         'confirm.title': 'Bevestigen',
         'confirm.cancel': 'Annuleren',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Naam van de nieuwe branch (wordt aangemaakt en uitgecheckt)',
+        'prompt.createTracking': 'Lokale branch maken vanaf de remote branch',
         'prompt.renameBranch': 'Branch hernoemen',
         'prompt.newTag': 'Naam van de nieuwe tag',
         'prompt.fromHead': 'huidige HEAD',
         'error.dismiss': 'Sluiten',
+        'error.pushRejected': 'Push geweigerd: de remote branch heeft commits die lokaal ontbreken. Synchroniseer (pull en push) of pull (merge) en push daarna opnieuw.',
+        'error.pullDiverged': 'Lokaal en remote zijn beide verdergegaan; fast-forward is onmogelijk. Gebruik pull (merge) of pull (rebase).',
+        'error.pullConflict': 'Pull stopte door conflicten: los de conflictbestanden op onder "Wijzigingen" en commit daarna.',
+        'error.pullDirty': 'Pull zou niet-gecommitte lokale wijzigingen overschrijven. Commit of stash ze eerst.',
         'status.loading': 'Lezen...',
         'status.busy': 'Bezig...',
         'counts.staged': 'Gestaged {n}',
@@ -4440,6 +5333,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Hard resetten naar {hash}? Niet-gecommitte wijzigingen gaan verloren.',
         'resetSoft.confirm': 'HEAD naar {hash} verplaatsen (werkboom behouden)?',
         'checkoutCommit.confirm': 'Commit {hash} uitchecken? (detached HEAD)',
+        'seg.history': 'Geschiedenis',
+        'seg.changes': 'Wijzigingen {n}',
+        'settings.history.visible': 'Geschiedenislijst op het standaardtabblad tonen',
+        'settings.history.visibleHint': 'Standaard uit:het standaardtabblad toont dan alleen wijzigingen + het commit-vak. Ingeschakeld verschijnt daaronder het venster met de tabbladen Geschiedenis | Diff. De commitlijst blijft in het explorer-tabblad.',
       },
       /* locale: pl */
       'pl': {
@@ -4450,6 +5347,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'zagnieżdżone',
         'repo.none': 'Ten obszar roboczy nie jest repozytorium Git',
         'repo.pick': 'Wybierz repozytorium do podglądu',
+        'repo.filter': 'Szukaj repozytoriów',
+        'picker.empty': 'Brak dopasowań',
         'repo.empty': 'W tym obszarze roboczym nie znaleziono repozytorium Git',
         'repo.switch': 'Zmień repozytorium',
         'branch.switch': 'Zmień gałąź',
@@ -4522,13 +5421,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Pełny ekran',
         'action.exitFullscreen': 'Wyjdź z pełnego ekranu',
         'action.newBranchFrom': 'Nowa gałąź stąd...',
+        'action.setUpstream': 'Ustaw upstream…',
+        'action.unsetUpstream': 'Usuń upstream',
+        'action.createLocalBranch': 'Utwórz gałąź lokalną…',
         'action.newBranchHere': 'Nowa gałąź tutaj...',
         'action.rename': 'Zmień nazwę...',
         'action.delete': 'Usuń',
         'action.mergeIntoCurrent': 'Scal z bieżącą gałęzią',
         'action.rebaseCurrentOnto': 'Zrebase’uj bieżącą gałąź na tę',
         'action.compare': 'Porównaj z bieżącą gałęzią',
-        'action.update': 'Odśwież (fetch)',
+      'action.update': 'Ściągnij',
         'action.push': 'Wypchnij',
         'action.newTag': 'Nowy tag...',
         'action.cherryPick': 'Cherry-pick',
@@ -4580,6 +5482,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Zatwierdź wszystko...',
       'more.undoCommit': 'Cofnij ostatnie zatwierdzenie',
       'more.rebaseAbort': 'Przerwij rebase',
+      'more.mergeAbort': 'Przerwij scalanie',
       'more.commitStagedAmend': 'Zatwierdź przechowane (Amend)...',
       'more.commitAllAmend': 'Zatwierdź wszystko (Amend)...',
       'more.commitStagedSign': 'Zatwierdź przechowane (Podpisane)...',
@@ -4595,6 +5498,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Pobierz ze wszystkich zdalnych',
       'more.deleteRemoteBranch': 'Usuń zdalną gałąź...',
       'more.publish': 'Opublikuj gałąź...',
+      'more.setUpstreamHead': 'Ustaw upstream bieżącej gałęzi…',
+      'more.unsetUpstreamHead': 'Usuń upstream bieżącej gałęzi',
       'more.addRemote': 'Dodaj zdalne...',
       'more.removeRemote': 'Usuń zdalne...',
       'more.stashTracked': 'Schowaj (tylko śledzone)',
@@ -4649,8 +5554,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Drzewo gałęzi, lista commitów i szczegóły (styl IDE)',
         'rail.openSettings': 'Otwórz ustawienia wtyczki',
         'settings.card.title': 'Ustawienia okna narzędzi Git',
-        'settings.card.desc': 'Rozmieszczenie panelu, przyciski paska akcji i wiadomość commita od AI',
+        'settings.card.desc': 'Rozmieszczenie panelu, przyciski paska akcji, format daty i wiadomość commita od AI',
         'settings.placement.title': 'Rozmieszczenie panelu',
+        'settings.history.title': 'Lista historii',
         'settings.placement.tab': 'Pokazuj kartę Git w obszarze rozmowy',
       'settings.composer.title': 'Status Git w pasku wprowadzania',
       'settings.composer.hint': 'Pokazuje repozytorium i gałąź obok paska wprowadzania — kliknij, aby przełączyć; synchronizacja z panelem Git. Wyłączone — pasek pozostaje czysty.',
@@ -4658,6 +5564,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Przełącz gałąź',
       'composer.detached': 'HEAD (odłączony)',
       'composer.changesHint': 'Niezatwierdzone zmiany',
+      'composer.fileHint': 'dodane: {a} · usunięte: {d}',
+      'composer.linesHint': '+{ins} −{del} linii',
+      'modelRoute.pick': 'Wybierz model',
+      'modelRoute.trigger': 'Model wiadomości commitów AI',
+      'modelRoute.modelRow': 'Model',
+      'modelRoute.effortRow': 'Rozumowanie',
+      'modelRoute.effortDefault': 'Domyślne',
+      'modelRoute.empty': 'Brak dostępnych modeli',
       'composer.behindHint': 'Nowe commity upstream (do pobrania)',
       'composer.aheadHint': 'Lokalne commity oczekujące na wysłanie',
       'composer.inWorktree': 'Wybrane w innym drzewie roboczym',
@@ -4668,6 +5582,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Po włączeniu karta Git wypełnia całą wysokość rozmowy, a pole wpisywania się chowa; zatwierdzenia i pytania pozostają widoczne.',
         'settings.placement.repoPill': 'Pokazuj pigułkę repozytorium w pasku wprowadzania',
         'settings.placement.repoPillHint': 'Pigułka z nazwą repozytorium stoi na lewym końcu paska narzędzi — kliknięcie otwiera panel Git; w obszarze roboczym z wieloma repozytoriami pojawia się też strzałka przełączania. Wyłączone — zostają tylko gałąź i liczniki zmian.',
+        'settings.date.label': 'Format daty',
+        'settings.date.relative': 'Względny (4h / 22h)',
+        'settings.date.absolute': 'Absolutny (11-05 10:42)',
+        'settings.diff.inline': 'Podgląd różnic w panelu',
+        'settings.diff.inlineHint': 'Włączone: różnice otwierają się w panelu Git, z widokiem dzielonym i zawijaniem wierszy. Wyłączone: podgląd różnic w pasku bocznym przejmuje.',
         'preview.openFile': 'Otwórz w podglądzie pliku',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -4683,7 +5602,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Kliknij „Pokaż różnice” przy pliku lub commicie — różnice otworzą się tutaj, na pasku bocznym.',
         'preview.boundary': 'Nie udało się wyświetlić podglądu — odśwież stronę lub zgłoś problem.',
         'settings.rail.title': 'Pasek akcji',
-        'settings.rail.hint': 'Zaznacz akcje widoczne na pasku. Kolejność jest stała; odznaczenie ukrywa akcję.',
+        'settings.rail.hint': 'Zaznacz akcje widoczne na pasku; odznaczenie ukrywa akcję. Kolejność zmienisz w „Ustawieniach paska akcji” w panelu.',
+        'settings.rail.loading': 'Wczytywanie ustawień…',
         'settings.rail.unavailable': 'Ten host nie ma usługi ustawień; użyj „Ustawienia paska akcji” w panelu.',
         'settings.commit.title': 'Wiadomość commita od AI',
         'settings.commit.model': 'Model',
@@ -4714,6 +5634,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Ukryj',
         'action.unavailable': 'Niedostępne w bieżącym stanie',
         'filter.branch': 'Gałąź',
+        'history.scope': 'Zakres',
+        'history.scopeCurrent': 'Bieżąca gałąź',
+        'history.scopeAll': 'Wszystkie gałęzie',
+        'merge.title': 'Scal {branch}',
+        'merge.into': 'Scal {branch} do bieżącej gałęzi',
+        'merge.modeDefault': 'Domyślnie',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Wykonuje fast-forward, gdy to możliwe, bez commita scalenia.',
+        'merge.hint.noFf': 'Zawsze tworzy commit scalenia, aby scalenie było widoczne w historii.',
+        'merge.hint.squash': 'Łączy zmiany z {branch} w jedną przygotowaną zmianę, bez historii commitów.',
+        'merge.hint.noCommit': 'Przygotowuje scalenie i zatrzymuje się przed commitem, aby można było je sprawdzić lub poprawić.',
         'filter.user': 'Autor',
         'history.me': 'Ja',
         'filter.date': 'Data',
@@ -4752,14 +5685,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Trwa wycofywanie',
         'operation.bisect': 'Trwa bisect',
         'operation.hint': 'W tym repozytorium wciąż trwa wieloetapowa operacja —— zakończ ją lub przerwij przed działaniami na gałęziach',
+        'worktrees.title': 'Drzewa robocze',
+        'worktrees.new': 'Nowe drzewo robocze',
+        'worktrees.prune': 'Wyczyść nieaktualne wpisy',
+        'worktrees.back': 'Wstecz',
+        'worktrees.current': 'Bieżące',
+        'worktrees.primary': 'Główne',
+        'worktrees.locked': 'Zablokowane',
+        'worktrees.prunable': 'Do wyczyszczenia',
+        'worktrees.detached': 'Odłączony HEAD',
+        'worktrees.open': 'Otwórz w panelu',
+        'worktrees.remove': 'Usuń drzewo robocze',
+        'worktrees.removeConfirm': 'Usunąć drzewo robocze {path}?',
+        'worktrees.removeDirty': 'Drzewo robocze {path} ma niezatwierdzone zmiany. Wymuszone usunięcie bezpowrotnie je utraci. Kontynuować?',
+        'worktrees.path': 'Ścieżka',
+        'worktrees.branch': 'Gałąź',
+        'worktrees.newBranch': 'Nowa gałąź',
+        'worktrees.existingBranch': 'Istniejąca gałąź',
+        'worktrees.base': 'Punkt początkowy',
+        'worktrees.create': 'Utwórz',
+        'worktrees.empty': 'Brak drzew roboczych',
+        'worktrees.pruneConfirm': 'Wyczyścić wpisy drzew roboczych, które zniknęły z dysku?',
+        'toast.worktreeAdded': 'Utworzono drzewo robocze {path}',
+        'toast.worktreeRemoved': 'Usunięto drzewo robocze {path}',
+        'toast.worktreePruned': 'Wyczyszczono nieaktualne wpisy',
         'confirm.title': 'Potwierdzenie',
         'confirm.cancel': 'Anuluj',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Nazwa nowej gałęzi (zostanie utworzona i wybrana)',
+        'prompt.createTracking': 'Utwórz gałąź lokalną z gałęzi zdalnej',
         'prompt.renameBranch': 'Zmień nazwę gałęzi',
         'prompt.newTag': 'Nazwa nowego tagu',
         'prompt.fromHead': 'bieżący HEAD',
         'error.dismiss': 'Zamknij',
+        'error.pushRejected': 'Push odrzucony: zdalna gałąź ma commity, których nie ma lokalnie. Najpierw zsynchronizuj (pull i push) albo wykonaj pull (merge) i ponów push.',
+        'error.pullDiverged': 'Lokalna i zdalna gałąź rozeszły się; fast-forward jest niemożliwy. Użyj pull (merge) lub pull (rebase).',
+        'error.pullConflict': 'Pull zatrzymał się na konfliktach: rozwiąż pliki konfliktów w „Zmianach” i zatwierdź zmiany.',
+        'error.pullDirty': 'Pull nadpisałby niezatwierdzone zmiany lokalne. Najpierw je zatwierdź lub schowaj.',
         'status.loading': 'Wczytywanie...',
         'status.busy': 'Praca...',
         'counts.staged': 'W indeksie {n}',
@@ -4774,6 +5736,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Twarde przywrócenie do {hash}? Niezapisane zmiany przepadną.',
         'resetSoft.confirm': 'Przenieść HEAD do {hash} (drzewo robocze zachowane)?',
         'checkoutCommit.confirm': 'Przełączyć na commit {hash}? (detached HEAD)',
+        'seg.history': 'Historia',
+        'seg.changes': 'Zmiany {n}',
+        'settings.history.visible': 'Pokaż listę historii na domyślnej karcie',
+        'settings.history.visibleHint': 'Domyślnie wyłączone:karta domyślna zawiera tylko zmiany + pole commita. Po włączeniu poniżej pojawia się okno z kartami Historia | Diff. Lista commitów pozostaje w karcie explorer.',
       },
       /* locale: sv */
       'sv': {
@@ -4784,6 +5750,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'nästlad',
         'repo.none': 'Den här arbetsytan är inte ett Git-arkiv',
         'repo.pick': 'Välj ett arkiv att granska',
+        'repo.filter': 'Sök bland arkiv',
+        'picker.empty': 'Inga träffar',
         'repo.empty': 'Inget Git-arkiv hittades i den här arbetsytan',
         'repo.switch': 'Byt arkiv',
         'branch.switch': 'Byt gren',
@@ -4856,13 +5824,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Helskärm',
         'action.exitFullscreen': 'Avsluta helskärm',
         'action.newBranchFrom': 'Ny gren härifrån...',
+        'action.setUpstream': 'Ange upstream…',
+        'action.unsetUpstream': 'Ta bort upstream',
+        'action.createLocalBranch': 'Skapa lokal gren…',
         'action.newBranchHere': 'Ny gren här...',
         'action.rename': 'Byt namn...',
         'action.delete': 'Ta bort',
         'action.mergeIntoCurrent': 'Sammanfoga in i aktuell gren',
         'action.rebaseCurrentOnto': 'Rebasa aktuell gren mot denna',
         'action.compare': 'Jämför med aktuell gren',
-        'action.update': 'Uppdatera (fetch)',
+      'action.update': 'Pull',
         'action.push': 'Pusha',
         'action.newTag': 'Ny tagg...',
         'action.cherryPick': 'Cherry-pick',
@@ -4914,6 +5885,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Checka in allt...',
       'more.undoCommit': 'Ångra senaste incheckning',
       'more.rebaseAbort': 'Avbryt rebase',
+      'more.mergeAbort': 'Avbryt sammanfogning',
       'more.commitStagedAmend': 'Checka in stagingade (Amend)...',
       'more.commitAllAmend': 'Checka in allt (Amend)...',
       'more.commitStagedSign': 'Checka in stagingade (Signerat)...',
@@ -4929,6 +5901,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Hämta från alla fjärrar',
       'more.deleteRemoteBranch': 'Ta bort fjärrgren...',
       'more.publish': 'Publicera gren...',
+      'more.setUpstreamHead': 'Ange upstream för aktuell gren…',
+      'more.unsetUpstreamHead': 'Ta bort upstream för aktuell gren',
       'more.addRemote': 'Lägg till fjärr...',
       'more.removeRemote': 'Ta bort fjärr...',
       'more.stashTracked': 'Stash (endast spårade)',
@@ -4983,8 +5957,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Grenträd, commitlista och commitdetaljer (IDE-stil)',
         'rail.openSettings': 'Öppna plugininställningar',
         'settings.card.title': 'Inställningar för Git-verktygsfönstret',
-        'settings.card.desc': 'Panelplacering, knappar i åtgärdsfältet och AI-commitmeddelande',
+        'settings.card.desc': 'Panelplacering, knappar i åtgärdsfältet, datumformat och AI-commitmeddelande',
         'settings.placement.title': 'Panelplacering',
+        'settings.history.title': 'Historiklista',
         'settings.placement.tab': 'Visa Git-fliken i konversationsytan',
       'settings.composer.title': 'Git-status i inmatningsfältet',
       'settings.composer.hint': 'Visar repo och gren bredvid inmatningsfältet — klicka för att växla, synkat med Git-panelen. Av stänger av visningen.',
@@ -4992,6 +5967,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Byt gren',
       'composer.detached': 'HEAD (frånkopplad)',
       'composer.changesHint': 'Ocommittade ändringar',
+      'composer.fileHint': '{a} tillagda · {d} borttagna',
+      'composer.linesHint': '+{ins} −{del} rader',
+      'modelRoute.pick': 'Välj modell',
+      'modelRoute.trigger': 'Modell för AI-commit-meddelanden',
+      'modelRoute.modelRow': 'Modell',
+      'modelRoute.effortRow': 'Resonemang',
+      'modelRoute.effortDefault': 'Följ standard',
+      'modelRoute.empty': 'Inga modeller tillgängliga',
       'composer.behindHint': 'Nya upstream-commits (hämtbara)',
       'composer.aheadHint': 'Lokala commits som väntar på push',
       'composer.inWorktree': 'Utcheckad i ett annat arbetsträd',
@@ -5002,6 +5985,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'På: Git-fliken fyller hela konversationsytan och inmatningsfältet träder åt sidan; godkännanden och frågor visas fortfarande.',
         'settings.placement.repoPill': 'Visa repopillret i inmatningsfältet',
         'settings.placement.repoPillHint': 'Pillret med repots namn ligger längst till vänster i verktygsraden — klick öppnar Git-panelen; i en arbetsyta med flera repon visas även växelpilen. Av behålls bara grenen och ändringsräknarna.',
+        'settings.date.label': 'Datumformat',
+        'settings.date.relative': 'Relativt (4h / 22h)',
+        'settings.date.absolute': 'Absolut (11-05 10:42)',
+        'settings.diff.inline': 'Förhandsgranska diffar i panelen',
+        'settings.diff.inlineHint': 'På: diffar öppnas i Git-panelen med delad vy och radbrytning. Av: sidopanelens diff-förhandsgranskning tar över.',
         'preview.openFile': 'Öppna i filförhandsvisningen',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -5017,7 +6005,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Klicka på ”Visa diff” på en fil eller en commit — diffen öppnas här i sidopanelen.',
         'preview.boundary': 'Förhandsvisningen kunde inte visas — ladda om sidan eller rapportera problemet.',
         'settings.rail.title': 'Åtgärdsfältet',
-        'settings.rail.hint': 'Markera de åtgärder som visas i fältet. Ordningen är fast; avmarkering döljer en.',
+        'settings.rail.hint': 'Markera de åtgärder som visas i fältet; avmarkering döljer en. Ordna om dem i ”Åtgärdsfältets inställningar” i panelen.',
+        'settings.rail.loading': 'Läser in inställningar…',
         'settings.rail.unavailable': 'Denna värd saknar inställningstjänst; använd ”Åtgärdsfältets inställningar” i panelen.',
         'settings.commit.title': 'AI-commitmeddelande',
         'settings.commit.model': 'Modell',
@@ -5048,6 +6037,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Dölj',
         'action.unavailable': 'Inte tillgängligt i aktuellt läge',
         'filter.branch': 'Gren',
+        'history.scope': 'Omfattning',
+        'history.scopeCurrent': 'Aktuell gren',
+        'history.scopeAll': 'Alla grenar',
+        'merge.title': 'Sammanfoga {branch}',
+        'merge.into': 'Sammanfoga {branch} i den aktuella grenen',
+        'merge.modeDefault': 'Standard',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Gör en fast-forward när det är möjligt, utan merge-commit.',
+        'merge.hint.noFf': 'Skapar alltid en merge-commit så att sammanfogningen syns i historiken.',
+        'merge.hint.squash': 'Slår ihop ändringarna från {branch} till en enda staged ändring, utan commit-historiken.',
+        'merge.hint.noCommit': 'Förbereder sammanfogningen och stannar före commit, så att du kan granska eller justera den.',
         'filter.user': 'Författare',
         'history.me': 'Jag',
         'filter.date': 'Datum',
@@ -5086,14 +6088,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Återställning pågår',
         'operation.bisect': 'Bisect pågår',
         'operation.hint': 'Det här arkivet har fortfarande en flerstegsoperation öppen —— slutför eller avbryt den före grenåtgärder',
+        'worktrees.title': 'Arbetsträd',
+        'worktrees.new': 'Nytt arbetsträd',
+        'worktrees.prune': 'Rensa inaktuella poster',
+        'worktrees.back': 'Tillbaka',
+        'worktrees.current': 'Aktuellt',
+        'worktrees.primary': 'Primärt',
+        'worktrees.locked': 'Låst',
+        'worktrees.prunable': 'Rensningsbart',
+        'worktrees.detached': 'Frånkopplad HEAD',
+        'worktrees.open': 'Öppna i panelen',
+        'worktrees.remove': 'Ta bort arbetsträd',
+        'worktrees.removeConfirm': 'Ta bort arbetsträdet {path}?',
+        'worktrees.removeDirty': 'Arbetsträdet {path} har ej committade ändringar. Tvingad borttagning slänger dem permanent. Fortsätt?',
+        'worktrees.path': 'Sökväg',
+        'worktrees.branch': 'Gren',
+        'worktrees.newBranch': 'Ny gren',
+        'worktrees.existingBranch': 'Befintlig gren',
+        'worktrees.base': 'Startpunkt',
+        'worktrees.create': 'Skapa',
+        'worktrees.empty': 'Inga arbetsträd',
+        'worktrees.pruneConfirm': 'Rensa poster för arbetsträd som försvunnit från disken?',
+        'toast.worktreeAdded': 'Arbetsträdet {path} skapat',
+        'toast.worktreeRemoved': 'Arbetsträdet {path} borttaget',
+        'toast.worktreePruned': 'Inaktuella arbetsträdsposter rensade',
         'confirm.title': 'Bekräfta',
         'confirm.cancel': 'Avbryt',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Namn på ny gren (skapas och checkas ut)',
+        'prompt.createTracking': 'Skapa lokal gren från fjärrgrenen',
         'prompt.renameBranch': 'Byt namn på grenen',
         'prompt.newTag': 'Namn på ny tagg',
         'prompt.fromHead': 'aktuell HEAD',
         'error.dismiss': 'Stäng',
+        'error.pushRejected': 'Push avvisades: fjärrgrenen har commits som saknas lokalt. Synkronisera (pull och push) eller gör pull (merge) och pusha igen.',
+        'error.pullDiverged': 'Lokalt och fjärr har båda flyttats; fast-forward är omöjligt. Använd pull (merge) eller pull (rebase).',
+        'error.pullConflict': 'Pull stoppade på konflikter: lös konfliktfilerna under "Ändringar" och commit:a.',
+        'error.pullDirty': 'Pull skulle skriva över lokala ej commit:ade ändringar. Commit:a eller stash:a dem först.',
         'status.loading': 'Läser...',
         'status.busy': 'Arbetar...',
         'counts.staged': 'Klädda {n}',
@@ -5108,6 +6139,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Hård återställning till {hash}? Ej committade ändringar går förlorade.',
         'resetSoft.confirm': 'Flytta HEAD till {hash} (arbetsträdet behålls)?',
         'checkoutCommit.confirm': 'Checka ut commiten {hash}? (detached HEAD)',
+        'seg.history': 'Historik',
+        'seg.changes': 'Ändringar {n}',
+        'settings.history.visible': 'Visa historiklistan på standardfliken',
+        'settings.history.visibleHint': 'Av som standard:standardfliken visar då bara ändringar + commit-rutan. Påslaget visas fönstret med flikarna Historik | Diff nedanför. Commitlistan finns alltid i explorer-fliken.',
       },
       /* locale: tr */
       'tr': {
@@ -5118,6 +6153,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'iç içe',
         'repo.none': 'Bu çalışma alanı bir Git deposu değil',
         'repo.pick': 'İncelenecek depoyu seçin',
+        'repo.filter': 'Depo ara',
+        'picker.empty': 'Eşleşme yok',
         'repo.empty': 'Bu çalışma alanında Git deposu bulunamadı',
         'repo.switch': 'Depoyu değiştir',
         'branch.switch': 'Dalı değiştir',
@@ -5190,13 +6227,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Tam ekran',
         'action.exitFullscreen': 'Tam ekrandan çık',
         'action.newBranchFrom': 'Buradan yeni dal...',
+        'action.setUpstream': 'Upstream ayarla…',
+        'action.unsetUpstream': 'Upstream kaldır',
+        'action.createLocalBranch': 'Yerel dal oluştur…',
         'action.newBranchHere': 'Burada yeni dal...',
         'action.rename': 'Yeniden adlandır...',
         'action.delete': 'Sil',
         'action.mergeIntoCurrent': 'Geçerli dala birleştir',
         'action.rebaseCurrentOnto': 'Geçerli dalı bunun üzerine rebase et',
         'action.compare': 'Geçerli dalla karşılaştır',
-        'action.update': 'Güncelle (fetch)',
+      'action.update': 'Pull',
         'action.push': 'Gönder',
         'action.newTag': 'Yeni etiket...',
         'action.cherryPick': 'Cherry-pick',
@@ -5248,6 +6288,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Tümünü işle...',
       'more.undoCommit': 'Son işlemi geri al',
       'more.rebaseAbort': 'Rebase\'i durdur',
+      'more.mergeAbort': 'Birleştirmeyi iptal et',
       'more.commitStagedAmend': 'Staged dosyaları işle (Düzelt)...',
       'more.commitAllAmend': 'Tümünü işle (Düzelt)...',
       'more.commitStagedSign': 'Staged dosyaları işle (İmzalı)...',
@@ -5263,6 +6304,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Tüm uzaklardan al',
       'more.deleteRemoteBranch': 'Uzak dalı sil...',
       'more.publish': 'Dalı yayınla...',
+      'more.setUpstreamHead': 'Geçerli dalın upstream\'ini ayarla…',
+      'more.unsetUpstreamHead': 'Geçerli dalın upstream\'ini kaldır',
       'more.addRemote': 'Uzak ekle...',
       'more.removeRemote': 'Uzağı kaldır...',
       'more.stashTracked': 'Stash (yalnızca izlenen)',
@@ -5317,8 +6360,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Dal ağacı, commit listesi ve commit ayrıntıları (IDE tarzı)',
         'rail.openSettings': 'Eklenti ayarlarını aç',
         'settings.card.title': 'Git araç penceresi ayarları',
-        'settings.card.desc': 'Panel yerleşimi, eylem çubuğu düğmeleri ve AI commit mesajı',
+        'settings.card.desc': 'Panel yerleşimi, eylem çubuğu düğmeleri, tarih biçimi ve AI commit mesajı',
         'settings.placement.title': 'Panel yerleşimi',
+        'settings.history.title': 'Geçmiş listesi',
         'settings.placement.tab': 'Konuşma alanında Git sekmesini göster',
       'settings.composer.title': 'Giriş çubuğunda Git durumu',
       'settings.composer.hint': 'Giriş çubuğu yanında depo ve dal gösterir — geçiş için tıklayın, Git paneliyle eşitlenir. Kapalıyken giriş çubuğu temiz kalır.',
@@ -5326,6 +6370,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Dal değiştir',
       'composer.detached': 'HEAD (ayrık)',
       'composer.changesHint': 'Commitlenmemiş değişiklikler',
+      'composer.fileHint': '{a} eklendi · {d} silindi',
+      'composer.linesHint': '+{ins} −{del} satır',
+      'modelRoute.pick': 'Model seç',
+      'modelRoute.trigger': 'Yapay zekâ commit mesajı modeli',
+      'modelRoute.modelRow': 'Model',
+      'modelRoute.effortRow': 'Akıl yürütme',
+      'modelRoute.effortDefault': 'Varsayılanı izle',
+      'modelRoute.empty': 'Kullanılabilir model yok',
       'composer.behindHint': 'Yeni upstream commitleri (çekilebilir)',
       'composer.aheadHint': 'Push bekleyen yerel commitler',
       'composer.inWorktree': 'Başka bir worktree’da checkout yapılmış',
@@ -5336,6 +6388,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Açıkken Git sekmesi tüm konuşma alanını kaplar ve giriş alanı gizlenir; onaylar ve sorular yine de görünür.',
         'settings.placement.repoPill': 'Giriş çubuğunda depo hapını göster',
         'settings.placement.repoPillHint': 'Depo adı hapı araç çubuğunun en solunda durur — tıklayınca Git paneli açılır; birden çok depolu çalışma alanında değiştirme oku da görünür. Kapalıyken yalnızca dal ve değişiklik sayaçları kalır.',
+        'settings.date.label': 'Tarih biçimi',
+        'settings.date.relative': 'Göreli (4h / 22h)',
+        'settings.date.absolute': 'Mutlak (11-05 10:42)',
+        'settings.diff.inline': 'Farkları panelde önizle',
+        'settings.diff.inlineHint': 'Açık: farklar Git panelinde açılır; bölünmüş görünüm ve satır kaydırma kullanılabilir. Kapalı: kenar çubuğundaki fark önizlemesi devralır.',
         'preview.openFile': 'Dosya önizlemesinde aç',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -5351,7 +6408,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Bir dosya veya commit üzerinde „Farkı göster”e tıklayın — fark burada, kenar çubuğunda açılır.',
         'preview.boundary': 'Önizleme işlenemedi — sayfayı yeniden yükleyin veya sorunu bildirin.',
         'settings.rail.title': 'Eylem çubuğu',
-        'settings.rail.hint': 'Çubukta gösterilecek eylemleri işaretleyin. Sıra sabittir; işareti kaldırmak eylemi gizler.',
+        'settings.rail.hint': 'Çubukta gösterilecek eylemleri işaretleyin; işareti kaldırmak eylemi gizler. Sırayı paneldeki “Eylem çubuğu ayarları”ndan değiştirin.',
+        'settings.rail.loading': 'Ayarlar yükleniyor…',
         'settings.rail.unavailable': 'Bu ana bilgisayarda ayar hizmeti yok; paneldeki "Eylem çubuğu ayarları"nı kullanın.',
         'settings.commit.title': 'AI commit mesajı',
         'settings.commit.model': 'Model',
@@ -5382,6 +6440,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Gizle',
         'action.unavailable': 'Geçerli durumda kullanılamaz',
         'filter.branch': 'Dal',
+        'history.scope': 'Kapsam',
+        'history.scopeCurrent': 'Geçerli dal',
+        'history.scopeAll': 'Tüm dallar',
+        'merge.title': '{branch} dalını birleştir',
+        'merge.into': '{branch} dalını geçerli dalla birleştir',
+        'merge.modeDefault': 'Varsayılan',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Mümkün olduğunda fast-forward yapar, birleştirme commit\'i oluşturmaz.',
+        'merge.hint.noFf': 'Her zaman bir birleştirme commit\'i oluşturur, böylece birleştirme geçmişte görünür.',
+        'merge.hint.squash': '{branch} dalındaki değişiklikleri commit geçmişi olmadan tek bir hazırlanmış değişiklikte birleştirir.',
+        'merge.hint.noCommit': 'Birleştirmeyi hazırlar ve commit öncesinde durur, böylece inceleyebilir veya düzenleyebilirsiniz.',
         'filter.user': 'Yazar',
         'history.me': 'Ben',
         'filter.date': 'Tarih',
@@ -5420,14 +6491,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Geri alma sürüyor',
         'operation.bisect': 'Bisect sürüyor',
         'operation.hint': 'Bu depoda hâlâ açık çok adımlı bir işlem var —— dal işlemlerinden önce tamamlayın veya iptal edin',
+        'worktrees.title': 'Çalışma ağaçları',
+        'worktrees.new': 'Yeni çalışma ağacı',
+        'worktrees.prune': 'Eskimiş kayıtları temizle',
+        'worktrees.back': 'Geri',
+        'worktrees.current': 'Geçerli',
+        'worktrees.primary': 'Birincil',
+        'worktrees.locked': 'Kilitli',
+        'worktrees.prunable': 'Temizlenebilir',
+        'worktrees.detached': 'Ayrık HEAD',
+        'worktrees.open': 'Panelde aç',
+        'worktrees.remove': 'Çalışma ağacını kaldır',
+        'worktrees.removeConfirm': '{path} çalışma ağacı kaldırılsın mı?',
+        'worktrees.removeDirty': '{path} çalışma ağacında işlenmemiş değişiklikler var. Zorla kaldırma bunları kalıcı olarak siler. Devam?',
+        'worktrees.path': 'Yol',
+        'worktrees.branch': 'Dal',
+        'worktrees.newBranch': 'Yeni dal',
+        'worktrees.existingBranch': 'Mevcut dal',
+        'worktrees.base': 'Başlangıç noktası',
+        'worktrees.create': 'Oluştur',
+        'worktrees.empty': 'Çalışma ağacı yok',
+        'worktrees.pruneConfirm': 'Diskten kaybolan çalışma ağacı kayıtları temizlensin mi?',
+        'toast.worktreeAdded': '{path} çalışma ağacı oluşturuldu',
+        'toast.worktreeRemoved': '{path} çalışma ağacı kaldırıldı',
+        'toast.worktreePruned': 'Eskimiş çalışma ağacı kayıtları temizlendi',
         'confirm.title': 'Onayla',
         'confirm.cancel': 'İptal',
         'confirm.ok': 'Tamam',
         'prompt.newBranch': 'Yeni dal adı (oluşturulur ve çıkarılır)',
+        'prompt.createTracking': 'Uzak daldan yerel dal oluştur',
         'prompt.renameBranch': 'Dalı yeniden adlandır',
         'prompt.newTag': 'Yeni etiket adı',
         'prompt.fromHead': 'geçerli HEAD',
         'error.dismiss': 'Kapat',
+        'error.pushRejected': 'Push reddedildi: uzak dalda yerelde olmayan commit\'ler var. Önce senkronize edin (pull ve push) veya pull (merge) yapıp yeniden push\'layın.',
+        'error.pullDiverged': 'Yerel ve uzak dal ikisi de ilerledi; fast-forward mümkün değil. Pull (merge) veya pull (rebase) kullanın.',
+        'error.pullConflict': 'Pull çakışmalarda durdu: "Değişiklikler" altında çakışan dosyaları çözüp commit\'leyin.',
+        'error.pullDirty': 'Pull, commit\'lenmemiş yerel değişikliklerin üzerine yazar. Önce commit\'leyin veya stash\'leyin.',
         'status.loading': 'Okunuyor...',
         'status.busy': 'Çalışıyor...',
         'counts.staged': 'Hazırlanan {n}',
@@ -5442,6 +6542,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': '{hash} sürümüne zorla sıfırlansın mı? Commit’lenmemiş değişiklikler kaybolur.',
         'resetSoft.confirm': 'HEAD {hash} sürümüne taşınsın mı (çalışma ağacı korunur)?',
         'checkoutCommit.confirm': '{hash} commit’i çıkarılsın mı? (detached HEAD)',
+        'seg.history': 'Geçmiş',
+        'seg.changes': 'Değişiklikler {n}',
+        'settings.history.visible': 'Varsayılan sekmede geçmiş listesini göster',
+        'settings.history.visibleHint': 'Varsayılan olarak kapalı:varsayılan sekmede yalnızca değişiklikler + commit kutusu bulunur. Açılırsa altta Geçmiş | Diff sekmeli penceresi görünür. Commit listesi explorer sekmesinde her zaman var.',
       },
       /* locale: id */
       'id': {
@@ -5452,6 +6556,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'bersarang',
         'repo.none': 'Ruang kerja ini bukan repositori Git',
         'repo.pick': 'Pilih repositori untuk diperiksa',
+        'repo.filter': 'Cari repositori',
+        'picker.empty': 'Tidak ada kecocokan',
         'repo.empty': 'Tidak ada repositori Git di ruang kerja ini',
         'repo.switch': 'Ganti repositori',
         'branch.switch': 'Ganti branch',
@@ -5524,13 +6630,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Layar penuh',
         'action.exitFullscreen': 'Keluar dari layar penuh',
         'action.newBranchFrom': 'Branch baru dari sini...',
+        'action.setUpstream': 'Atur upstream…',
+        'action.unsetUpstream': 'Hapus upstream',
+        'action.createLocalBranch': 'Buat branch lokal…',
         'action.newBranchHere': 'Branch baru di sini...',
         'action.rename': 'Ganti nama...',
         'action.delete': 'Hapus',
         'action.mergeIntoCurrent': 'Gabungkan ke branch saat ini',
         'action.rebaseCurrentOnto': 'Rebase branch saat ini ke ini',
         'action.compare': 'Bandingkan dengan branch saat ini',
-        'action.update': 'Perbarui (fetch)',
+      'action.update': 'Pull',
         'action.push': 'Push',
         'action.newTag': 'Tag baru...',
         'action.cherryPick': 'Cherry-pick',
@@ -5582,6 +6691,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Commit semua...',
       'more.undoCommit': 'Batalkan commit terakhir',
       'more.rebaseAbort': 'Batalkan rebase',
+      'more.mergeAbort': 'Batalkan merge',
       'more.commitStagedAmend': 'Commit stage (Amend)...',
       'more.commitAllAmend': 'Commit semua (Amend)...',
       'more.commitStagedSign': 'Commit stage (Ditandatangani)...',
@@ -5597,6 +6707,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Fetch dari semua remote',
       'more.deleteRemoteBranch': 'Hapus cabang remote...',
       'more.publish': 'Publikasikan cabang...',
+      'more.setUpstreamHead': 'Atur upstream cabang saat ini…',
+      'more.unsetUpstreamHead': 'Hapus upstream cabang saat ini',
       'more.addRemote': 'Tambah remote...',
       'more.removeRemote': 'Hapus remote...',
       'more.stashTracked': 'Stash (hanya yang dilacak)',
@@ -5651,8 +6763,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Pohon branch, daftar commit, dan detail commit (gaya IDE)',
         'rail.openSettings': 'Buka pengaturan plugin',
         'settings.card.title': 'Pengaturan jendela alat Git',
-        'settings.card.desc': 'Penempatan panel, tombol bilah aksi dan pesan commit AI',
+        'settings.card.desc': 'Penempatan panel, tombol bilah aksi, format tanggal, dan pesan commit AI',
         'settings.placement.title': 'Penempatan panel',
+        'settings.history.title': 'Daftar riwayat',
         'settings.placement.tab': 'Tampilkan tab Git di area percakapan',
       'settings.composer.title': 'Status Git di bilah masukan',
       'settings.composer.hint': 'Menampilkan repositori dan cabang di samping bilah masukan — klik untuk beralih, tersinkron dengan panel Git. Matikan untuk menyembunyikannya.',
@@ -5660,6 +6773,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Ganti cabang',
       'composer.detached': 'HEAD (lepas)',
       'composer.changesHint': 'Perubahan yang belum di-commit',
+      'composer.fileHint': '{a} ditambahkan · {d} dihapus',
+      'composer.linesHint': '+{ins} −{del} baris',
+      'modelRoute.pick': 'Pilih model',
+      'modelRoute.trigger': 'Model pesan commit AI',
+      'modelRoute.modelRow': 'Model',
+      'modelRoute.effortRow': 'Penalaran',
+      'modelRoute.effortDefault': 'Ikuti bawaan',
+      'modelRoute.empty': 'Tidak ada model yang tersedia',
       'composer.behindHint': 'Commit upstream baru (bisa ditarik)',
       'composer.aheadHint': 'Commit lokal menunggu push',
       'composer.inWorktree': 'Sudah di-checkout di worktree lain',
@@ -5670,6 +6791,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Aktif: tab Git memenuhi seluruh tinggi area percakapan dan kolom masukan mengalah; persetujuan dan pertanyaan tetap tampil.',
         'settings.placement.repoPill': 'Tampilkan pil repositori di bilah masukan',
         'settings.placement.repoPillHint': 'Pil nama repositori berada di ujung kiri bilah alat — klik membuka panel Git; di ruang kerja dengan banyak repositori muncul juga panah pengganti. Dimatikan, hanya cabang dan penghitung perubahan yang tersisa.',
+        'settings.date.label': 'Format tanggal',
+        'settings.date.relative': 'Relatif (4h / 22h)',
+        'settings.date.absolute': 'Absolut (11-05 10:42)',
+        'settings.diff.inline': 'Pratinjau diff di panel',
+        'settings.diff.inlineHint': 'Aktif: diff terbuka di panel Git, dengan tampilan terbagi dan pelipatan baris. Nonaktif: pratinjau diff bilah sisi mengambil alih.',
         'preview.openFile': 'Buka di pratinjau berkas',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -5685,7 +6811,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Klik “Tampilkan diff” pada file atau commit — diff terbuka di sini, di bilah sisi.',
         'preview.boundary': 'Pratinjau gagal dirender — muat ulang halaman atau laporkan masalahnya.',
         'settings.rail.title': 'Bilah aksi',
-        'settings.rail.hint': 'Centang aksi yang ditampilkan di bilah. Urutannya tetap; menghapus centang menyembunyikannya.',
+        'settings.rail.hint': 'Centang aksi yang ditampilkan di bilah; menghapus centang menyembunyikannya. Ubah urutan di “Pengaturan bilah aksi” di panel.',
+        'settings.rail.loading': 'Memuat pengaturan…',
         'settings.rail.unavailable': 'Host ini tidak punya layanan pengaturan; gunakan "Pengaturan bilah aksi" di panel.',
         'settings.commit.title': 'Pesan commit AI',
         'settings.commit.model': 'Model',
@@ -5716,6 +6843,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Sembunyikan',
         'action.unavailable': 'Tidak tersedia pada keadaan saat ini',
         'filter.branch': 'Branch',
+        'history.scope': 'Cakupan',
+        'history.scopeCurrent': 'Branch saat ini',
+        'history.scopeAll': 'Semua branch',
+        'merge.title': 'Gabungkan {branch}',
+        'merge.into': 'Gabungkan {branch} ke branch saat ini',
+        'merge.modeDefault': 'Default',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Melakukan fast-forward bila memungkinkan, tanpa commit merge.',
+        'merge.hint.noFf': 'Selalu membuat commit merge, agar merge tetap terlihat di riwayat.',
+        'merge.hint.squash': 'Menggabungkan perubahan dari {branch} menjadi satu perubahan yang disiapkan, tanpa riwayat commit-nya.',
+        'merge.hint.noCommit': 'Menyiapkan merge dan berhenti sebelum commit, agar Anda dapat meninjau atau menyesuaikannya.',
         'filter.user': 'Penulis',
         'history.me': 'Saya',
         'filter.date': 'Tanggal',
@@ -5754,14 +6894,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Pembatalan berlangsung',
         'operation.bisect': 'Bisect berlangsung',
         'operation.hint': 'Repositori ini masih punya operasi bertahap yang terbuka —— selesaikan atau batalkan sebelum tindakan tingkat branch',
+        'worktrees.title': 'Worktree',
+        'worktrees.new': 'Worktree baru',
+        'worktrees.prune': 'Bersihkan catatan usang',
+        'worktrees.back': 'Kembali',
+        'worktrees.current': 'Saat ini',
+        'worktrees.primary': 'Utama',
+        'worktrees.locked': 'Terkunci',
+        'worktrees.prunable': 'Dapat dibersihkan',
+        'worktrees.detached': 'HEAD terlepas',
+        'worktrees.open': 'Buka di panel',
+        'worktrees.remove': 'Hapus worktree',
+        'worktrees.removeConfirm': 'Hapus worktree {path}?',
+        'worktrees.removeDirty': 'Worktree {path} memiliki perubahan yang belum di-commit. Penghapusan paksa akan membuangnya secara permanen. Lanjutkan?',
+        'worktrees.path': 'Jalur',
+        'worktrees.branch': 'Branch',
+        'worktrees.newBranch': 'Branch baru',
+        'worktrees.existingBranch': 'Branch yang ada',
+        'worktrees.base': 'Titik awal',
+        'worktrees.create': 'Buat',
+        'worktrees.empty': 'Tidak ada worktree',
+        'worktrees.pruneConfirm': 'Bersihkan catatan worktree yang sudah hilang dari disk?',
+        'toast.worktreeAdded': 'Worktree {path} dibuat',
+        'toast.worktreeRemoved': 'Worktree {path} dihapus',
+        'toast.worktreePruned': 'Catatan worktree usang dibersihkan',
         'confirm.title': 'Konfirmasi',
         'confirm.cancel': 'Batal',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Nama branch baru (dibuat dan di-checkout)',
+        'prompt.createTracking': 'Buat branch lokal dari branch remote',
         'prompt.renameBranch': 'Ganti nama branch',
         'prompt.newTag': 'Nama tag baru',
         'prompt.fromHead': 'HEAD saat ini',
         'error.dismiss': 'Tutup',
+        'error.pushRejected': 'Push ditolak: branch remote memiliki commit yang tidak ada di lokal. Sinkronkan (pull lalu push) atau pull (merge) lalu push lagi.',
+        'error.pullDiverged': 'Lokal dan remote sama-sama maju; fast-forward tidak mungkin. Gunakan pull (merge) atau pull (rebase).',
+        'error.pullConflict': 'Pull berhenti karena konflik: selesaikan file konflik di "Perubahan", lalu commit.',
+        'error.pullDirty': 'Pull akan menimpa perubahan lokal yang belum di-commit. Commit atau stash dulu.',
         'status.loading': 'Membaca...',
         'status.busy': 'Bekerja...',
         'counts.staged': 'Ter-stage {n}',
@@ -5776,6 +6945,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Reset keras ke {hash}? Perubahan yang belum di-commit akan hilang.',
         'resetSoft.confirm': 'Pindahkan HEAD ke {hash} (worktree dipertahankan)?',
         'checkoutCommit.confirm': 'Checkout commit {hash}? (detached HEAD)',
+        'seg.history': 'Riwayat',
+        'seg.changes': 'Perubahan {n}',
+        'settings.history.visible': 'Tampilkan daftar riwayat di tab default',
+        'settings.history.visibleHint': 'Nonaktif secara default:tab default hanya berisi perubahan + kotak commit. Saat aktif, jendela bertab Riwayat | Diff muncul di bawahnya. Daftar commit selalu ada di tab explorer.',
       },
       /* locale: vi */
       'vi': {
@@ -5786,6 +6959,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'lồng nhau',
         'repo.none': 'Không gian làm việc này không phải kho Git',
         'repo.pick': 'Chọn một kho để xem',
+        'repo.filter': 'Tìm kho',
+        'picker.empty': 'Không có kết quả phù hợp',
         'repo.empty': 'Không tìm thấy kho Git trong không gian làm việc này',
         'repo.switch': 'Chuyển kho',
         'branch.switch': 'Chuyển nhánh',
@@ -5858,13 +7033,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'Toàn màn hình',
         'action.exitFullscreen': 'Thoát toàn màn hình',
         'action.newBranchFrom': 'Nhánh mới từ đây...',
+        'action.setUpstream': 'Đặt upstream…',
+        'action.unsetUpstream': 'Bỏ upstream',
+        'action.createLocalBranch': 'Tạo nhánh cục bộ…',
         'action.newBranchHere': 'Nhánh mới tại đây...',
         'action.rename': 'Đổi tên...',
         'action.delete': 'Xoá',
         'action.mergeIntoCurrent': 'Hợp nhất vào nhánh hiện tại',
         'action.rebaseCurrentOnto': 'Rebase nhánh hiện tại lên nhánh này',
         'action.compare': 'So sánh với nhánh hiện tại',
-        'action.update': 'Cập nhật (fetch)',
+      'action.update': 'Pull',
         'action.push': 'Push',
         'action.newTag': 'Thẻ mới...',
         'action.cherryPick': 'Cherry-pick',
@@ -5916,6 +7094,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'Commit tất cả...',
       'more.undoCommit': 'Hoàn tác commit cuối',
       'more.rebaseAbort': 'Hủy rebase',
+      'more.mergeAbort': 'Hủy hợp nhất',
       'more.commitStagedAmend': 'Commit đã stage (Sửa)...',
       'more.commitAllAmend': 'Commit tất cả (Sửa)...',
       'more.commitStagedSign': 'Commit đã stage (Ký)...',
@@ -5931,6 +7110,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'Fetch từ mọi remote',
       'more.deleteRemoteBranch': 'Xóa nhánh remote...',
       'more.publish': 'Công bố nhánh...',
+      'more.setUpstreamHead': 'Đặt upstream cho nhánh hiện tại…',
+      'more.unsetUpstreamHead': 'Bỏ upstream của nhánh hiện tại',
       'more.addRemote': 'Thêm remote...',
       'more.removeRemote': 'Xóa remote...',
       'more.stashTracked': 'Stash (chỉ theo dõi)',
@@ -5985,8 +7166,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'Cây nhánh, danh sách commit và chi tiết commit (kiểu IDE)',
         'rail.openSettings': 'Mở cài đặt plugin',
         'settings.card.title': 'Cài đặt cửa sổ công cụ Git',
-        'settings.card.desc': 'Vị trí bảng, nút thanh tác vụ và thông điệp commit do AI viết',
+        'settings.card.desc': 'Vị trí bảng, nút thanh tác vụ, định dạng ngày và thông điệp commit do AI viết',
         'settings.placement.title': 'Vị trí bảng',
+        'settings.history.title': 'Danh sách lịch sử',
         'settings.placement.tab': 'Hiện thẻ Git trong vùng hội thoại',
       'settings.composer.title': 'Trạng thái Git trên thanh nhập',
       'settings.composer.hint': 'Hiện kho và nhánh bên cạnh thanh nhập — bấm để chuyển đổi, đồng bộ với bảng Git. Tắt để ẩn đi.',
@@ -5994,6 +7176,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'Chuyển nhánh',
       'composer.detached': 'HEAD (tách rời)',
       'composer.changesHint': 'Thay đổi chưa commit',
+      'composer.fileHint': 'thêm {a} · xóa {d} tệp',
+      'composer.linesHint': '+{ins} −{del} dòng',
+      'modelRoute.pick': 'Chọn mô hình',
+      'modelRoute.trigger': 'Mô hình tin nhắn commit AI',
+      'modelRoute.modelRow': 'Mô hình',
+      'modelRoute.effortRow': 'Suy luận',
+      'modelRoute.effortDefault': 'Theo mặc định',
+      'modelRoute.empty': 'Không có mô hình nào',
       'composer.behindHint': 'Commit mới từ xa (có thể kéo về)',
       'composer.aheadHint': 'Commit cục bộ chờ đẩy lên',
       'composer.inWorktree': 'Đã được checkout ở worktree khác',
@@ -6004,6 +7194,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'Bật: thẻ Git chiếm toàn bộ chiều cao vùng hội thoại và ô nhập thu vào; phê duyệt và câu hỏi vẫn hiển thị bình thường.',
         'settings.placement.repoPill': 'Hiện viên kho trong thanh nhập',
         'settings.placement.repoPillHint': 'Viên tên kho nằm ở đầu trái thanh công cụ — bấm để mở bảng Git; trong không gian làm việc nhiều kho còn có mũi tên chuyển kho. Tắt đi thì chỉ còn nhánh và số thay đổi.',
+        'settings.date.label': 'Định dạng ngày',
+        'settings.date.relative': 'Tương đối (4h / 22h)',
+        'settings.date.absolute': 'Tuyệt đối (11-05 10:42)',
+        'settings.diff.inline': 'Xem trước khác biệt trong bảng',
+        'settings.diff.inlineHint': 'Bật: khác biệt mở trong bảng Git, có chế độ chia đôi và tự động xuống dòng. Tắt: phần xem trước ở thanh bên đảm nhận.',
         'preview.openFile': 'Mở trong xem trước tệp',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -6019,7 +7214,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'Bấm “Xem diff” trên tệp hoặc commit — diff sẽ mở ở đây, trên thanh bên.',
         'preview.boundary': 'Không thể hiển thị bản xem trước — hãy tải lại trang hoặc báo cáo sự cố.',
         'settings.rail.title': 'Thanh tác vụ',
-        'settings.rail.hint': 'Chọn các tác vụ hiển thị trên thanh. Thứ tự cố định; bỏ chọn sẽ ẩn tác vụ đó.',
+        'settings.rail.hint': 'Chọn các tác vụ hiển thị trên thanh; bỏ chọn sẽ ẩn tác vụ đó. Thay đổi thứ tự trong “Cài đặt thanh tác vụ” ở bảng điều khiển.',
+        'settings.rail.loading': 'Đang tải cài đặt…',
         'settings.rail.unavailable': 'Máy chủ này không có dịch vụ cài đặt; hãy dùng “Cài đặt thanh tác vụ” trong bảng điều khiển.',
         'settings.commit.title': 'Thông điệp commit do AI viết',
         'settings.commit.model': 'Mô hình',
@@ -6050,6 +7246,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'Ẩn',
         'action.unavailable': 'Không dùng được ở trạng thái hiện tại',
         'filter.branch': 'Nhánh',
+        'history.scope': 'Phạm vi',
+        'history.scopeCurrent': 'Nhánh hiện tại',
+        'history.scopeAll': 'Tất cả nhánh',
+        'merge.title': 'Hợp nhất {branch}',
+        'merge.into': 'Hợp nhất {branch} vào nhánh hiện tại',
+        'merge.modeDefault': 'Mặc định',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'Thực hiện fast-forward khi có thể, không tạo commit hợp nhất.',
+        'merge.hint.noFf': 'Luôn tạo commit hợp nhất để lần hợp nhất hiển thị trong lịch sử.',
+        'merge.hint.squash': 'Gộp các thay đổi từ {branch} thành một thay đổi đã chuẩn bị, không giữ lịch sử commit.',
+        'merge.hint.noCommit': 'Chuẩn bị hợp nhất và dừng trước khi commit để bạn xem lại hoặc điều chỉnh.',
         'filter.user': 'Tác giả',
         'history.me': 'Tôi',
         'filter.date': 'Ngày',
@@ -6088,14 +7297,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'Đang hoàn tác',
         'operation.bisect': 'Đang bisect',
         'operation.hint': 'Kho này vẫn còn một thao tác nhiều bước chưa xong —— hãy hoàn tất hoặc huỷ trước khi thao tác ở mức nhánh',
+        'worktrees.title': 'Cây làm việc',
+        'worktrees.new': 'Cây làm việc mới',
+        'worktrees.prune': 'Dọn bản ghi cũ',
+        'worktrees.back': 'Quay lại',
+        'worktrees.current': 'Hiện tại',
+        'worktrees.primary': 'Chính',
+        'worktrees.locked': 'Đã khóa',
+        'worktrees.prunable': 'Có thể dọn',
+        'worktrees.detached': 'HEAD tách rời',
+        'worktrees.open': 'Mở trong bảng',
+        'worktrees.remove': 'Xóa cây làm việc',
+        'worktrees.removeConfirm': 'Xóa cây làm việc {path}?',
+        'worktrees.removeDirty': 'Cây làm việc {path} có thay đổi chưa commit. Xóa cưỡng bức sẽ mất vĩnh viễn. Tiếp tục?',
+        'worktrees.path': 'Đường dẫn',
+        'worktrees.branch': 'Nhánh',
+        'worktrees.newBranch': 'Nhánh mới',
+        'worktrees.existingBranch': 'Nhánh hiện có',
+        'worktrees.base': 'Điểm bắt đầu',
+        'worktrees.create': 'Tạo',
+        'worktrees.empty': 'Không có cây làm việc',
+        'worktrees.pruneConfirm': 'Dọn bản ghi cây làm việc đã biến mất khỏi ổ đĩa?',
+        'toast.worktreeAdded': 'Đã tạo cây làm việc {path}',
+        'toast.worktreeRemoved': 'Đã xóa cây làm việc {path}',
+        'toast.worktreePruned': 'Đã dọn bản ghi cũ',
         'confirm.title': 'Xác nhận',
         'confirm.cancel': 'Huỷ',
         'confirm.ok': 'OK',
         'prompt.newBranch': 'Tên nhánh mới (được tạo và checkout)',
+        'prompt.createTracking': 'Tạo nhánh cục bộ từ nhánh từ xa',
         'prompt.renameBranch': 'Đổi tên nhánh',
         'prompt.newTag': 'Tên thẻ mới',
         'prompt.fromHead': 'HEAD hiện tại',
         'error.dismiss': 'Đóng',
+        'error.pushRejected': 'Push bị từ chối: nhánh remote có commit mà local chưa có. Hãy đồng bộ (pull rồi push) hoặc pull (merge) rồi push lại.',
+        'error.pullDiverged': 'Local và remote đều đã tiến lên; không thể fast-forward. Dùng pull (merge) hoặc pull (rebase).',
+        'error.pullConflict': 'Pull dừng do xung đột: giải quyết các tệp xung đột trong "Thay đổi" rồi commit.',
+        'error.pullDirty': 'Pull sẽ ghi đè thay đổi local chưa commit. Hãy commit hoặc stash trước.',
         'status.loading': 'Đang đọc...',
         'status.busy': 'Đang xử lý...',
         'counts.staged': 'Đã stage {n}',
@@ -6110,6 +7348,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'Đặt lại cứng về {hash}? Thay đổi chưa commit sẽ mất.',
         'resetSoft.confirm': 'Chuyển HEAD về {hash} (giữ worktree)?',
         'checkoutCommit.confirm': 'Checkout commit {hash}? (detached HEAD)',
+        'seg.history': 'Lịch sử',
+        'seg.changes': 'Thay đổi {n}',
+        'settings.history.visible': 'Hiện danh sách lịch sử trên tab mặc định',
+        'settings.history.visibleHint': 'Mặc định ẩn:tab mặc định chỉ có thay đổi + ô commit. Khi bật, cửa sổ có tab Lịch sử | Diff hiện bên dưới. Danh sách commit luôn có ở tab explorer.',
       },
       /* locale: ar */
       'ar': {
@@ -6120,6 +7362,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'متشعّب',
         'repo.none': 'مساحة العمل هذه ليست مستودع Git',
         'repo.pick': 'اختر مستودعًا لعرضه',
+        'repo.filter': 'البحث عن المستودعات',
+        'picker.empty': 'لا توجد نتائج مطابقة',
         'repo.empty': 'لم يُعثر على مستودع Git في مساحة العمل هذه',
         'repo.switch': 'تبديل المستودع',
         'branch.switch': 'تبديل الفرع',
@@ -6192,13 +7436,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'ملء الشاشة',
         'action.exitFullscreen': 'إنهاء ملء الشاشة',
         'action.newBranchFrom': 'فرع جديد من هنا...',
+        'action.setUpstream': 'تعيين upstream…',
+        'action.unsetUpstream': 'إزالة upstream',
+        'action.createLocalBranch': 'إنشاء فرع محلي…',
         'action.newBranchHere': 'فرع جديد هنا...',
         'action.rename': 'إعادة التسمية...',
         'action.delete': 'حذف',
         'action.mergeIntoCurrent': 'الدمج في الفرع الحالي',
         'action.rebaseCurrentOnto': 'إعادة تأسيس الفرع الحالي على هذا',
         'action.compare': 'المقارنة مع الفرع الحالي',
-        'action.update': 'تحديث (fetch)',
+      'action.update': 'سحب',
         'action.push': 'دفع',
         'action.newTag': 'وسم جديد...',
         'action.cherryPick': 'انتقاء',
@@ -6250,6 +7497,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'إيداع الكل...',
       'more.undoCommit': 'تراجع عن آخر إيداع',
       'more.rebaseAbort': 'إلغاء إعادة الأساس',
+      'more.mergeAbort': 'إلغاء الدمج',
       'more.commitStagedAmend': 'إيداع المجهز (تعديل)...',
       'more.commitAllAmend': 'إيداع الكل (تعديل)...',
       'more.commitStagedSign': 'إيداع المجهز (موقع)...',
@@ -6265,6 +7513,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'جلب من كل الأجهزة البعيدة',
       'more.deleteRemoteBranch': 'حذف فرع بعيد...',
       'more.publish': 'نشر الفرع...',
+      'more.setUpstreamHead': 'تعيين upstream للفرع الحالي…',
+      'more.unsetUpstreamHead': 'إزالة upstream للفرع الحالي',
       'more.addRemote': 'إضافة جهاز بعيد...',
       'more.removeRemote': 'إزالة جهاز بعيد...',
       'more.stashTracked': 'خبئ (المتتبع فقط)',
@@ -6319,8 +7569,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'شجرة الفروع وقائمة الالتزامات وتفاصيلها (بأسلوب IDE)',
         'rail.openSettings': 'فتح إعدادات الإضافة',
         'settings.card.title': 'إعدادات نافذة أدوات Git',
-        'settings.card.desc': 'موضع اللوحة، أزرار شريط الإجراءات ورسالة إيداع بالذكاء الاصطناعي',
+        'settings.card.desc': 'موضع اللوحة، أزرار شريط الإجراءات، تنسيق التاريخ ورسالة إيداع بالذكاء الاصطناعي',
         'settings.placement.title': 'موضع اللوحة',
+        'settings.history.title': 'قائمة السجل',
         'settings.placement.tab': 'إظهار تبويب Git في منطقة المحادثة',
       'settings.composer.title': 'حالة Git في شريط الإدخال',
       'settings.composer.hint': 'يعرض المستودع والفرز بجانب شريط الإدخال — انقر للتبديل، ومتزامن مع لوحة Git. عند الإيقاف يبقى الشريط نظيفًا.',
@@ -6328,6 +7579,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'تبديل الفرع',
       'composer.detached': 'HEAD (منفصل)',
       'composer.changesHint': 'تغييرات غير ملتزَم بها',
+      'composer.fileHint': 'مضاف {a} · محذوف {d}',
+      'composer.linesHint': '+{ins} −{del} أسطر',
+      'modelRoute.pick': 'اختر نموذجًا',
+      'modelRoute.trigger': 'نموذج رسائل الالتزام بالذكاء الاصطناعي',
+      'modelRoute.modelRow': 'النموذج',
+      'modelRoute.effortRow': 'الاستدلال',
+      'modelRoute.effortDefault': 'اتبع الافتراضي',
+      'modelRoute.empty': 'لا توجد نماذج متاحة',
       'composer.behindHint': 'التزامات جديدة في المستودع البعيد (قابلة للسحب)',
       'composer.aheadHint': 'التزامات محلية بانتظار الدفع',
       'composer.inWorktree': 'مسحوب في شجرة عمل أخرى',
@@ -6338,6 +7597,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'عند التشغيل يملأ تبويب Git منطقة المحادثة بكامل ارتفاعها ويتراجع صندوق الكتابة؛ تظل الموافقات والأسئلة ظاهرة كالمعتاد.',
         'settings.placement.repoPill': 'إظهار حبة المستودع في شريط الإدخال',
         'settings.placement.repoPillHint': 'تظهر حبة اسم المستودع في أقصى يسار شريط الأدوات — انقر لفتح لوحة Git، وفي مساحة عمل بعدة مستودعات يظهر سهم التبديل أيضًا. عند الإيقاف يبقى الفرع وعدّادات التغييرات فقط.',
+        'settings.date.label': 'تنسيق التاريخ',
+        'settings.date.relative': 'نسبي (4h / 22h)',
+        'settings.date.absolute': 'مطلق (11-05 10:42)',
+        'settings.diff.inline': 'معاينة الفروق داخل اللوحة',
+        'settings.diff.inlineHint': 'عند التشغيل تفتح الفروق داخل لوحة Git مع العرض المنقسم والتفاف الأسطر. عند الإيقاف تتولاها معاينة الفروق في الشريط الجانبي.',
         'preview.openFile': 'افتح في معاينة الملف',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -6353,7 +7617,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'انقر «عرض الفروق» على ملف أو commit — تُفتح الفروق هنا في الشريط الجانبي.',
         'preview.boundary': 'تعذّر عرض المعاينة — أعد تحميل الصفحة أو أبلغ عن المشكلة.',
         'settings.rail.title': 'شريط الإجراءات',
-        'settings.rail.hint': 'حدّد الإجراءات المعروضة على الشريط. الترتيب ثابت، وإلغاء التحديد يخفي الإجراء.',
+        'settings.rail.hint': 'حدّد الإجراءات المعروضة على الشريط؛ إلغاء التحديد يخفي الإجراء. غيّر الترتيب من «إعدادات شريط الإجراءات» في اللوحة.',
+        'settings.rail.loading': 'جارٍ تحميل الإعدادات…',
         'settings.rail.unavailable': 'لا تتوفر خدمة إعدادات على هذا المضيف؛ استخدم «إعدادات شريط الإجراءات» في اللوحة.',
         'settings.commit.title': 'رسالة إيداع بالذكاء الاصطناعي',
         'settings.commit.model': 'النموذج',
@@ -6384,6 +7649,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'إخفاء',
         'action.unavailable': 'غير متاح في الحالة الحالية',
         'filter.branch': 'الفرع',
+        'history.scope': 'النطاق',
+        'history.scopeCurrent': 'الفرع الحالي',
+        'history.scopeAll': 'جميع الفروع',
+        'merge.title': 'دمج {branch}',
+        'merge.into': 'دمج {branch} في الفرع الحالي',
+        'merge.modeDefault': 'افتراضي',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'ينفّذ تقديمًا سريعًا عند الإمكان، دون إنشاء commit للدمج.',
+        'merge.hint.noFf': 'ينشئ دائمًا commit للدمج كي يبقى الدمج ظاهرًا في السجل.',
+        'merge.hint.squash': 'يجمع تغييرات {branch} في تغيير واحد مُجهّز، دون سجل الـ commits.',
+        'merge.hint.noCommit': 'يجهّز الدمج ويتوقف قبل الـ commit لتتمكن من مراجعته أو تعديله.',
         'filter.user': 'المؤلف',
         'history.me': 'أنا',
         'filter.date': 'التاريخ',
@@ -6422,14 +7700,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'التراجع جارٍ',
         'operation.bisect': 'bisect جارٍ',
         'operation.hint': 'لا يزال في هذا المستودع إجراء متعدد الخطوات مفتوح —— أكمله أو ألغِه قبل إجراءات الفروع',
+        'worktrees.title': 'أشجار العمل',
+        'worktrees.new': 'شجرة عمل جديدة',
+        'worktrees.prune': 'تنظيف السجلات القديمة',
+        'worktrees.back': 'رجوع',
+        'worktrees.current': 'الحالي',
+        'worktrees.primary': 'الرئيسي',
+        'worktrees.locked': 'مقفل',
+        'worktrees.prunable': 'قابل للتنظيف',
+        'worktrees.detached': 'HEAD منفصل',
+        'worktrees.open': 'فتح في اللوحة',
+        'worktrees.remove': 'إزالة شجرة العمل',
+        'worktrees.removeConfirm': 'إزالة شجرة العمل {path}؟',
+        'worktrees.removeDirty': 'شجرة العمل {path} تحتوي على تغييرات غير مُودعة. الإزالة القسرية ستحذفها نهائيًا. هل تريد المتابعة؟',
+        'worktrees.path': 'المسار',
+        'worktrees.branch': 'الفرع',
+        'worktrees.newBranch': 'فرع جديد',
+        'worktrees.existingBranch': 'فرع موجود',
+        'worktrees.base': 'نقطة البداية',
+        'worktrees.create': 'إنشاء',
+        'worktrees.empty': 'لا توجد أشجار عمل',
+        'worktrees.pruneConfirm': 'تنظيف سجلات أشجار العمل التي اختفت من القرص؟',
+        'toast.worktreeAdded': 'تم إنشاء شجرة العمل {path}',
+        'toast.worktreeRemoved': 'تمت إزالة شجرة العمل {path}',
+        'toast.worktreePruned': 'تم تنظيف السجلات القديمة',
         'confirm.title': 'تأكيد',
         'confirm.cancel': 'إلغاء',
         'confirm.ok': 'موافق',
         'prompt.newBranch': 'اسم الفرع الجديد (يُنشأ ويُبدَّل إليه)',
+        'prompt.createTracking': 'إنشاء فرع محلي من الفرع البعيد',
         'prompt.renameBranch': 'إعادة تسمية الفرع',
         'prompt.newTag': 'اسم الوسم الجديد',
         'prompt.fromHead': 'HEAD الحالي',
         'error.dismiss': 'إغلاق',
+        'error.pushRejected': 'تم رفض الدفع: الفرع البعيد يحتوي على commits غير موجودة محليًا. زامن أولًا (pull ثم push) أو اسحب (merge) ثم أعد الدفع.',
+        'error.pullDiverged': 'تقدّم الفرعان المحلي والبعيد؛ لا يمكن fast-forward. استخدم pull (merge) أو pull (rebase).',
+        'error.pullConflict': 'توقف pull بسبب تعارضات: حلّ ملفات التعارض في "التغييرات" ثم commit.',
+        'error.pullDirty': 'سيؤدي pull إلى الكتابة فوق تغييرات محلية غير مثبتة. ثبّتها أو خزّنها أولًا.',
         'status.loading': 'جارٍ القراءة...',
         'status.busy': 'جارٍ العمل...',
         'counts.staged': 'مُجهَّز {n}',
@@ -6444,6 +7751,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'إعادة تعيين قسرية إلى {hash}? ستفقد التغييرات غير الملتزَم بها.',
         'resetSoft.confirm': 'نقل HEAD إلى {hash} (مع الاحتفاظ بشجرة العمل)?',
         'checkoutCommit.confirm': 'تبديل إلى الالتزام {hash}? (detached HEAD)',
+        'seg.history': 'السجل',
+        'seg.changes': 'التغييرات {n}',
+        'settings.history.visible': 'إظهار قائمة السجل في التبويب الافتراضي',
+        'settings.history.visibleHint': 'مخفي افتراضيًا:يحتوي التبويب الافتراضي على التغييرات + مربع الالتزام فقط. عند التفعيل تظهر نافذة بتبويبي السجل | الفروقات أسفله. قائمة الالتزامات متاحة دائمًا في تبويب explorer.',
       },
       /* locale: hi */
       'hi': {
@@ -6454,6 +7765,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'नेस्टेड',
         'repo.none': 'यह कार्यक्षेत्र Git रिपॉज़िटरी नहीं है',
         'repo.pick': 'देखने के लिए रिपॉज़िटरी चुनें',
+        'repo.filter': 'रिपॉज़िटरी खोजें',
+        'picker.empty': 'कोई मेल नहीं',
         'repo.empty': 'इस कार्यक्षेत्र में कोई Git रिपॉज़िटरी नहीं मिली',
         'repo.switch': 'रिपॉज़िटरी बदलें',
         'branch.switch': 'शाखा बदलें',
@@ -6526,13 +7839,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'पूर्ण स्क्रीन',
         'action.exitFullscreen': 'पूर्ण स्क्रीन से बाहर',
         'action.newBranchFrom': 'यहाँ से नई शाखा...',
+        'action.setUpstream': 'अपस्ट्रीम सेट करें…',
+        'action.unsetUpstream': 'अपस्ट्रीम हटाएँ',
+        'action.createLocalBranch': 'लोकल शाखा बनाएँ…',
         'action.newBranchHere': 'यहाँ नई शाखा...',
         'action.rename': 'नाम बदलें...',
         'action.delete': 'हटाएँ',
         'action.mergeIntoCurrent': 'वर्तमान शाखा में मर्ज करें',
         'action.rebaseCurrentOnto': 'वर्तमान शाखा को इस पर रीबेस करें',
         'action.compare': 'वर्तमान शाखा से तुलना करें',
-        'action.update': 'अद्यतन करें (fetch)',
+      'action.update': 'पुल',
         'action.push': 'पुश',
         'action.newTag': 'नया टैग...',
         'action.cherryPick': 'चेरी-पिक',
@@ -6584,6 +7900,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'सभी कमिट करें...',
       'more.undoCommit': 'अंतिम कमिट रद्द करें',
       'more.rebaseAbort': 'रिबेस रोकें',
+      'more.mergeAbort': 'मर्ज रोकें',
       'more.commitStagedAmend': 'स्टेज्ड कमिट (संशोधन)...',
       'more.commitAllAmend': 'सभी कमिट (संशोधन)...',
       'more.commitStagedSign': 'स्टेज्ड कमिट (हस्ताक्षरित)...',
@@ -6599,6 +7916,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'सभी रिमोट से फ़ेच',
       'more.deleteRemoteBranch': 'रिमोट ब्रांच हटाएँ...',
       'more.publish': 'ब्रांच प्रकाशित करें...',
+      'more.setUpstreamHead': 'वर्तमान शाखा के लिए अपस्ट्रीम सेट करें…',
+      'more.unsetUpstreamHead': 'वर्तमान शाखा का अपस्ट्रीम हटाएँ',
       'more.addRemote': 'रिमोट जोड़ें...',
       'more.removeRemote': 'रिमोट हटाएँ...',
       'more.stashTracked': 'स्टैश (केवल ट्रैक की गई)',
@@ -6653,8 +7972,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'ब्रांच ट्री, कमिट सूची और कमिट विवरण (IDE शैली)',
         'rail.openSettings': 'प्लगइन सेटिंग खोलें',
         'settings.card.title': 'Git टूल विंडो सेटिंग्स',
-        'settings.card.desc': 'पैनल प्लेसमेंट, एक्शन रेल बटन और AI कमिट संदेश',
+        'settings.card.desc': 'पैनल प्लेसमेंट, एक्शन रेल बटन, दिनांक प्रारूप और AI कमिट संदेश',
         'settings.placement.title': 'पैनल प्लेसमेंट',
+        'settings.history.title': 'इतिहास सूची',
         'settings.placement.tab': 'संवाद क्षेत्र में Git टैब दिखाएँ',
       'settings.composer.title': 'इनपुट बार में Git स्थिति',
       'settings.composer.hint': 'इनपुट बार के बगल में रिपॉज़िटरी और शाखा दिखाता है — बदलने के लिए क्लिक करें, Git पैनल के साथ सिंक। बंद करने पर इनपुट बार साफ़ रहती है।',
@@ -6662,6 +7982,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'शाखा बदलें',
       'composer.detached': 'HEAD (पृथक)',
       'composer.changesHint': 'बिना कमिट बदलाव',
+      'composer.fileHint': '{a} जोड़ी गईं · {d} हटाई गईं',
+      'composer.linesHint': '+{ins} −{del} पंक्तियाँ',
+      'modelRoute.pick': 'मॉडल चुनें',
+      'modelRoute.trigger': 'AI कमिट संदेश मॉडल',
+      'modelRoute.modelRow': 'मॉडल',
+      'modelRoute.effortRow': 'तर्क',
+      'modelRoute.effortDefault': 'डिफ़ॉल्ट का पालन करें',
+      'modelRoute.empty': 'कोई मॉडल उपलब्ध नहीं',
       'composer.behindHint': 'अपस्ट्रीम के नए कमिट (खींचने योग्य)',
       'composer.aheadHint': 'पुश के लिए प्रतीक्षारत स्थानीय कमिट',
       'composer.inWorktree': 'दूसरे वर्कट्री में चेकआउट',
@@ -6672,6 +8000,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'चालू होने पर Git टैब पूरे संवाद क्षेत्र की ऊँचाई घेर लेता है और इनपुट बॉक्स हट जाता है; अनुमोदन और प्रश्न फिर भी दिखते हैं।',
         'settings.placement.repoPill': 'इनपुट बार में रिपॉज़िटरी पिल दिखाएँ',
         'settings.placement.repoPillHint': 'रिपॉज़िटरी नाम की पिल टूलबार के सबसे बाएँ होती है — क्लिक करने पर Git पैनल खुलता है; कई रिपॉज़िटरी वाले वर्कस्पेस में बदलने का तीर भी दिखता है। बंद करने पर सिर्फ़ शाखा और बदलाव गिनती रहती है।',
+        'settings.date.label': 'दिनांक प्रारूप',
+        'settings.date.relative': 'सापेक्ष (4h / 22h)',
+        'settings.date.absolute': 'निरपेक्ष (11-05 10:42)',
+        'settings.diff.inline': 'पैनल में अंतर देखें',
+        'settings.diff.inlineHint': 'चालू: अंतर Git पैनल में खुलते हैं, स्प्लिट व्यू और लाइन रैप के साथ। बंद: साइडबार का अंतर पूर्वावलोकन संभालता है।',
         'preview.openFile': 'फ़ाइल पूर्वावलोकन में खोलें',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -6687,7 +8020,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'फ़ाइल या कमिट पर “अंतर दिखाएँ” पर क्लिक करें — अंतर यहीं साइडबार में खुलेगा।',
         'preview.boundary': 'पूर्वावलोकन रेंडर नहीं हो सका — पृष्ठ पुनः लोड करें या समस्या की रिपोर्ट करें।',
         'settings.rail.title': 'क्रिया रेल',
-        'settings.rail.hint': 'रेल पर दिखने वाली क्रियाएँ चुनें। क्रम निश्चित है; चुनाव हटाने पर वह छिप जाती है।',
+        'settings.rail.hint': 'रेल पर दिखने वाली क्रियाएँ चुनें; चुनाव हटाने पर वह छिप जाती है। क्रम बदलने के लिए पैनल की “एक्शन रेल सेटिंग्स” का उपयोग करें।',
+        'settings.rail.loading': 'सेटिंग्स लोड हो रही हैं…',
         'settings.rail.unavailable': 'इस होस्ट में सेटिंग सेवा नहीं है; पैनल में «एक्शन रेल सेटिंग» का उपयोग करें।',
         'settings.commit.title': 'AI कमिट संदेश',
         'settings.commit.model': 'मॉडल',
@@ -6718,6 +8052,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'छिपाएँ',
         'action.unavailable': 'वर्तमान स्थिति में उपलब्ध नहीं',
         'filter.branch': 'शाखा',
+        'history.scope': 'दायरा',
+        'history.scopeCurrent': 'वर्तमान शाखा',
+        'history.scopeAll': 'सभी शाखाएँ',
+        'merge.title': '{branch} मर्ज करें',
+        'merge.into': '{branch} को वर्तमान शाखा में मर्ज करें',
+        'merge.modeDefault': 'डिफ़ॉल्ट',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'जब संभव हो फ़ास्ट-फ़ॉरवर्ड करता है, मर्ज कमिट बनाए बिना।',
+        'merge.hint.noFf': 'हमेशा मर्ज कमिट बनाता है, ताकि मर्ज इतिहास में दिखे।',
+        'merge.hint.squash': '{branch} के बदलावों को कमिट इतिहास के बिना एक तैयार बदलाव में जोड़ता है।',
+        'merge.hint.noCommit': 'मर्ज तैयार करता है और कमिट से पहले रुकता है, ताकि आप उसे देख या बदल सकें।',
         'filter.user': 'लेखक',
         'history.me': 'मैं',
         'filter.date': 'दिनांक',
@@ -6756,14 +8103,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'वापसी जारी है',
         'operation.bisect': 'bisect जारी है',
         'operation.hint': 'इस रिपॉज़िटरी में अभी एक बहु-चरणीय कार्य खुला है —— शाखा क्रियाओं से पहले उसे पूरा करें या रद्द करें',
+        'worktrees.title': 'वर्कट्री',
+        'worktrees.new': 'नई वर्कट्री',
+        'worktrees.prune': 'पुराने रिकॉर्ड साफ़ करें',
+        'worktrees.back': 'वापस',
+        'worktrees.current': 'मौजूदा',
+        'worktrees.primary': 'प्राथमिक',
+        'worktrees.locked': 'लॉक किया गया',
+        'worktrees.prunable': 'साफ़ करने योग्य',
+        'worktrees.detached': 'अलग HEAD',
+        'worktrees.open': 'पैनल में खोलें',
+        'worktrees.remove': 'वर्कट्री हटाएँ',
+        'worktrees.removeConfirm': 'वर्कट्री {path} हटाएँ?',
+        'worktrees.removeDirty': 'वर्कट्री {path} में अन-कमिट बदलाव हैं। ज़बरदस्ती हटाने से ये हमेशा के लिए चले जाएँगे। जारी रखें?',
+        'worktrees.path': 'पाथ',
+        'worktrees.branch': 'शाखा',
+        'worktrees.newBranch': 'नई शाखा',
+        'worktrees.existingBranch': 'मौजूदा शाखा',
+        'worktrees.base': 'शुरुआती बिंदु',
+        'worktrees.create': 'बनाएँ',
+        'worktrees.empty': 'कोई वर्कट्री नहीं',
+        'worktrees.pruneConfirm': 'डिस्क से गायब वर्कट्री रिकॉर्ड साफ़ करें?',
+        'toast.worktreeAdded': 'वर्कट्री {path} बनाई गई',
+        'toast.worktreeRemoved': 'वर्कट्री {path} हटाई गई',
+        'toast.worktreePruned': 'पुराने वर्कट्री रिकॉर्ड साफ़ किए गए',
         'confirm.title': 'पुष्टि',
         'confirm.cancel': 'रद्द करें',
         'confirm.ok': 'ठीक',
         'prompt.newBranch': 'नई शाखा का नाम (बनाई और चेकआउट की जाएगी)',
+        'prompt.createTracking': 'रिमोट शाखा से लोकल शाखा बनाएँ',
         'prompt.renameBranch': 'शाखा का नाम बदलें',
         'prompt.newTag': 'नए टैग का नाम',
         'prompt.fromHead': 'वर्तमान HEAD',
         'error.dismiss': 'बंद करें',
+        'error.pushRejected': 'पुश अस्वीकृत: रिमोट ब्रांच में ऐसे commits हैं जो लोकल में नहीं हैं। पहले सिंक करें (pull फिर push) या pull (merge) करके फिर से push करें।',
+        'error.pullDiverged': 'लोकल और रिमोट दोनों आगे बढ़े हैं; fast-forward संभव नहीं। pull (merge) या pull (rebase) इस्तेमाल करें।',
+        'error.pullConflict': 'pull conflicts पर रुक गया: "परिवर्तन" में conflict फ़ाइलें हल करें, फिर commit करें।',
+        'error.pullDirty': 'pull लोकल की uncommitted changes को overwrite करेगा। पहले commit या stash करें।',
         'status.loading': 'पढ़ा जा रहा है...',
         'status.busy': 'कार्य जारी...',
         'counts.staged': 'स्टेज्ड {n}',
@@ -6778,6 +8154,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': '{hash} पर हार्ड रीसेट करें? बिना कमिट किए परिवर्तन खो जाएँगे।',
         'resetSoft.confirm': 'HEAD को {hash} पर ले जाएँ (वर्कट्री सुरक्षित)?',
         'checkoutCommit.confirm': 'कमिट {hash} चेकआउट करें? (detached HEAD)',
+        'seg.history': 'इतिहास',
+        'seg.changes': 'परिवर्तन {n}',
+        'settings.history.visible': 'डिफ़ॉल्ट टैब पर इतिहास सूची दिखाएँ',
+        'settings.history.visibleHint': 'डिफ़ॉल्ट रूप से छिपा:डिफ़ॉल्ट टैब में केवल परिवर्तन + कमिट बॉक्स रहता है। चालू करने पर नीचे इतिहास | अंतर टैब वाली विंडो दिखती है। कमिट सूची हमेशा explorer टैब में रहती है।',
       },
       /* locale: th */
       'th': {
@@ -6788,6 +8168,8 @@ window.__ModuleLoader__.load({
         'repo.nested': 'ซ้อนกัน',
         'repo.none': 'เวิร์กสเปซนี้ไม่ใช่รีโพซิทอรี Git',
         'repo.pick': 'เลือกรีโพซิทอรีที่จะดู',
+        'repo.filter': 'ค้นหารีโพซิทอรี',
+        'picker.empty': 'ไม่มีรายการที่ตรงกัน',
         'repo.empty': 'ไม่พบรีโพซิทอรี Git ในเวิร์กสเปซนี้',
         'repo.switch': 'สลับรีโพซิทอรี',
         'branch.switch': 'สลับแบรนช์',
@@ -6860,13 +8242,16 @@ window.__ModuleLoader__.load({
         'action.fullscreen': 'เต็มหน้าจอ',
         'action.exitFullscreen': 'ออกจากเต็มหน้าจอ',
         'action.newBranchFrom': 'แบรนช์ใหม่จากที่นี่...',
+        'action.setUpstream': 'ตั้งค่า upstream…',
+        'action.unsetUpstream': 'ยกเลิก upstream',
+        'action.createLocalBranch': 'สร้างแบรนช์ในเครื่อง…',
         'action.newBranchHere': 'แบรนช์ใหม่ที่นี่...',
         'action.rename': 'เปลี่ยนชื่อ...',
         'action.delete': 'ลบ',
         'action.mergeIntoCurrent': 'รวมเข้าแบรนช์ปัจจุบัน',
         'action.rebaseCurrentOnto': 'รีเบสแบรนช์ปัจจุบันไปที่นี้',
         'action.compare': 'เปรียบเทียบกับแบรนช์ปัจจุบัน',
-        'action.update': 'อัปเดต (fetch)',
+      'action.update': 'Pull',
         'action.push': 'พุช',
         'action.newTag': 'แท็กใหม่...',
         'action.cherryPick': 'เชอร์รีพิก',
@@ -6918,6 +8303,7 @@ window.__ModuleLoader__.load({
       'more.commitAll': 'คอมมิตทั้งหมด...',
       'more.undoCommit': 'ยกเลิกคอมมิตล่าสุด',
       'more.rebaseAbort': 'ยกเลิกรีเบส',
+      'more.mergeAbort': 'ยกเลิกการรวม',
       'more.commitStagedAmend': 'คอมมิตไฟล์ที่สเตจ(แก้ไข)...',
       'more.commitAllAmend': 'คอมมิตทั้งหมด(แก้ไข)...',
       'more.commitStagedSign': 'คอมมิตไฟล์ที่สเตจ(ลงนาม)...',
@@ -6933,6 +8319,8 @@ window.__ModuleLoader__.load({
       'more.fetchAll': 'ฟีตช์จากทุกรีโมต',
       'more.deleteRemoteBranch': 'ลบบรานช์รีโมต...',
       'more.publish': 'เผยแพร่บรานช์...',
+      'more.setUpstreamHead': 'ตั้งค่า upstream ของแบรนช์ปัจจุบัน…',
+      'more.unsetUpstreamHead': 'ยกเลิก upstream ของแบรนช์ปัจจุบัน',
       'more.addRemote': 'เพิ่มรีโมต...',
       'more.removeRemote': 'ลบรีโมต...',
       'more.stashTracked': 'สแตช(เฉพาะไฟล์ที่ติดตาม)',
@@ -6987,8 +8375,9 @@ window.__ModuleLoader__.load({
         'explore.description': 'ทรีสาขา รายการคอมมิต และรายละเอียดคอมมิต (สไตล์ IDE)',
         'rail.openSettings': 'เปิดการตั้งค่าปลั๊กอิน',
         'settings.card.title': 'การตั้งค่าหน้าต่างเครื่องมือ Git',
-        'settings.card.desc': 'ตำแหน่งแผง, ปุ่มแถบการทำงานและข้อความคอมมิตโดย AI',
+        'settings.card.desc': 'ตำแหน่งแผง, ปุ่มแถบการทำงาน, รูปแบบวันที่และข้อความคอมมิตโดย AI',
         'settings.placement.title': 'ตำแหน่งแผง',
+        'settings.history.title': 'รายการประวัติ',
         'settings.placement.tab': 'แสดงแท็บ Git ในพื้นที่บทสนทนา',
       'settings.composer.title': 'สถานะ Git ในแถบป้อนข้อความ',
       'settings.composer.hint': 'แสดงที่เก็บและแบรนช์ข้างแถบป้อนข้อความ — คลิกเพื่อสลับ และซิงก์กับแผง Git ปิดแล้วแถบจะสะอาด',
@@ -6996,6 +8385,14 @@ window.__ModuleLoader__.load({
       'composer.branchHint': 'สลับแบรนช์',
       'composer.detached': 'HEAD (แยกขาด)',
       'composer.changesHint': 'การเปลี่ยนแปลงที่ยังไม่คอมมิต',
+      'composer.fileHint': 'เพิ่ม {a} · ลบ {d} ไฟล์',
+      'composer.linesHint': '+{ins} −{del} บรรทัด',
+      'modelRoute.pick': 'เลือกโมเดล',
+      'modelRoute.trigger': 'โมเดลข้อความคอมมิต AI',
+      'modelRoute.modelRow': 'โมเดล',
+      'modelRoute.effortRow': 'การใช้เหตุผล',
+      'modelRoute.effortDefault': 'ตามค่าเริ่มต้น',
+      'modelRoute.empty': 'ไม่มีโมเดลที่ใช้ได้',
       'composer.behindHint': 'คอมมิตใหม่จากรีโมต (ดึงได้)',
       'composer.aheadHint': 'คอมมิตในเครื่องรอพุช',
       'composer.inWorktree': 'ถูกเช็คเอาต์ในเวิร์กทรีอื่น',
@@ -7006,6 +8403,11 @@ window.__ModuleLoader__.load({
         'settings.placement.immersiveHint': 'เมื่อเปิด แท็บ Git จะกินพื้นที่สูงทั้งหมดของบทสนทนาและกล่องพิมพ์จะถอยออก; การอนุมัติและคำถามยังแสดงตามปกติ',
         'settings.placement.repoPill': 'แสดงแคปซูลที่เก็บในแถบป้อนข้อความ',
         'settings.placement.repoPillHint': 'แคปซูลชื่อที่เก็บอยู่ซ้ายสุดของแถบเครื่องมือ — คลิกเพื่อเปิดแผง Git และในเวิร์กสเปซที่มีหลายที่เก็บจะมีลูกศรสลับที่เก็บด้วย ปิดแล้วจะเหลือแค่แบรนช์และจำนวนการเปลี่ยนแปลง',
+        'settings.date.label': 'รูปแบบวันที่',
+        'settings.date.relative': 'สัมพัทธ์ (4h / 22h)',
+        'settings.date.absolute': 'สัมบูรณ์ (11-05 10:42)',
+        'settings.diff.inline': 'ดูตัวอย่างความแตกต่างในแผง',
+        'settings.diff.inlineHint': 'เปิด: ความแตกต่างเปิดในแผง Git พร้อมมุมมองแยกและตัดบรรทัดอัตโนมัติ ปิด: ตัวอย่างความแตกต่างในแถบข้างจะรับหน้าที่',
         'preview.openFile': 'เปิดในตัวอย่างไฟล์',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -7021,7 +8423,8 @@ window.__ModuleLoader__.load({
         'preview.hint': 'คลิก “แสดงความต่าง” ที่ไฟล์หรือคอมมิต — ความต่างจะเปิดที่นี่ในแถบข้าง',
         'preview.boundary': 'แสดงผลตัวอย่างไม่สำเร็จ — โหลดหน้าซ้ำหรือรายงานปัญหา',
         'settings.rail.title': 'แถบการทำงาน',
-        'settings.rail.hint': 'ทำเครื่องหมายการทำงานที่จะแสดงบนแถบ ลำดับคงที่; ยกเลิกเครื่องหมายเพื่อซ่อน',
+        'settings.rail.hint': 'ทำเครื่องหมายการทำงานที่จะแสดงบนแถบ; ยกเลิกเครื่องหมายเพื่อซ่อน จัดลำดับได้ใน “การตั้งค่าแถบการทำงาน” ของแผง',
+        'settings.rail.loading': 'กำลังโหลดการตั้งค่า…',
         'settings.rail.unavailable': 'โฮสต์นี้ไม่มีบริการตั้งค่า ให้ใช้ «ตั้งค่าแถบการทำงาน» ในแผง',
         'settings.commit.title': 'ข้อความคอมมิตโดย AI',
         'settings.commit.model': 'โมเดล',
@@ -7052,6 +8455,19 @@ window.__ModuleLoader__.load({
         'rail.hide': 'ซ่อน',
         'action.unavailable': 'ใช้ไม่ได้ในสถานะปัจจุบัน',
         'filter.branch': 'แบรนช์',
+        'history.scope': 'ขอบเขต',
+        'history.scopeCurrent': 'สาขาปัจจุบัน',
+        'history.scopeAll': 'ทุกสาขา',
+        'merge.title': 'รวม {branch}',
+        'merge.into': 'รวม {branch} เข้ากับสาขาปัจจุบัน',
+        'merge.modeDefault': 'ค่าเริ่มต้น',
+        'merge.modeNoFf': '--no-ff',
+        'merge.modeSquash': '--squash',
+        'merge.modeNoCommit': '--no-commit',
+        'merge.hint.default': 'ทำ fast-forward เมื่อทำได้ โดยไม่สร้าง commit การรวม',
+        'merge.hint.noFf': 'สร้าง commit การรวมเสมอ เพื่อให้เห็นการรวมในประวัติ',
+        'merge.hint.squash': 'รวมการเปลี่ยนแปลงจาก {branch} เป็นการเปลี่ยนแปลงที่เตรียมไว้หนึ่งรายการ โดยไม่เก็บประวัติ commit',
+        'merge.hint.noCommit': 'เตรียมการรวมและหยุดก่อน commit เพื่อให้คุณตรวจสอบหรือปรับแก้ได้',
         'filter.user': 'ผู้เขียน',
         'history.me': 'ฉัน',
         'filter.date': 'วันที่',
@@ -7090,14 +8506,43 @@ window.__ModuleLoader__.load({
         'operation.revert': 'กำลังย้อน',
         'operation.bisect': 'กำลัง bisect',
         'operation.hint': 'รีโพซิทอรีนี้ยังมีงานหลายขั้นตอนค้างอยู่ —— ทำให้เสร็จหรือยกเลิกก่อนทำการกับแบรนช์',
+        'worktrees.title': 'เวิร์กทรี',
+        'worktrees.new': 'เวิร์กทรีใหม่',
+        'worktrees.prune': 'ล้างบันทึกที่ค้างอยู่',
+        'worktrees.back': 'กลับ',
+        'worktrees.current': 'ปัจจุบัน',
+        'worktrees.primary': 'หลัก',
+        'worktrees.locked': 'ถูกล็อก',
+        'worktrees.prunable': 'ล้างได้',
+        'worktrees.detached': 'HEAD แยก',
+        'worktrees.open': 'เปิดในแผง',
+        'worktrees.remove': 'ลบเวิร์กทรี',
+        'worktrees.removeConfirm': 'ลบเวิร์กทรี {path}?',
+        'worktrees.removeDirty': 'เวิร์กทรี {path} มีการเปลี่ยนแปลงที่ยังไม่คอมมิต การลบแบบบังคับจะทิ้งถาวร ดำเนินการต่อ?',
+        'worktrees.path': 'พาธ',
+        'worktrees.branch': 'แบรนช์',
+        'worktrees.newBranch': 'แบรนช์ใหม่',
+        'worktrees.existingBranch': 'แบรนช์ที่มีอยู่',
+        'worktrees.base': 'จุดเริ่มต้น',
+        'worktrees.create': 'สร้าง',
+        'worktrees.empty': 'ไม่มีเวิร์กทรี',
+        'worktrees.pruneConfirm': 'ล้างบันทึกเวิร์กทรีที่หายไปจากดิสก์?',
+        'toast.worktreeAdded': 'สร้างเวิร์กทรี {path} แล้ว',
+        'toast.worktreeRemoved': 'ลบเวิร์กทรี {path} แล้ว',
+        'toast.worktreePruned': 'ล้างบันทึกเวิร์กทรีที่ค้างแล้ว',
         'confirm.title': 'ยืนยัน',
         'confirm.cancel': 'ยกเลิก',
         'confirm.ok': 'ตกลง',
         'prompt.newBranch': 'ชื่อแบรนช์ใหม่ (สร้างและเช็กเอาต์ให้)',
+        'prompt.createTracking': 'สร้างแบรนช์ในเครื่องจากแบรนช์รีโมต',
         'prompt.renameBranch': 'เปลี่ยนชื่อแบรนช์',
         'prompt.newTag': 'ชื่อแท็กใหม่',
         'prompt.fromHead': 'HEAD ปัจจุบัน',
         'error.dismiss': 'ปิด',
+        'error.pushRejected': 'Push ถูกปฏิเสธ: สาขา remote มี commit ที่ยังไม่มีในเครื่องนี้ ให้ sync (pull แล้ว push) หรือ pull (merge) แล้ว push อีกครั้ง',
+        'error.pullDiverged': 'ทั้ง local และ remote มี commit ใหม่; fast-forward ไม่ได้ ใช้ pull (merge) หรือ pull (rebase)',
+        'error.pullConflict': 'Pull หยุดเพราะมี conflict: แก้ไฟล์ที่ขัดแย้งใน "การเปลี่ยนแปลง" แล้ว commit',
+        'error.pullDirty': 'Pull จะเขียนทับการเปลี่ยนแปลง local ที่ยังไม่ commit: ให้ commit หรือ stash ก่อน',
         'status.loading': 'กำลังอ่าน...',
         'status.busy': 'กำลังทำงาน...',
         'counts.staged': 'สเตจแล้ว {n}',
@@ -7112,6 +8557,10 @@ window.__ModuleLoader__.load({
         'resetHard.confirm': 'ฮาร์ดรีเซ็ตไปที่ {hash}? การเปลี่ยนแปลงที่ยังไม่คอมมิตจะหายไป',
         'resetSoft.confirm': 'ย้าย HEAD ไปที่ {hash} (เก็บเวิร์กทรีไว้)?',
         'checkoutCommit.confirm': 'เช็กเอาต์คอมมิต {hash}? (detached HEAD)',
+        'seg.history': 'ประวัติ',
+        'seg.changes': 'การเปลี่ยนแปลง {n}',
+        'settings.history.visible': 'แสดงรายการประวัติในแท็บเริ่มต้น',
+        'settings.history.visibleHint': 'ปิดตามค่าเริ่มต้น:แท็บเริ่มต้นจะมีเพียงการเปลี่ยนแปลง + ช่อง commit เมื่อเปิดจะปรากฏหน้าต่างแท็บ ประวัติ | ความแตกต่าง ด้านล่าง รายการ commit อยู่ในแท็บ explorer เสมอ',
       },
     }
 
@@ -7204,6 +8653,20 @@ window.__ModuleLoader__.load({
       return kind + ':' + entry.name
     }
 
+    /* v0.19.9: the REMOTE section folds by path exactly like the local one. In
+       the common single-remote repo every row starts with the same "<remote>/"
+       prefix, which would nest every tree under one folder named after the
+       remote — noise, not grouping — so the strip applies only when EVERY name
+       shares that first segment AND carries it (a bare "main" beside
+       "origin/main" means mixed shapes and keeps full names). */
+    function remoteTreeStripOf(names) {
+      if (names.length === 0) return ''
+      const first = names.map((name) => String(name).split('/')[0])
+      if (new Set(first).size !== 1) return ''
+      const prefix = first[0] + '/'
+      return names.every((name) => String(name).startsWith(prefix) === true) ? prefix : ''
+    }
+
     /* Join selected values for the clipboard — one per line, the shape a
        terminal or an editor expects when pasting a list. */
     function clipboardLines(values) {
@@ -7253,6 +8716,19 @@ window.__ModuleLoader__.load({
     function isAuthRejection(status) {
       return status === 401 || status === 403
     }
+
+    /* Whether a proxy answer looks like OUR route (a JSON object). With no
+       remote-web-ui installed the SPA static fallback serves /remote/<path> as
+       '405 Method Not Allowed' with an EMPTY body (issue #20: on a plain-HTTP
+       LAN page the panel surfaced a bare 'HTTP 405' instead of the real
+       403 refusal). A non-JSON retry therefore proves there is no proxy, and
+       the original answer must be what the caller sees. Cloning leaves the
+       caller's own body untouched. */
+    async function answersJson(response) {
+      let body = null
+      try { body = await response.clone().json() } catch (error) { return false }
+      return body !== null && typeof body === 'object'
+    }
     /* ---- end remote channel fallback core ---- */
 
     /* Sticky remote-channel mode: once the proxy has answered, later calls go
@@ -7274,13 +8750,15 @@ window.__ModuleLoader__.load({
       } else {
         response = await fetch(direct, init)
         if (isAuthRejection(response.status) === true) {
-          /* Off the origin's trust path: try the pairing proxy once. With no
-             remote-web-ui installed the proxy path 404s — the retry then also
-             fails, and the ORIGINAL rejection is what the caller sees (a
-             proxy answer that is itself an auth rejection is discarded the
-             same way, so a genuine cross-site refusal can never be masked). */
+          /* Off the origin's trust path: try the pairing proxy once. It has to
+             answer like our route (a JSON body) to take over: with no
+             remote-web-ui installed the SPA fallback serves the retry as 405
+             with an empty body, and that non-answer must not outrank the
+             ORIGINAL rejection (issue #20). A proxy answer that is itself an
+             auth rejection is discarded the same way, so a genuine refusal can
+             never be masked. */
           const retried = await fetch(remoteFallbackUrl(direct), init)
-          if (isAuthRejection(retried.status) !== true) {
+          if (isAuthRejection(retried.status) !== true && (await answersJson(retried)) === true) {
             viaRemoteChannel = true
             response = retried
           }
@@ -7459,6 +8937,58 @@ window.__ModuleLoader__.load({
       if (data.isRepo === true) return data.cwd
       if (paths.length > 0) return paths[0]
       return null
+    }
+
+    /* How many changed FILES are additions vs deletions, from the status
+       letters the summary already carries (index/worktree per entry) — no
+       extra git call. Untracked entries ARE additions in git's own model
+       (?? = to-be-added); a rename (R/C) or a conflict counts as neither. */
+    function composerFileSplitOf(summary) {
+      const changes = summary !== null && summary !== undefined && summary.changes !== null && typeof summary.changes === 'object' ? summary.changes : null
+      if (changes === null) return { added: 0, deleted: 0 }
+      let added = 0
+      let deleted = 0
+      const count = (list) => {
+        for (const entry of list === undefined || list === null ? [] : list) {
+          if (entry.index === 'A' || entry.worktree === 'A') added += 1
+          else if (entry.index === 'D' || entry.worktree === 'D') deleted += 1
+        }
+      }
+      count(changes.staged)
+      count(changes.unstaged)
+      added += changes.untracked === undefined || changes.untracked === null ? 0 : changes.untracked.length
+      return { added: added, deleted: deleted }
+    }
+
+    /* Total uncommitted line churn: the packed [path, additions, deletions,
+       binary] rows the host's stats method returns, summed over both the
+       worktree and the index passes. Untracked files have no line counts
+       (git cannot diff what it does not track) — they only ever move the
+       file counters above. */
+    function composerStatsLinesOf(pack) {
+      let additions = 0
+      let deletions = 0
+      if (pack !== null && pack !== undefined && typeof pack === 'object') {
+        for (const row of pack.unstaged === undefined || pack.unstaged === null ? [] : pack.unstaged) { additions += row[1]; deletions += row[2] }
+        for (const row of pack.staged === undefined || pack.staged === null ? [] : pack.staged) { additions += row[1]; deletions += row[2] }
+      }
+      return { additions: additions, deletions: deletions }
+    }
+
+    /* Whether the line counts need a refetch: any path/status move or a new
+       HEAD commit/checkout invalidates them; lines rewritten inside
+       already-dirty files do NOT move this — the slow COMPOSER_STATS_MS
+       floor covers those. */
+    function composerFingerprintOf(summary) {
+      if (summary === null || summary === undefined || summary.changes === null || typeof summary.changes !== 'object') return ''
+      const rows = []
+      const collect = (list) => { for (const entry of list === undefined || list === null ? [] : list) rows.push(entry.path + ':' + entry.index + entry.worktree) }
+      collect(summary.changes.staged)
+      collect(summary.changes.unstaged)
+      collect(summary.changes.untracked)
+      collect(summary.changes.conflicted)
+      rows.sort()
+      return rows.join('|') + '#' + String(summary.head === undefined || summary.head === null ? '' : summary.head)
     }
 
     async function prewarmWorkspace(sessionId, cwd) {
@@ -7678,6 +9208,7 @@ window.__ModuleLoader__.load({
          compact is the only chrome with a header button, and it used to render
          that button only while the tree was OPEN. */
       { id: 'tree', icon: 'branch', key: 'toolbar.tree', tone: 'secondary' },
+      { id: 'worktrees', icon: 'folder', key: 'worktrees.title', tone: 'secondary' },
       /* The official right-sidebar dock (float / re-dock / split / full screen).
          They only render where that service exists — see dockFaceOf(). */
       { id: 'float', icon: 'float', key: 'action.float', tone: 'accent' },
@@ -7705,7 +9236,7 @@ window.__ModuleLoader__.load({
     const RAIL_IDS = RAIL_SPECS.map((spec) => spec.id)
     /* Actions that arrange the view rather than touch the repository, so a running
        git command never greys them out. */
-    const RAIL_VIEW_IDS = ['tree', 'float', 'split', 'fullscreen']
+    const RAIL_VIEW_IDS = ['tree', 'worktrees', 'float', 'split', 'fullscreen']
     const RAIL_DOCK_IDS = ['float', 'split', 'fullscreen']
 
     function normalizeRail(raw) {
@@ -7725,13 +9256,11 @@ window.__ModuleLoader__.load({
     }
 
     /* ---------------------------------------------------------------------
-       Where the rail config LIVES. On dsh >= 0.1.7 a plugin's configuration is
-       the row Config (the official settings surface, persisted by the host under
-       the loader row id) and the browser reads it through ctx.configForms — so
-       the settings card and the rail read ONE source and nothing is written
-       twice. An older host has no such service: there the rail keeps its
-       localStorage home and its in-panel editor, which is the only editor those
-       hosts have. `railForm` is that switch; null means legacy.
+       Where the rail config LIVES. dsh >= 0.2.2-rc.1 serves a plugin's row
+       Config to the browser through ctx.configForms, so the settings card, the
+       action rail and the in-panel order editor read ONE document. The legacy
+       localStorage home is only read once by migrateRailConfig() below; nothing
+       writes it any more.
        --------------------------------------------------------------------- */
     const RAIL_NS = 'ide-git'
     /* One write window for the settings card: a burst of switches becomes one
@@ -7747,28 +9276,40 @@ window.__ModuleLoader__.load({
       return 'rail' + id.charAt(0).toUpperCase() + id.slice(1)
     }
 
-    /* Stored booleans -> the { order, hidden } shape the rail has always used.
-       The order is the code order now: the settings card edits one switch per
-       action, so a stored permutation would have no editor left, and dropping it
-       keeps this surface honest rather than half-editable. */
+    /* Stored row Config -> the { order, hidden } shape the rail uses. `railOrder`
+       is a comma-separated permutation; unknown or duplicate ids are dropped and
+       every action missing from it is appended in code order, so a document
+       written by an older version never hides an action added later. */
+    function railOrderOf(source) {
+      const order = []
+      const stored = typeof source.railOrder === 'string' ? source.railOrder.split(',') : []
+      for (const id of stored) {
+        if (RAIL_IDS.indexOf(id) < 0 || order.indexOf(id) >= 0) continue
+        order.push(id)
+      }
+      for (const id of RAIL_IDS) if (order.indexOf(id) < 0) order.push(id)
+      return order
+    }
+
+    function railOrderText(order) {
+      const input = Array.isArray(order) ? order : []
+      const normalized = input.filter((id, index) => RAIL_IDS.indexOf(id) >= 0 && input.indexOf(id) === index)
+      for (const id of RAIL_IDS) if (normalized.indexOf(id) < 0) normalized.push(id)
+      // The code order is the schema default; storing it as '' keeps a reset
+      // from writing a redundant 200-byte string.
+      return normalized.join(',') === RAIL_IDS.join(',') ? '' : normalized.join(',')
+    }
+
     function railConfigOfValues(values) {
       const source = values !== null && typeof values === 'object' ? values : {}
       const hidden = RAIL_IDS.filter((id) => source[railFieldOf(id)] === false)
-      return { order: RAIL_IDS.slice(), hidden: hidden }
-    }
-
-    /* The inverse of railFieldOf, for the one-field write path. Returns null for a
-       field no rail action owns, so a caller cannot invent a row-Config key. */
-    function railIdOfField(field) {
-      if (typeof field !== 'string' || field.indexOf('rail') !== 0 || field.length <= 4) return null
-      const name = field.slice(4)
-      const id = name.charAt(0).toLowerCase() + name.slice(1)
-      return RAIL_IDS.indexOf(id) < 0 ? null : id
+      return { order: railOrderOf(source), hidden: hidden }
     }
 
     function railValuesOfConfig(config) {
       const values = {}
       for (const id of RAIL_IDS) values[railFieldOf(id)] = config.hidden.indexOf(id) < 0
+      values.railOrder = railOrderText(config.order)
       return values
     }
 
@@ -7783,6 +9324,30 @@ window.__ModuleLoader__.load({
       if (ready !== null && ready.value !== null && typeof ready.value === 'object') values = ready.value
       const text = (field, max) => (typeof values[field] === 'string' ? values[field].trim().slice(0, max) : '')
       return { model: text('commitModel', 120), reasoning: text('commitReasoning', 60), prompt: text('commitPrompt', 2000) }
+    }
+
+    /* The history list's date column format (issue #26), read from the same row
+       Config document as the AI-commit settings. An absent or unknown value is
+       the shipped default, so a document written by an older version keeps
+       rendering relative labels. */
+    function readDateFormat() {
+      const ready = railFormReady()
+      if (ready === null) return 'relative'
+      const value = ready.value !== null && typeof ready.value === 'object' ? ready.value.dateFormat : undefined
+      return value === 'absolute' ? 'absolute' : 'relative'
+    }
+
+    /* Whether the default face shows main's tabbed history | diff window.
+       Unlike the placement switches (absent = ON), an absent showHistory means
+       OFF — the user asked for the commit list to be hidden by default, and an
+       older profile must keep the compact changes + commit box face.
+       Read at render time: subscribeRailConfig re-renders the Panel, so flipping
+       the switch in the settings card applies without a reload. */
+    function showHistoryEnabled() {
+      const ready = railFormReady()
+      if (ready === null) return false
+      const value = ready.value !== null && typeof ready.value === 'object' ? ready.value.showHistory : undefined
+      return value === true
     }
 
     function railFormReady() {
@@ -7808,20 +9373,15 @@ window.__ModuleLoader__.load({
     function readRailConfig() {
       const ready = railFormReady()
       if (ready !== null) return railConfigOfValues(ready.value)
-      // Legacy home (and the state before the host answers): localStorage.
-      try {
-        const raw = window.localStorage.getItem(RAIL_KEY)
-        if (raw === null || raw === '') return normalizeRail(null)
-        return normalizeRail(JSON.parse(raw))
-      } catch (error) { void error }
+      // Before the host answers there is no document to show; the code order is
+      // the honest placeholder (the real values arrive through the subscription).
       return normalizeRail(null)
     }
 
-    /* `form` lets a caller write through the exact handle it read from (the
-       settings card gets the framework's own form); without it the module handle
-       is used. When a config surface EXISTS but is not ready yet, the write is
-       refused instead of silently landing in the legacy localStorage home — two
-       sources would be worse than a refused edit. */
+    /* `form` lets a caller write through the exact handle it read from; without
+       it the module handle is used. The row Config is the only home: when it is
+       not ready (or read-only) the write is refused rather than landing in the
+       retired localStorage key. */
     function writeRailConfig(config, form) {
       const active = form !== undefined && form !== null && typeof form.getSnapshot === 'function' ? form : railForm
       let ready = null
@@ -7829,26 +9389,31 @@ window.__ModuleLoader__.load({
         const snapshot = active === null || active === undefined ? null : active.getSnapshot()
         if (snapshot !== null && snapshot !== undefined && snapshot.status === 'ready' && snapshot.value !== undefined) ready = snapshot
       } catch (error) { void error }
-      if (ready !== null) {
-        if (ready.writable !== true || typeof active.set !== 'function') return
-        railForm = active
-        const current = ready.value !== null && typeof ready.value === 'object' ? ready.value : {}
-        // Only the fields that actually changed: one write, not sixteen.
-        for (const id of RAIL_IDS) {
-          const field = railFieldOf(id)
-          const visible = config.hidden.indexOf(id) < 0
-          if (current[field] === visible) continue
-          const written = active.set(field, visible)
-          if (written !== undefined && written !== null && typeof written.then === 'function') {
-            void written.then((accepted) => {
-              if (accepted === false) console.warn('[dsh-ide-git] rail setting "' + field + '" was refused by the host')
-            }, (error) => { console.warn('[dsh-ide-git] rail setting write failed: ' + String(error && error.message ? error.message : error)) })
-          }
+      if (ready === null || ready.writable !== true || typeof active.set !== 'function') return
+      railForm = active
+      const current = ready.value !== null && typeof ready.value === 'object' ? ready.value : {}
+      const write = (field, value) => {
+        const written = active.set(field, value)
+        if (written !== undefined && written !== null && typeof written.then === 'function') {
+          void written.then((accepted) => {
+            if (accepted === false) console.warn('[dsh-ide-git] rail setting "' + field + '" was refused by the host')
+          }, (error) => { console.warn('[dsh-ide-git] rail setting write failed: ' + String(error && error.message ? error.message : error)) })
         }
-        return
       }
-      if (railForm !== null) return
-      try { window.localStorage.setItem(RAIL_KEY, JSON.stringify(config)) } catch (error) { void error }
+      // Only the fields that actually changed: one write, not sixteen.
+      for (const id of RAIL_IDS) {
+        const field = railFieldOf(id)
+        const visible = config.hidden.indexOf(id) < 0
+        // Every rail switch defaults to true in the schema; an absent field means
+        // "shown", so only a real change needs a write.
+        const accepted = current[field] === undefined ? true : current[field]
+        if (accepted !== visible) write(field, visible)
+      }
+      /* The order is one compact string; '' is the code order (the schema
+         default), so a reset does not write a redundant permutation. */
+      const order = railOrderText(config.order)
+      const stored = typeof current.railOrder === 'string' ? current.railOrder : ''
+      if (stored !== order) write('railOrder', order)
     }
 
     /* One switch, one field, one write — computed from the value the user just
@@ -7880,21 +9445,9 @@ window.__ModuleLoader__.load({
         )
         return { sent: true, settled: settled }
       }
-      /* A config surface that exists but has not answered yet must refuse rather
-         than fall through to the legacy home: two sources would be worse. */
-      if (railForm !== null) return { sent: false, reason: 'not-ready' }
-      const current = readRailConfig()
-      let hidden = current.hidden.slice()
-      for (const op of ops) {
-        const id = railIdOfField(String(op.path[0]))
-        if (id === null) return { sent: false, reason: 'unknown' }
-        const wanted = op.value === true
-        if (wanted === true) hidden = hidden.filter((entry) => entry !== id)
-        else if (hidden.indexOf(id) < 0) hidden = hidden.concat([id])
-      }
-      try { window.localStorage.setItem(RAIL_KEY, JSON.stringify({ order: current.order, hidden: hidden })) } catch (error) { void error }
-      notifyRailConfig()
-      return { sent: true }
+      /* No row Config (or it has not answered yet): never fall back to the
+         retired localStorage key. */
+      return { sent: false, reason: 'not-ready' }
     }
 
     /* One switch's write. The card batches a burst through writeRailFields so the
@@ -7926,6 +9479,7 @@ window.__ModuleLoader__.load({
           if (accepted[field] === values[field]) continue
           ops.push({ op: 'set', path: [field], value: values[field] === true })
         }
+        if (accepted.railOrder !== values.railOrder) ops.push({ op: 'set', path: ['railOrder'], value: values.railOrder })
         if (ops.length === 0) { done(); return }
         /* ONE atomic mutation, and the marker ONLY once the Host accepted it.
            The per-field set() loop this replaces fired sixteen unawaited writes
@@ -7982,13 +9536,12 @@ window.__ModuleLoader__.load({
        panes measure width (columns). */
     const PANE_CHROME_KEYS = {
       columns: ['tree', 'changes', 'diff'],
-      /* No `changes` pane is stacked anywhere: the changes list belongs to the
-         DEFAULT face, which is one full-width column (its diff falls below it),
-         and the stacked chrome only ever draws the EXPLORER (tree above, log or
-         detail in the middle, diff below). A key with no element would still be
-         reserved by paneGeometry and quietly starve the diff's ceiling. */
-      stack: ['tree', 'diff'],
-      compact: ['tree', 'diff'],
+      /* v0.26.1: the changes face puts history and diff in ONE tabbed window
+         under the changes list, so the stacked chromes size the changes pane,
+         not a diff pane. The explorer face has no changes pane and sizes the
+         diff instead — see PANE_FACE_KEYS / PANE_STORAGE_KEYS below. */
+      stack: ['tree', 'changes'],
+      compact: ['tree', 'changes'],
     }
     /* Whether a key measures a height (stacked chromes) or a width (columns).
        This is the chrome's DEFAULT for the tree/changes panes; the diff pane
@@ -8005,8 +9558,10 @@ window.__ModuleLoader__.load({
       'columns:changes': { min: 200, max: 640 },
       'columns:diff': { min: 120, max: 900 },
       'stack:tree': { min: 100, max: 420 },
+      'stack:changes': { min: 120, max: 460 },
       'stack:diff': { min: 120, max: 900 },
       'compact:tree': { min: 100, max: 420 },
+      'compact:changes': { min: 120, max: 460 },
       'compact:diff': { min: 120, max: 900 },
     }
     /* Today's fixed sizes stay the default — and stay in the stylesheet: a pane
@@ -8018,7 +9573,9 @@ window.__ModuleLoader__.load({
       'columns:changes': { px: 290 },
       'columns:diff': { ratio: 0.55 },
       'stack:tree': { ratio: 0.36 },
+      'stack:changes': { ratio: 0.46 },
       'compact:tree': { ratio: 0.42 },
+      'compact:changes': { ratio: 0.46 },
     }
     const PANE_MAIN_MIN_W = 240
     const PANE_MAIN_MIN_H = 150
@@ -8034,7 +9591,23 @@ window.__ModuleLoader__.load({
        history↔diff separator lives inside the middle pane, so it is not counted
        against the body's own budget. */
     const PANE_GUTTER_PX = 8
-    const PANE_BODY_GUTTERS = { columns: 2, stack: 1, compact: 1 }
+    const PANE_BODY_GUTTERS = { columns: 2, stack: 2, compact: 2 }
+    /* Storage accepts every key EITHER face can write — a ratio saved in the
+       explorer must survive a switch to the changes face and back. */
+    const PANE_STORAGE_KEYS = {
+      columns: ['tree', 'changes', 'diff'],
+      stack: ['tree', 'changes', 'diff'],
+      compact: ['tree', 'changes', 'diff'],
+    }
+    /* The explorer face (fork): tree | log | detail in columns; tree above,
+       log/detail in the middle and diff below in the stacked chromes. The
+       changes face draws NO resizable pane (one column + a tabbed history/diff
+       window), so it hands paneGeometry an empty list. */
+    const PANE_FACE_KEYS = {
+      columns: ['tree', 'changes', 'diff'],
+      stack: ['tree', 'diff'],
+      compact: ['tree', 'diff'],
+    }
     const PANE_BUCKETS = Object.keys(PANE_CHROME_KEYS).reduce(
       (all, chrome) => all.concat([chrome + ':wide', chrome + ':tall']), [])
 
@@ -8077,7 +9650,7 @@ window.__ModuleLoader__.load({
       for (const bucket of PANE_BUCKETS) {
         const entry = stored[bucket]
         if (entry === null || typeof entry !== 'object') continue
-        const keys = PANE_CHROME_KEYS[bucket.slice(0, bucket.indexOf(':'))]
+        const keys = PANE_STORAGE_KEYS[bucket.slice(0, bucket.indexOf(':'))]
         const clean = {}
         for (const key of keys) {
           const value = entry[key]
@@ -8097,7 +9670,7 @@ window.__ModuleLoader__.load({
 
     /* The tokens one surface may hold: the chrome's panes plus the commit box. */
     function paneTokens(chrome) {
-      return PANE_CHROME_KEYS[chrome].concat([COMMIT_BOX_KEY])
+      return PANE_STORAGE_KEYS[chrome].concat([COMMIT_BOX_KEY])
     }
 
     function copyPanes(config) {
@@ -8156,7 +9729,7 @@ window.__ModuleLoader__.load({
        now, which beats the stylesheet default when a pane is content-sized: the
        stacked chrome caps the changes pane at 46%, but a three-file summary only
        takes 30%, and reserving the cap would freeze the tree above it. */
-    function paneGeometry(chrome, box, config, laidOut) {
+    function paneGeometry(chrome, box, config, laidOut, activeKeys) {
       const height = PANE_HEIGHT_CHROME[chrome] === true
       const reference = height ? box.height : box.width
       const bucket = panBucket(chrome, box)
@@ -8164,7 +9737,7 @@ window.__ModuleLoader__.load({
       const source = ready && config.panes !== null && typeof config.panes === 'object' ? config.panes : {}
       const ratios = source[bucket] !== null && typeof source[bucket] === 'object' ? source[bucket] : {}
       const measured = laidOut !== null && typeof laidOut === 'object' ? laidOut : {}
-      const keys = PANE_CHROME_KEYS[chrome].slice()
+      const keys = (Array.isArray(activeKeys) ? activeKeys : PANE_CHROME_KEYS[chrome]).slice()
       /* A folded tree has no pane and no gutter, so it must not reserve room. */
       if (ready && config.treeOpen === false) {
         const at = keys.indexOf('tree')
@@ -8326,6 +9899,25 @@ window.__ModuleLoader__.load({
       return Math.round(months / 12) + 'y'
     }
 
+    /* Absolute date for the history list's date column (issue #26). `MM-DD HH:mm`
+       inside the current year, `YYYY/MM/DD HH:mm` outside it: the year only where
+       it disambiguates, and one fixed shape per row keeps the tabular column
+       aligned. `now` is a parameter so the pure-function test does not depend on
+       the wall clock; every caller omits it. */
+    function commitDateText(iso, mode, now) {
+      if (mode !== 'absolute') return relativeTime(iso)
+      if (typeof iso !== 'string' || iso === '') return ''
+      const at = new Date(iso)
+      if (Number.isNaN(at.getTime())) return ''
+      const pad = (value) => (value < 10 ? '0' + value : String(value))
+      const clock = pad(at.getHours()) + ':' + pad(at.getMinutes())
+      const current = now === undefined ? new Date() : new Date(now)
+      if (at.getFullYear() !== current.getFullYear()) {
+        return at.getFullYear() + '/' + pad(at.getMonth() + 1) + '/' + pad(at.getDate()) + ' ' + clock
+      }
+      return pad(at.getMonth() + 1) + '-' + pad(at.getDate()) + ' ' + clock
+    }
+
     function shortDate(iso) {
       if (typeof iso !== 'string' || iso === '') return ''
       const at = new Date(iso)
@@ -8384,13 +9976,19 @@ window.__ModuleLoader__.load({
         for (const child of node.dirs.values()) total += countOf(child)
         return total
       }
-      const sortedChildren = (node) => Array.from(node.dirs.values()).sort((a, b) => a.path[a.path.length - 1].localeCompare(b.path[b.path.length - 1]))
+      /* Compress at EVERY level, not just the roots (issue #18): the roots
+         were condensed into "a/b/c" chains, but renderFolder's recursion and
+         the fold-all id walk both read this function — which used to hand
+         back the raw single-child chains below the first level, so a deep
+         package path repeated its full prefix on every row. Each returned
+         child is the deepest node of its single-child, file-less chain. */
+      const sortedChildren = (node) => Array.from(node.dirs.values()).map(compress).sort((a, b) => a.path[a.path.length - 1].localeCompare(b.path[b.path.length - 1]))
       const ids = []
       const collect = (node) => {
         ids.push(groupKey + '|' + node.path.join('/'))
         for (const child of sortedChildren(node)) collect(child)
       }
-      const roots = sortedChildren(root).map((child) => compress(child))
+      const roots = sortedChildren(root)
       for (const node of roots) collect(node)
       return { roots: roots, rootFiles: root.files, ids: ids, countOf: countOf, sortedChildren: sortedChildren }
     }
@@ -8637,47 +10235,6 @@ window.__ModuleLoader__.load({
       return false
     }
 
-    /* One single-file unified diff (what the host `diff` method returns) → the
-       one DiffHunk DiffBlock renders, by replaying ` `/`-`/`+` lines back into
-       the two sides. No `@@` at all (binary patches, mode-only changes) or a
-       pathless header → null, and the caller keeps the hand-drawn rows. */
-    function patchToHunk(patch) {
-      const text = typeof patch === 'string' ? patch : ''
-      if (text === '' || text.indexOf('@@') < 0) return null
-      const lines = text.split('\n')
-      let path = null
-      const oldText = []
-      const newText = []
-      for (const line of lines) {
-        if (line.indexOf('+++ ') === 0) {
-          const name = line.slice(4).split('\t')[0]
-          if (name !== '/dev/null') path = name.replace(/^b\//, '')
-          continue
-        }
-        if (line.indexOf('--- ') === 0) {
-          if (path === null) {
-            const name = line.slice(4).split('\t')[0]
-            if (name !== '/dev/null') path = name.replace(/^a\//, '')
-          }
-          continue
-        }
-        if (line.indexOf('@@') === 0) continue
-        if (line.indexOf('+') === 0) { newText.push(line.slice(1)); continue }
-        if (line.indexOf('-') === 0) { oldText.push(line.slice(1)); continue }
-        if (line.indexOf('\\') === 0) continue
-        if (line.indexOf(' ') === 0) { oldText.push(line.slice(1)); newText.push(line.slice(1)); continue }
-        // diff --git / index / new file mode / rename from ...: metadata above
-        // the first hunk; anything else after it would be malformed.
-        continue
-      }
-      if (path === null || path === '') return null
-      // A patch without body lines (mode-only, bare metadata) replays into an
-      // empty hunk that DiffBlock draws as nothing at all — keep the hand-drawn
-      // rows for those, they at least show what happened.
-      if (oldText.length === 0 && newText.length === 0) return null
-      return { path: path, oldText: oldText.length === 0 ? null : oldText.join('\n'), newText: newText.join('\n') }
-    }
-
     /* ============================== diff ============================== */
 
     function diffLines(patch) {
@@ -8714,13 +10271,13 @@ window.__ModuleLoader__.load({
 
     /* ---- diff selection core
        Pure line-number plumbing for the diff-pane context menu (v0.13.5).
-       The host DiffBlock draws rows WITHOUT line-number attributes — a row is
-       `<div class={line + kindClass}>{row.text}</div>` (DiffBlock.tsx:204) and
-       the `+`/`-`/two-space prefixes live in CSS `::before` content — so the
-       menu reconstructs numbers by replaying the ROW KINDS in document order
-       from the patch's first hunk header. The hand-drawn rows already carry
-       parsed numbers (diffLines above). Kept DOM-free between the markers so
-       tests/smoke.mjs can slice the block and drive the real implementation. */
+       For a host DiffBlock body (kept as a forward-compat fallback) rows do
+       not expose numbers, so the menu replays ROW KINDS in document order from
+       the patch's first hunk header; hand-drawn rows carry parsed numbers
+       (diffLines above). The review renderer used today (#22) reads its own
+       printed numbers instead (reviewRowSpanOf, DOM side below). Kept DOM-free
+       between the markers so tests/smoke.mjs can slice the block and drive the
+       real implementation. */
 
     const DIFF_SNIPPET_MAX = 600
 
@@ -8866,13 +10423,13 @@ window.__ModuleLoader__.load({
 
     /* ---------- DOM side of the diff-pane context menu (browser only) ----------
        SSR never calls these: they run inside the pane's onContextMenu, after
-       the selection has been captured. The row element under a selection
-       endpoint is either a hand-drawn `.dig-diff-line`, or a DiffBlock row —
-       a div child of the body whose OWN parent carries the `data-diff`
-       marker. `data-diff` is a component attribute (DiffBlock.tsx:199), not a
-       hashed CSS-module class, so the lookup does not bet on build-time class
-       renaming; the row KIND comes from the `::before` content the kinds are
-       painted with, for the same reason. */
+       the selection has been captured. A row under a selection endpoint is
+       either a review row (data-diff-line on .dig-lf-line / .dig-lf-splitLine
+       / .dig-lf-sideLine), a hand-drawn `.dig-diff-line`, or a host DiffBlock
+       row (a div child of the body whose OWN parent carries `data-diff`). The
+       review path reads the printed .dig-lf-number cells; the host path gets
+       its KIND from the `::before` content the rows are painted with. Both
+       rely on component attributes, not hashed CSS-module classes. */
 
     function savedSelectionOf() {
       try {
@@ -8892,6 +10449,15 @@ window.__ModuleLoader__.load({
       for (let hop = 0; element !== null && element !== undefined && hop < 8; hop += 1) {
         if (element.classList !== undefined && element.classList.contains('dig-diff-line') === true) {
           return { kind: 'drawn', row: element, body: element.parentElement }
+        }
+        /* The review renderer (LineDiff, used by BOTH the inline pane and the
+           native preview since #22) stamps every row with data-diff-line and
+           carries the real line numbers in .dig-lf-number cells. */
+        if (element.hasAttribute !== undefined && element.hasAttribute('data-diff-line') === true
+          && element.classList !== undefined
+          && (element.classList.contains('dig-lf-line') === true || element.classList.contains('dig-lf-splitLine') === true || element.classList.contains('dig-lf-sideLine') === true)) {
+          const body = element.closest === undefined ? null : element.closest('.dig-lf-body')
+          if (body !== null) return { kind: 'review', row: element, body: body }
         }
         const parent = element.parentElement
         if (parent !== null && parent.getAttribute !== undefined && parent.hasAttribute('data-diff') === false) {
@@ -8923,6 +10489,49 @@ window.__ModuleLoader__.load({
       return { rows: rows, kinds: kinds }
     }
 
+    /* The review renderer's rows carry their printed numbers already: read
+       them straight off the selected rows (unified: old then new; split with
+       wrap: the two cells; split without wrap: one side per column). This is
+       simpler and more accurate than replaying kinds, and it follows the
+       SPLIT view, where one row is two files' lines. */
+    function reviewRowSpanOf(body, fromRow, toRow) {
+      if (body === null || body === undefined) return null
+      const rows = Array.prototype.slice.call(body.querySelectorAll('[data-diff-line]'))
+      const fromIndex = rows.indexOf(fromRow)
+      const toIndex = rows.indexOf(toRow)
+      if (fromIndex < 0 || toIndex < 0) return null
+      let newFrom = null
+      let newTo = null
+      let oldFrom = null
+      let oldTo = null
+      const read = (node) => {
+        const text = node === undefined || node === null ? '' : String(node.textContent).trim()
+        if (text === '') return null
+        const value = Number.parseInt(text, 10)
+        return Number.isFinite(value) ? value : null
+      }
+      for (let index = Math.min(fromIndex, toIndex); index <= Math.max(fromIndex, toIndex); index += 1) {
+        const row = rows[index]
+        const numbers = row.querySelectorAll('.dig-lf-number')
+        let oldLine = null
+        let newLine = null
+        if (row.classList.contains('dig-lf-sideLine') === true) {
+          const side = row.closest === undefined ? null : row.closest('[data-diff-side]')
+          const value = read(numbers[0])
+          if (side !== null && side.getAttribute('data-diff-side') === 'left') oldLine = value
+          else newLine = value
+        } else {
+          oldLine = read(numbers[0])
+          newLine = read(numbers[1])
+        }
+        if (oldLine !== null) { oldFrom = oldFrom === null ? oldLine : oldFrom; oldTo = oldLine }
+        if (newLine !== null) { newFrom = newFrom === null ? newLine : newFrom; newTo = newLine }
+      }
+      if (newFrom !== null) return { start: newFrom, end: newTo === null ? newFrom : newTo, old: false }
+      if (oldFrom !== null) return { start: oldFrom, end: oldTo === null ? oldFrom : oldTo, old: true }
+      return null
+    }
+
     /* { kind: 'lines', span } for a selection inside ONE diff body, or
        { kind: 'snippet' } when the rows are there but the numbers cannot be
        reconstructed. null (rows missing entirely) means "not a diff
@@ -8934,7 +10543,9 @@ window.__ModuleLoader__.load({
       if (from === null || to === null) return null
       if (from.kind !== to.kind || from.body !== to.body) return { kind: 'snippet', text: saved.text }
       let span = null
-      if (from.kind === 'drawn') {
+      if (from.kind === 'review') {
+        span = reviewRowSpanOf(from.body, from.row, to.row)
+      } else if (from.kind === 'drawn') {
         const rows = diffLines(patch)
         const all = from.body === null || from.body === undefined ? [] : Array.prototype.slice.call(from.body.querySelectorAll('.dig-diff-line'))
         const fromIndex = all.indexOf(from.row)
@@ -8956,55 +10567,19 @@ window.__ModuleLoader__.load({
     }
 
 
-    /* DiffBlock's own 16-line cap would REPLACE scrolling with a fold button;
-       this panel keeps the old contract (render everything, scroll inside the
-       .dig-diff-pane max-height), so the cap is pushed out of reach and the
-       fold labels below are placeholders that never render at this size. */
-    const DIFF_BLOCK_MAX_LINES = 1000000
-
-    function diffLabelsOf(t) {
-      return {
-        codeLabel: t('diff.codeLabel'),
-        wrapLabel: t('diff.wrapLabel'),
-        unwrapLabel: t('diff.unwrapLabel'),
-        copy: t('diff.copy'),
-        copied: t('diff.copied'),
-        collapseAria: 'Collapse diff',
-        expandAria: (hidden) => 'Show ' + String(hidden) + ' more diff lines',
-        collapse: 'Show less',
-        expand: (hidden) => 'Show ' + String(hidden) + ' more',
-      }
-    }
-
+    /* The inline pane body and the native preview tab share ONE renderer:
+       LineDiff is the ported official ReviewTab/FileDiff and carries the
+       split / wrap toolbar (issue #22). The former host DiffBlock body only
+       had wrap / copy, so turning the external hand-off off silently dropped
+       the 分栏 switch the user had asked for. One renderer also keeps both
+       diff surfaces visually identical. */
     function DiffBody(props) {
-      const rows = useMemo(() => diffLines(props.patch), [props.patch])
-      if (props.loading === true) return E('div', { className: 'dig-empty' }, props.t('diff.loading'))
-      if (props.binary === true) return E('div', { className: 'dig-empty' }, props.t('diff.binary'))
-      if (rows.length === 0) return E('div', { className: 'dig-empty' }, props.t('diff.empty'))
-      /* Host-rendered first (v0.14): the ui-primitives diff card brings the
-         shared toolbar (copy / wrap / language) and the product's diff colors.
-         A patch we cannot replay into a hunk (binary, mode-only) or a host
-         without the seed module falls back to the hand-drawn rows below. This
-         IS the official diff renderer (the platform seed table ships it, the
-         host's own surfaces render diffs through it) — the external preview
-         tab uses the same one, so every diff in the product reads alike. */
-      if (UIPrimitives !== null && typeof UIPrimitives.DiffBlock === 'function') {
-        const hunk = patchToHunk(props.patch)
-        if (hunk !== null) {
-          return E('div', { className: 'dig-diff-host' },
-            E(UIPrimitives.DiffBlock, {
-              diffs: [hunk],
-              labels: diffLabelsOf(props.t),
-              maxLines: DIFF_BLOCK_MAX_LINES,
-              className: 'dig-diff-card',
-            }))
-        }
-      }
-      return E('div', { className: 'dig-diff' }, rows.map((row, index) => E('div', { key: index, className: 'dig-diff-line dig-diff-' + row.kind },
-        E('span', { className: 'dig-diff-gutter' }, row.oldLine === null ? '' : String(row.oldLine)),
-        E('span', { className: 'dig-diff-gutter' }, row.newLine === null ? '' : String(row.newLine)),
-        E('span', { className: 'dig-diff-text' }, row.text === '' ? ' ' : row.text),
-      )))
+      return E(LineDiff, {
+        patch: props.patch,
+        loading: props.loading,
+        t: props.t,
+        onOpenFile: props.onOpenFile,
+      })
     }
 
     /* ---- external preview diff (v0.14.3): a faithful port of the review view ----
@@ -9202,6 +10777,21 @@ window.__ModuleLoader__.load({
     }
     function writeLineDiffPrefs(prefs) {
       try { window.localStorage.setItem(LINEDIFF_KEY, JSON.stringify(prefs)) } catch (error) { void error }
+    }
+
+    /* The changes view mode (flat vs by directory) is a habit too, not tab
+       state: one localStorage home read on mount, so moving between
+       repositories or reopening the panel keeps the view the user chose
+       instead of snapping back to flat (v0.21.2). */
+    const CHANGES_GROUP_KEY = 'dsh-ide-git.groupBy.v1'
+    function readChangesGroupBy() {
+      try {
+        return window.localStorage.getItem(CHANGES_GROUP_KEY) === 'dir' ? 'dir' : 'flat'
+      } catch (error) { void error }
+      return 'flat'
+    }
+    function rememberChangesGroupBy(value) {
+      try { window.localStorage.setItem(CHANGES_GROUP_KEY, value === 'dir' ? 'dir' : 'flat') } catch (error) { void error }
     }
 
     /* The seed blocks the official review uses, resolved once. Every consumer
@@ -9662,30 +11252,201 @@ window.__ModuleLoader__.load({
       return E('div', { className: 'dig-menu-wrap', ref: ref, style: { left: position.left + 'px', top: position.top + 'px' } },
         E('div', { className: 'dig-menu', ref: cardRef, 'data-menu-material': 'translucent' },
           E('div', { className: 'dig-menu-scroll' },
-            props.items.map((item, index) => renderItem(item, index, false)))),
+            props.body === undefined
+              ? (Array.isArray(props.items) ? props.items : []).map((item, index) => renderItem(item, index, false))
+              : props.body)),
         sub === null ? null : E('div', { className: 'dig-menu dig-menu-sub', 'data-menu-material': 'translucent', style: sub.flip === true ? { right: '100%', top: sub.top + 'px' } : { left: '100%', top: sub.top + 'px' } },
           E('div', { className: 'dig-menu-scroll' },
             sub.items.map((item, index) => renderItem(item, index, true)))))
+    }
+
+    /* Searchable picker body shared by the panel header switchers and the
+       composer pills. It owns no positioning: the panel renders it as a
+       ContextMenu body, the composer inside its own .dig-cs-menu. Repositories
+       are a flat, filtered list; branches keep their slash namespace as a
+       collapsible tree, and a non-empty query opens every folder so a match
+       is never hidden behind a fold. */
+    function SearchPicker(props) {
+      const t = props.t
+      const mode = props.mode === 'branch' ? 'branch' : 'repo'
+      const [needle, setNeedle] = useState('')
+      const [folded, setFolded] = useState({})
+      const [active, setActive] = useState(0)
+      const inputRef = useRef(null)
+      const listRef = useRef(null)
+      useEffect(() => {
+        const input = inputRef.current
+        if (input !== null && typeof input.focus === 'function') input.focus({ preventScroll: true })
+      }, [])
+      const query = needle.trim().toLowerCase()
+      const matches = (value) => query === '' || String(value === undefined || value === null ? '' : value).toLowerCase().indexOf(query) >= 0
+      const rows = []
+      if (mode === 'repo') {
+        const repos = Array.isArray(props.repos) ? props.repos : []
+        for (const repo of repos) {
+          const name = repo.name === undefined || repo.name === null ? baseNameOf(repo.path) : String(repo.name)
+          if (query !== '' && matches(name) === false && matches(repo.path) === false && matches(repo.sub) === false && matches(repo.branch) === false) continue
+          rows.push({ key: 'repo:' + String(repo.path), kind: 'repo', repo: repo, name: name })
+        }
+      } else {
+        const entries = (Array.isArray(props.branches) ? props.branches : []).filter((entry) => matches(entry.name))
+        const root = { folders: new Map(), leaves: [] }
+        for (const entry of entries) {
+          const parts = String(entry.name).split('/')
+          let node = root
+          for (let index = 0; index < parts.length - 1; index += 1) {
+            const key = parts[index]
+            if (node.folders.has(key) === false) node.folders.set(key, { folders: new Map(), leaves: [] })
+            node = node.folders.get(key)
+          }
+          node.leaves.push({ entry: entry, label: parts[parts.length - 1] })
+        }
+        const countLeaves = (node) => node.leaves.length + Array.from(node.folders.values()).reduce((sum, child) => sum + countLeaves(child), 0)
+        const walk = (node, prefix, depth) => {
+          for (const name of Array.from(node.folders.keys()).sort()) {
+            const id = prefix === '' ? name : prefix + '/' + name
+            const open = query !== '' || folded[id] !== true
+            rows.push({ key: 'dir:' + id, kind: 'folder', id: id, name: name, depth: depth, count: countLeaves(node.folders.get(name)), open: open })
+            if (open === true) walk(node.folders.get(name), id, depth + 1)
+          }
+          for (const leaf of node.leaves) {
+            const entry = leaf.entry
+            const worktree = entry.worktree !== null && entry.worktree !== undefined
+            const busy = typeof props.busyName === 'string' && props.busyName !== ''
+            rows.push({
+              key: 'branch:' + String(entry.name), kind: 'branch', entry: entry, label: leaf.label, depth: depth,
+              disabled: worktree === true || busy === true, worktree: worktree,
+            })
+          }
+        }
+        walk(root, '', 0)
+      }
+      const selectable = rows.filter((row) => row.kind !== 'folder' && row.disabled !== true)
+      const activeIndex = selectable.length === 0 ? -1 : Math.min(active, selectable.length - 1)
+      const activeRow = activeIndex < 0 ? null : selectable[activeIndex]
+      const activeKey = activeRow === null ? '' : activeRow.key
+      useEffect(() => {
+        const host = listRef.current
+        if (host === null || activeKey === '') return
+        const found = Array.from(host.querySelectorAll('[data-pick-key]')).find((row) => row.getAttribute('data-pick-key') === activeKey)
+        if (found !== undefined && typeof found.scrollIntoView === 'function') found.scrollIntoView({ block: 'nearest' })
+      }, [activeKey])
+      const pickRow = (row) => {
+        if (row === null || row.disabled === true || typeof props.onPick !== 'function') return
+        if (row.kind === 'repo') props.onPick(row.repo.path, row.repo)
+        else if (row.kind === 'branch') props.onPick(row.entry.name, row.entry)
+      }
+      const onKeyDown = (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          event.stopPropagation()
+          if (typeof props.onClose === 'function') props.onClose()
+          return
+        }
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          if (selectable.length === 0) return
+          event.preventDefault()
+          event.stopPropagation()
+          setActive((value) => {
+            const current = Math.min(value, selectable.length - 1)
+            return event.key === 'ArrowDown' ? (current + 1) % selectable.length : (current - 1 + selectable.length) % selectable.length
+          })
+          return
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          event.stopPropagation()
+          pickRow(activeRow)
+        }
+      }
+      const currentRepo = mode === 'repo' && props.current !== undefined && props.current !== null ? String(props.current) : ''
+      const currentBranch = mode === 'branch' && props.current !== undefined && props.current !== null ? String(props.current) : ''
+      const rowClass = (row) => 'dig-pick-row'
+        + (activeKey === row.key ? ' dig-pick-row-active' : '')
+        + ((currentRepo !== '' && row.kind === 'repo' && String(row.repo.path) === currentRepo) ? ' dig-pick-row-current' : '')
+        + ((currentBranch !== '' && row.kind === 'branch' && String(row.entry.name) === currentBranch) ? ' dig-pick-row-current' : '')
+        + (row.disabled === true ? ' dig-pick-row-disabled' : '')
+      const rowsView = rows.map((row) => {
+        if (row.kind === 'folder') {
+          return E('button', {
+            key: row.key, type: 'button',
+            className: 'dig-pick-folder' + (row.open !== true ? ' dig-pick-folder-closed' : ''),
+            style: { paddingLeft: (6 + row.depth * 14) + 'px' },
+            onClick: () => { if (query !== '') return; setFolded((previous) => Object.assign({}, previous, { [row.id]: row.open === true })) },
+          },
+            E('span', { className: 'dig-pick-chevron' + (row.open === true ? ' dig-pick-chevron-open' : '') }, E(Icon, { name: 'chevron', size: 10 })),
+            E(Icon, { name: 'folder', size: 12 }),
+            E('span', { className: 'dig-pick-name' }, row.name),
+            E('span', { className: 'dig-pick-count' }, String(row.count)))
+        }
+        if (row.kind === 'repo') {
+          return E('button', {
+            key: row.key, type: 'button', className: rowClass(row), 'data-pick-key': row.key,
+            title: row.repo.path,
+            onMouseEnter: () => { const index = selectable.indexOf(row); if (index >= 0) setActive(index) },
+            onClick: () => pickRow(row),
+          },
+            E(Icon, { name: 'folder', size: 13 }),
+            E('span', { className: 'dig-pick-main' },
+              E('span', { className: 'dig-pick-name' }, row.name),
+              row.repo.sub !== undefined && row.repo.sub !== null && row.repo.sub !== '' && row.repo.sub !== row.name
+                ? E('span', { className: 'dig-pick-sub' }, row.repo.sub)
+                : null),
+            row.repo.branch === undefined || row.repo.branch === null || row.repo.branch === ''
+              ? null
+              : E('span', { className: 'dig-pick-badge' }, row.repo.branch))
+        }
+        const entry = row.entry
+        const head = entry.head === true
+        const worktreeNote = row.worktree === true
+          ? (props.worktreeNote === undefined ? t('branches.worktree') : props.worktreeNote)
+          : null
+        return E('button', {
+          key: row.key, type: 'button',
+          className: rowClass(row) + (head === true ? ' dig-pick-row-head' : ''),
+          'data-pick-key': row.key,
+          style: { paddingLeft: (6 + row.depth * 14) + 'px' },
+          disabled: row.disabled === true,
+          title: String(entry.name) + (worktreeNote === null ? '' : ' · ' + worktreeNote),
+          onMouseEnter: () => { const index = selectable.indexOf(row); if (index >= 0) setActive(index) },
+          onClick: () => pickRow(row),
+        },
+          E('span', { className: 'dig-pick-icon dig-tone-' + (head === true ? 'warn' : 'accent') }, E(Icon, { name: head === true ? 'star' : 'branch', size: 12 })),
+          E('span', { className: 'dig-pick-name' }, row.label),
+          worktreeNote === null ? null : E('span', { className: 'dig-pick-note' }, worktreeNote),
+          entry.ahead > 0 ? E('span', { className: 'dig-pick-count' }, '↑' + String(entry.ahead)) : null,
+          entry.behind > 0 ? E('span', { className: 'dig-pick-count' }, '↓' + String(entry.behind)) : null)
+      })
+      return E('div', { className: 'dig-pick dig-pick-' + mode },
+        E('div', { className: 'dig-pick-search' },
+          E('input', {
+            ref: inputRef,
+            className: 'dig-input dig-input-compact dig-pick-input',
+            value: needle,
+            spellCheck: false,
+            placeholder: mode === 'repo' ? t('repo.filter') : t('branches.filter'),
+            'aria-label': mode === 'repo' ? t('repo.filter') : t('branches.filter'),
+            onChange: (event) => { setNeedle(event.target.value); setActive(0) },
+            onKeyDown: onKeyDown,
+          })),
+        E('div', { className: 'dig-pick-list', ref: listRef, role: 'listbox' },
+          rowsView.length === 0 ? E('div', { className: 'dig-pick-empty' }, t('picker.empty')) : rowsView))
     }
 
     /* Lets the user choose which actions the rail shows and in which order. The
        list is drag-sortable and arrow-sortable (the arrows also work with a
        keyboard); visibility is a per-action toggle, not a delete, so a hidden
        action keeps its position. */
-    /* The plugin's settings card. It lives on the plugin's detail page (slot
-       `plugins.bundle.config`, keyed by the PACKAGE name), and it is the only
-       editor when the host serves the row Config — the in-panel editor is not
-       reachable there. The legacy Settings → Plugins seat went away with the
-       raised host floor.
+    /* The plugin's settings card on the plugin detail page (slot
+       `plugins.bundle.config`, keyed by the PACKAGE name). It edits visibility
+       one switch at a time; ordering lives in the panel's gear editor because
+       that is the surface with drag and keyboard move controls.
 
-       A host without that service still renders the card (the seat exists), so it
-       says so instead of pretending to have settings. */
+       The seat exists even when the form is not ready, so the card distinguishes
+       loading from "this host serves no settings". */
     function RailSettingsCard(props) {
       const t = props.t
       const [tick, setTick] = useState(0)
-      /* Collapse state of the card shell (the li card on the list seat). The
-         plugin-page seat (props.view === 'page') renders flat. */
-      const [openCard, setOpenCard] = useState(false)
       const [pending, setPending] = useState({})
       const [note, setNote] = useState('')
       /* The three AI-commit settings are free text, so they are drafted locally
@@ -9881,13 +11642,10 @@ window.__ModuleLoader__.load({
         pendingFlush.current = setTimeout(() => { pendingFlush.current = null; flush() }, FLUSH_MS)
         timers.current.add(pendingFlush.current)
       }
-      /* Two handles, one document: the slot hands the card the framework's own
-         form for this entry (`props.scope`), and our ctx.configForms handle is the
-         fallback — both address the same namespace, so a write through either is
-         the same row Config write. */
-      const scope = props.scope !== undefined && props.scope !== null && typeof props.scope.getSnapshot === 'function'
-        ? props.scope
-        : railForm
+      /* dsh 0.2.2-rc.1 renders plugins.bundle.config with { view: 'page' } only;
+         the framework does not hand the card a form. The module handle opened in
+         apply() is the one document this card, the rail and the order editor read. */
+      const scope = railForm
       useEffect(() => {
         const offRail = subscribeRailConfig(bump)
         let offScope
@@ -9903,29 +11661,15 @@ window.__ModuleLoader__.load({
         }
       }, [])
       void tick
-      /* Card shell, shared by both seats — a visual twin of the pc-card /
-         dl-card / gb-card pattern in dsh-ptc-cordis-preset, dsh-agent-lang and
-         dsh-gitbash-shell: a collapsible li card on the Settings → Plugins
-         seat, a flat page card on the plugin-page seat. Title + description
-         come from the settings.card.* dictionary keys (every locale). */
-      const pageView = props.view === 'page'
+      /* The plugin detail page is the only seat this card has on rc.1, so it is
+         always the flat page card: a visual twin of the pc-card / dl-card /
+         gb-card pattern in dsh-ptc-cordis-preset, dsh-agent-lang and
+         dsh-gitbash-shell. Title + description come from settings.card.*. */
       const cardHead = E('span', { className: 'dig-card-head-text' },
         E('span', { className: 'dig-card-name' }, t('settings.card.title')),
         E('span', { className: 'dig-card-desc' }, t('settings.card.desc')))
-      const wrapCard = (body) => {
-        if (pageView) return E('div', { className: 'dig-card dig-card-page' },
-          E('div', { className: 'dig-card-header dig-card-header-flat' }, cardHead), body)
-        return E('li', { className: 'dig-card' + (openCard ? ' dig-card-open' : '') },
-          E('button', {
-            type: 'button',
-            className: 'dig-card-header',
-            'aria-expanded': openCard,
-            onClick: () => setOpenCard(!openCard),
-          }, cardHead,
-            E('span', { className: 'dig-card-chevron' + (openCard ? ' dig-card-chevron-open' : '') },
-              E(Icon, { name: 'chevron', size: 12 }))),
-          openCard ? body : null)
-      }
+      const wrapCard = (body) => E('div', { className: 'dig-card dig-card-page' },
+        E('div', { className: 'dig-card-header dig-card-header-flat' }, cardHead), body)
       let snapshot = null
       try { snapshot = scope === null || scope === undefined ? null : scope.getSnapshot() } catch (error) { void error }
       const status = snapshot === null || snapshot === undefined || typeof snapshot.status !== 'string' ? 'absent' : snapshot.status
@@ -9983,8 +11727,12 @@ window.__ModuleLoader__.load({
         )
         return () => { alive = false }
       }, [pickerModel])
-      // Switches exist only where they can actually write: a host that does not
-      // serve this entry's settings gets a sentence instead of dead controls.
+      // Loading and unavailable are different states: a bound form that is still
+      // answering must not claim the host has no settings service.
+      if (status === 'loading' || (status === 'absent' && railForm !== null)) {
+        return wrapCard(E('div', { className: 'dig-settings dig-card-body', 'data-settings-status': 'loading', 'aria-busy': 'true' },
+          E('div', { className: 'dig-settings-note' }, t('settings.rail.loading'))))
+      }
       if (status !== 'ready' || values === null) {
         return wrapCard(E('div', { className: 'dig-settings dig-card-body', 'data-settings-status': status },
           E('div', { className: 'dig-settings-note' }, t('settings.rail.unavailable'))))
@@ -10226,8 +11974,100 @@ window.__ModuleLoader__.load({
               E('span', { className: 'dig-settings-glyph' }, E(Icon, { name: 'commit', size: 13 })),
               E('span', { id: inputId + '-label', className: 'dig-settings-label', onClick: toggle }, t('settings.placement.repoPill'))),
             E('div', { className: 'dig-settings-subnote' }, t('settings.placement.repoPillHint')))
+        })(),
+        (() => {
+          /* Inline diff preview (issue #22): ON keeps the panel's own diff pane
+             reachable, including its split / wrap switches. OFF restores the
+             external hand-off to dsh-better-sidebar or the native preview seat.
+             Same optimistic-write contract as the rows above. */
+          const field = 'inlineDiff'
+          const inputId = 'dig-placement-' + field
+          const shown = placementShown(field)
+          const toggle = (event) => {
+            if (readOnly === true) { setNote(t('settings.rail.readonly')); return }
+            const fromControl = event !== undefined && event !== null && event.target !== null
+              && event.target !== undefined && typeof event.target.checked === 'boolean'
+              ? event.target.checked
+              : null
+            const wanted = placementTarget(field, fromControl)
+            intent.current[field] = wanted
+            dirty.current.set(field, wanted)
+            setPending((now) => Object.assign({}, now, { [field]: wanted }))
+            setNote('')
+            bump()
+            scheduleFlush()
+          }
+          return E('div', { key: field },
+            E('div', { className: 'dig-settings-row', 'data-placement-row': field },
+              E('input', {
+                id: inputId,
+                type: 'checkbox',
+                className: 'dig-settings-check',
+                'aria-labelledby': inputId + '-label',
+                checked: shown,
+                disabled: readOnly === true,
+                onChange: toggle,
+              }),
+              E('span', { className: 'dig-settings-glyph' }, E(Icon, { name: 'diff', size: 13 })),
+              E('span', { id: inputId + '-label', className: 'dig-settings-label', onClick: toggle }, t('settings.diff.inline'))),
+            E('div', { className: 'dig-settings-subnote' }, t('settings.diff.inlineHint')))
         })()),
-        /* Section 3 — the AI commit message (issue #6): model, reasoning and the
+        /* Section 3 — history list display (issue #26): the commit list's date
+           column shows relative labels or absolute timestamps. */
+        fold('settings.history.title',
+        (() => {
+          const field = 'dateFormat'
+          const accepted = values[field] === 'absolute' ? 'absolute' : 'relative'
+          const shown = Object.prototype.hasOwnProperty.call(textDraft, field)
+            && (textDraft[field] === 'absolute' || textDraft[field] === 'relative')
+            ? textDraft[field]
+            : accepted
+          return selectRow(field, 'settings.date.label', shown, [
+            E('option', { key: 'relative', value: 'relative' }, t('settings.date.relative')),
+            E('option', { key: 'absolute', value: 'absolute' }, t('settings.date.absolute')),
+          ], readOnly === true, null)
+        })(),
+        (() => {
+          /* The tabbed history | diff window on the DEFAULT face (user request
+             2026-11-06): hidden by default. This row cannot use placementShown()
+             because that helper reads an absent value as ON; here absent = OFF,
+             so older profiles keep the compact face. Same optimistic-write
+             contract as every other boolean row. */
+          const field = 'showHistory'
+          const inputId = 'dig-placement-' + field
+          const shown = Object.prototype.hasOwnProperty.call(intent.current, field)
+            ? intent.current[field] === true
+            : values[field] === true
+          const toggle = (event) => {
+            if (readOnly === true) { setNote(t('settings.rail.readonly')); return }
+            const fromControl = event !== undefined && event !== null && event.target !== null
+              && event.target !== undefined && typeof event.target.checked === 'boolean'
+              ? event.target.checked
+              : null
+            const wanted = fromControl !== null ? fromControl : shown !== true
+            intent.current[field] = wanted
+            dirty.current.set(field, wanted)
+            setPending((now) => Object.assign({}, now, { [field]: wanted }))
+            setNote('')
+            bump()
+            scheduleFlush()
+          }
+          return E('div', { key: field },
+            E('div', { className: 'dig-settings-row', 'data-placement-row': field },
+              E('input', {
+                id: inputId,
+                type: 'checkbox',
+                className: 'dig-settings-check',
+                'aria-labelledby': inputId + '-label',
+                checked: shown,
+                disabled: readOnly === true,
+                onChange: toggle,
+              }),
+              E('span', { className: 'dig-settings-glyph' }, E(Icon, { name: 'commit', size: 13 })),
+              E('span', { id: inputId + '-label', className: 'dig-settings-label', onClick: toggle }, t('settings.history.visible'))),
+            E('div', { className: 'dig-settings-subnote' }, t('settings.history.visibleHint')))
+        })()),
+        /* Section 4 — the AI commit message (issue #6): model, reasoning and the
            prompt template. */
         fold('settings.commit.title',
         (() => {
@@ -10402,6 +12242,79 @@ window.__ModuleLoader__.load({
             E('button', { type: 'button', className: 'dig-btn dig-btn-primary', disabled: ready === false, onClick: submit }, props.okLabel))))
     }
 
+    /* A worktree create dialog: unlike CloneDialog it has a mode (a NEW branch
+       versus an existing one), so the branch field means two different things
+       and the base field only exists in the first mode. Validation is local
+       (non-empty fields) plus whatever the host rejects; onSubmit resolves to
+       null on success or the message to show under the fields. */
+    function WorktreeDialog(props) {
+      const t = props.t
+      const [mode, setMode] = useState('new')
+      const [path, setPath] = useState('')
+      const [branch, setBranch] = useState('')
+      const [base, setBase] = useState('')
+      const [error, setError] = useState(null)
+      const [sending, setSending] = useState(false)
+      const pathRef = useRef(null)
+      const alive = useRef(true)
+      useEffect(() => { if (pathRef.current !== null) pathRef.current.focus() }, [])
+      useEffect(() => () => { alive.current = false }, [])
+      const ready = path.trim() !== '' && branch.trim() !== '' && sending === false
+      const submit = async () => {
+        if (ready !== true) return
+        const draft = { path: path.trim(), branch: branch.trim(), createBranch: mode === 'new' }
+        if (mode === 'new' && base.trim() !== '') draft.base = base.trim()
+        setError(null)
+        setSending(true)
+        try {
+          const message = await props.onSubmit(draft)
+          if (alive.current === true && typeof message === 'string' && message !== '') setError(message)
+        } finally {
+          if (alive.current === true) setSending(false)
+        }
+      }
+      const onKey = (event) => {
+        if (event.key === 'Enter') { event.preventDefault(); void submit() }
+        if (event.key === 'Escape') { event.preventDefault(); props.onCancel() }
+      }
+      return E('div', { className: 'dig-overlay' },
+        E('div', { className: 'dig-dialog dig-wt-dialog' },
+          E('div', { className: 'dig-dialog-title' }, props.title),
+          E('label', { className: 'dig-wt-field' },
+            E('span', { className: 'dig-wt-label' }, t('worktrees.path')),
+            E('input', {
+              ref: pathRef, className: 'dig-input', value: path, spellCheck: false,
+              placeholder: '/abs/path/to/worktree',
+              onChange: (event) => setPath(event.target.value), onKeyDown: onKey,
+            })),
+          E('div', { className: 'dig-wt-field' },
+            E('span', { className: 'dig-wt-label' }, t('worktrees.branch')),
+            E(Segmented, {
+              value: mode,
+              onChange: setMode,
+              items: [
+                { id: 'new', label: t('worktrees.newBranch') },
+                { id: 'existing', label: t('worktrees.existingBranch') },
+              ],
+            }),
+            E('input', {
+              className: 'dig-input', value: branch, spellCheck: false,
+              placeholder: 'feature/name',
+              onChange: (event) => setBranch(event.target.value), onKeyDown: onKey,
+            })),
+          mode === 'new' ? E('label', { className: 'dig-wt-field' },
+            E('span', { className: 'dig-wt-label' }, t('worktrees.base')),
+            E('input', {
+              className: 'dig-input', value: base, spellCheck: false,
+              placeholder: 'HEAD',
+              onChange: (event) => setBase(event.target.value), onKeyDown: onKey,
+            })) : null,
+          error === null ? null : E('div', { className: 'dig-wt-error' }, error),
+          E('div', { className: 'dig-dialog-actions' },
+            E('button', { type: 'button', className: 'dig-btn', onClick: props.onCancel }, props.cancelLabel),
+            E('button', { type: 'button', className: 'dig-btn dig-btn-primary', disabled: ready !== true, onClick: () => { void submit() } }, t('worktrees.create')))))
+    }
+
     /* VS Code's "Git output" view (showOutput): the tail of the host's git-run
        ring buffer, fetched through the gitLogs method. A debugging view —
        opened on demand, refreshed by hand; newest land at the bottom and the
@@ -10457,6 +12370,45 @@ window.__ModuleLoader__.load({
             E('button', { type: 'button', className: 'dig-btn dig-btn-danger', disabled: matches === false, onClick: props.onConfirm }, props.okLabel))))
     }
 
+    function Segmented(props) {
+      return E('div', { className: 'dig-seg' },
+        props.items.map((item) => E('button', {
+          key: item.id,
+          type: 'button',
+          className: 'dig-seg-item',
+          'data-active': props.value === item.id ? 'true' : 'false',
+          onClick: () => props.onChange(item.id),
+        }, item.label)))
+    }
+
+    /* Issue #25: merge is not one verb any more. The four modes map to the
+       flags the host already accepts (or now accepts: --no-commit); the hint
+       under the selector spells out what the chosen flag does, because --no-ff
+       and --squash are exactly the words users ask for but may not remember
+       the consequences of. */
+    function MergeDialog(props) {
+      const t = props.t
+      const [mode, setMode] = useState('default')
+      return E('div', { className: 'dig-overlay' },
+        E('div', { className: 'dig-dialog dig-merge-dialog' },
+          E('div', { className: 'dig-dialog-title' }, fill(t('merge.title'), { branch: props.branch })),
+          E('div', { className: 'dig-dialog-text' }, fill(t('merge.into'), { branch: props.branch })),
+          E(Segmented, {
+            value: mode,
+            onChange: setMode,
+            items: [
+              { id: 'default', label: t('merge.modeDefault') },
+              { id: 'noFf', label: t('merge.modeNoFf') },
+              { id: 'squash', label: t('merge.modeSquash') },
+              { id: 'noCommit', label: t('merge.modeNoCommit') },
+            ],
+          }),
+          E('div', { className: 'dig-dialog-text dig-merge-hint' }, fill(t('merge.hint.' + mode), { branch: props.branch })),
+          E('div', { className: 'dig-dialog-actions' },
+            E('button', { type: 'button', className: 'dig-btn', onClick: props.onCancel }, t('confirm.cancel')),
+            E('button', { type: 'button', className: 'dig-btn dig-btn-primary', onClick: () => props.onSubmit(mode) }, t('action.mergeIntoCurrent')))))
+    }
+
     /* A draggable divider between two panes. The pane it resizes is the sibling
        it is rendered against, and its size is MEASURED at pointerdown — so a pane
        still living on its stylesheet default (a percentage cap, or a diff pane
@@ -10474,6 +12426,22 @@ window.__ModuleLoader__.load({
         return props.vertical === true ? rect.width : rect.height
       }
       const sign = props.side === 'next' ? -1 : 1
+      /* Pointermove arrives faster than frames can paint, and every dragPane
+       * does a forced reflow (measurePanes) plus two setStates — handling each
+       * event is layout thrashing, and the report (#16 follow-up) is exactly
+       * that: a drag starts smooth, then feels glued to the cursor. The latest
+       * px parks in a ref and ONE rAF per frame hands it to the clamp; pointerup
+       * flushes the parked value first so a gesture never ends on a stale size. */
+      const frameRef = useRef(0)
+      const pendingRef = useRef(null)
+      const flushRef = useRef(null)
+      useEffect(() => () => { if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current) }, [])
+      flushRef.current = () => {
+        if (frameRef.current !== 0) { cancelAnimationFrame(frameRef.current); frameRef.current = 0 }
+        const value = pendingRef.current
+        pendingRef.current = null
+        if (value !== null) props.onDrag(value)
+      }
       const onPointerDown = (event) => {
         if (event.button !== undefined && event.button !== 0) return
         dragRef.current = {
@@ -10489,11 +12457,13 @@ window.__ModuleLoader__.load({
         const drag = dragRef.current
         if (drag === null || drag.id !== event.pointerId) return
         const at = props.vertical === true ? event.clientX : event.clientY
-        props.onDrag(drag.size + sign * (at - drag.at))
+        pendingRef.current = drag.size + sign * (at - drag.at)
+        if (frameRef.current === 0) frameRef.current = requestAnimationFrame(() => flushRef.current())
       }
       const onPointerUp = () => {
         if (dragRef.current === null) return
         dragRef.current = null
+        if (frameRef.current !== 0) flushRef.current()
         props.onEnd()
       }
       const onKeyDown = (event) => {
@@ -10634,6 +12604,9 @@ window.__ModuleLoader__.load({
       },
         E('span', { className: 'dig-row-icon dig-tone-' + tone + (starred === true ? ' dig-star-filled' : '') }, E(Icon, { name: glyph, size: 12 })),
         E('span', { className: 'dig-row-label' }, props.label === undefined ? entry.name : props.label),
+        // The inline "→ upstream" target was removed (v0.21.2): it ate the
+        // label's width so long branch names truncated early, and the binding
+        // is still one hover away (the row title keeps "name → upstream").
         // A bare 'W' told nobody anything (reported right after the section counts):
         // it means this branch is checked out in ANOTHER working tree, which is why
         // git refuses to check it out here. An icon plus a spelled-out tooltip says so.
@@ -10703,6 +12676,13 @@ window.__ModuleLoader__.load({
          double-click browses the current branch's history, right-click opens
          the same row menu (quick jump back to HEAD lives there). */
       const headEntry = locals.find((entry) => entry.head === true) || null
+      /* v0.19.9: remote rows group by their path BELOW the "<remote>/" prefix;
+         the full name still drives every selKey/menu/checkout path. */
+      const remoteStrip = remoteTreeStripOf(remotes.map((entry) => entry.name))
+      const remoteNameOf = (entry) => {
+        const name = String(entry.name)
+        return remoteStrip !== '' && name.startsWith(remoteStrip) === true ? name.slice(remoteStrip.length) : name
+      }
       /* A refresh that makes a picked ref disappear must not keep it selected. */
       useEffect(() => {
         reportGestureRef.current = false
@@ -10732,10 +12712,14 @@ window.__ModuleLoader__.load({
        * row only SELECTS it (checking out rewrites the working tree), so the row
        * carries the selection and a double-click does the checkout.
        */
-      const forestOf = (entries) => {
+      /* nameOf (v0.19.9) lets the remote section group by its name WITHOUT the
+         "<remote>/" prefix (see remoteTreeStripOf) while every row keeps its
+         full entry.name for selection, menus and checkout. */
+      const forestOf = (entries, nameOf) => {
+        const labelOf = nameOf === undefined ? (entry) => entry.name : nameOf
         const root = { folders: new Map(), leaves: [] }
         for (const entry of entries) {
-          const parts = String(entry.name).split('/')
+          const parts = String(labelOf(entry)).split('/')
           let node = root
           for (let index = 0; index < parts.length - 1; index += 1) {
             const key = parts[index]
@@ -10816,7 +12800,9 @@ window.__ModuleLoader__.load({
         for (const leaf of node.leaves) out.push(branchRow(leaf.entry, leaf.label, depth))
         return out
       }
-      const section = (key, title, entries, decorate, grouped) => E('div', { className: 'dig-section', key: key },
+      /* ns (v0.19.9) namespaces the fold ids of a grouped section ("remote/…")
+         so its folders remember their state independently of the local ones. */
+      const section = (key, title, entries, decorate, grouped, ns, nameOf) => E('div', { className: 'dig-section', key: key },
         E('button', {
           type: 'button', className: 'dig-section-head',
           onClick: () => setCollapsed((previous) => Object.assign({}, previous, { [key]: !previous[key] })),
@@ -10827,14 +12813,16 @@ window.__ModuleLoader__.load({
           E('span', null, title)),
         collapsed[key] === true ? null : E('div', { className: 'dig-section-body' },
           grouped === true
-            ? rowsOf(forestOf(entries.map((entry) => decorate(entry))), '', 0)
+            ? rowsOf(forestOf(entries.map((entry) => decorate(entry)), nameOf), ns || '', 0)
             : entries.map((entry) => branchRow(decorate(entry), undefined, 0))))
       /* Render-order mirror for Shift-ranges and Ctrl+A, plus the selKey→entry
          lookup the right-click menu and the Delete key resolve through. */
       const visibleLeaves = []
       if (favorites.length > 0) flatLeaves(forestOf(locals.filter((entry) => favorites.indexOf(entry.name) >= 0)), '', 0, visibleLeaves)
       flatLeaves(forestOf(locals), '', 0, visibleLeaves)
-      for (const entry of remotes) visibleLeaves.push({ entry: entry, label: undefined, depth: 0 })
+      /* Same tree, same prefix namespace the section renders with — Shift-ranges
+         and Ctrl+A must walk the EXACT order rows are shown in. */
+      flatLeaves(forestOf(remotes.map((entry) => Object.assign({}, entry, { remote: true })), remoteNameOf), 'remote', 0, visibleLeaves)
       for (const entry of tags) visibleLeaves.push({ entry: entry, label: undefined, depth: 0 })
       visibleRef.current = visibleLeaves
       const entryBySelKey = new Map()
@@ -10951,7 +12939,7 @@ window.__ModuleLoader__.load({
           }, t('branches.head')),
           favorites.length === 0 ? null : section('favorites', t('branches.favorites'), locals.filter((entry) => favorites.indexOf(entry.name) >= 0), (entry) => entry),
           section('local', t('branches.local'), locals, (entry) => entry, true),
-          section('remote', t('branches.remote'), remotes, (entry) => Object.assign({}, entry, { remote: true })),
+          section('remote', t('branches.remote'), remotes, (entry) => Object.assign({}, entry, { remote: true }), true, 'remote', remoteNameOf),
           section('tags', t('branches.tags'), tags, (entry) => Object.assign({}, entry, { tag: true }))),
         E(MarqueeBox, { box: treeMarquee.box }))
     }
@@ -11008,6 +12996,9 @@ window.__ModuleLoader__.load({
     function ChangesPanel(props) {
       const t = props.t
       const summary = props.summary
+      /* The panel-side model picker (issue #19) rides the official model
+         directories, soft-injected into a module ref at apply time — see
+         ModelRoutePicker for why a bare ctx property read cannot work. */
       const [message, setMessage] = useState('')
       const [amend, setAmend] = useState(false)
       const [collapsed, setCollapsed] = useState(() => {
@@ -11129,10 +13120,12 @@ window.__ModuleLoader__.load({
           return
         }
         anchorRef.current = key
-        /* Plain click only SELECTS (single-replace, the branch tree's model):
-           the diff moved to DOUBLE-click — a stray click mid-multi-select must
-           not yank the pane away (v0.18.3). */
+        /* Plain click SELECTS and shows the diff (v0.25.1, user request): in the
+           narrow right column the list replaces the pane, so a click that only
+           highlighted the row looked like "nothing happened". Modifier clicks
+           above stay pure multi-select; ignored rows have no diff to show. */
         setSelection((previous) => previous.size === 1 && previous.has(key) === true ? previous : new Set([key]))
+        if (group !== 'ignored' && props.onDiff !== undefined) props.onDiff(item, group)
       }, [setSelection, anchorRef, props.onDiff])
       /* Rubber-band selection now comes from the shared useRubberBand hook
          (see its comment): the fixed row heights + the prefix-sum offsets
@@ -11236,7 +13229,11 @@ window.__ModuleLoader__.load({
             return
           }
           const forest = buildDirForest(sorted, key)
-          const renderFolder = (node, depth) => {
+          /* The label is the chain THIS node adds below its parent (issue
+             #18): a compressed "java/cn/com/pxwk/base" node repeats only the
+             segments below "…/src/main", not the full path from the group
+             root — same convention as the IDE commit tree. */
+          const renderFolder = (node, depth, parentLen) => {
             const id = key + '|' + node.path.join('/')
             const open = foldedDirs[id] !== true
             out.push({
@@ -11248,13 +13245,13 @@ window.__ModuleLoader__.load({
               },
                 E('span', { className: 'dig-chevron' + (open ? ' dig-chevron-open' : '') }, E(Icon, { name: 'chevron', size: 10 })),
                 E('span', { className: 'dig-row-icon dig-tone-accent' }, E(Icon, { name: 'folder', size: 10 })),
-                E('span', { className: 'dig-folder-name' }, node.path.join('/')),
+                E('span', { className: 'dig-folder-name' }, node.path.slice(typeof parentLen === 'number' ? parentLen : 0).join('/')),
                 E('span', { className: 'dig-count' }, String(forest.countOf(node)))),
             })
             if (open === true) {
               /* VS Code order inside a folder: subfolders first (recursively,
                  each indented one more level), then this folder's own files. */
-              for (const child of forest.sortedChildren(node)) renderFolder(child, depth + 1)
+              for (const child of forest.sortedChildren(node)) renderFolder(child, depth + 1, node.path.length)
               for (const item of sortedOf(node.files)) out.push({ kind: 'row', key: key + ':' + item.path, h: ITEM_HEIGHTS.row, node: entryRow(key, item, depth) })
             }
           }
@@ -11385,6 +13382,7 @@ window.__ModuleLoader__.load({
       const composer = props.compact === true
         ? E('div', { className: 'dig-commit-box dig-commit-box-compact', ref: commitBoxRef, style: commitStyle },
             E('div', { className: 'dig-commit-ai' }, amendToggle, aiWriteButton, aiUndoButton),
+            E(ModelRoutePicker, { sessionId: props.sessionId, t: t, ctx: props.ctx }),
             E('textarea', {
               className: 'dig-textarea dig-textarea-compact', value: message, spellCheck: false, rows: 1,
               placeholder: t('changes.commitPlaceholder'),
@@ -11396,7 +13394,8 @@ window.__ModuleLoader__.load({
             commitButtons(true))
         : E('div', { className: 'dig-commit-box', ref: commitBoxRef, style: commitStyle },
             E('div', { className: 'dig-commit-ai' }, amendToggle, aiWriteButton,
-              E('span', { className: 'dig-commit-ai-hint' }, t('changes.aiQuota')), aiUndoButton),
+              E('span', { className: 'dig-commit-ai-hint' }, t('changes.aiQuota')), aiUndoButton,
+              E(ModelRoutePicker, { sessionId: props.sessionId, t: t, ctx: props.ctx })),
             E('textarea', {
               className: 'dig-textarea', value: message, spellCheck: false,
               placeholder: t('changes.commitPlaceholder'),
@@ -11705,6 +13704,13 @@ window.__ModuleLoader__.load({
       for (const list of foldedBy.values()) folded.push(...list)
       const shown = kept.slice(0, 3)
       const hidden = kept.length - shown.length
+      const dateText = commitDateText(commit.date, props.dateFormat)
+      const absoluteDate = props.dateFormat === 'absolute'
+      const dateTitle = dateText === ''
+        ? undefined
+        : (absoluteDate
+            ? [shortDate(commit.date), relativeTime(commit.date)].filter((part) => part !== '').join(' · ')
+            : shortDate(commit.date))
       const badgeTitle = (decoration) => {
         const label = refLabel(decoration)
         if (decoration.kind !== 'local' && decoration.kind !== 'head') return label
@@ -11724,7 +13730,14 @@ window.__ModuleLoader__.load({
         onDoubleClick: () => props.onOpenDetail(commit),
         onContextMenu: (event) => { event.preventDefault(); props.onMenu(event, commit) },
       },
-        E('span', { className: 'dig-commit-date', title: shortDate(commit.date) }, relativeTime(commit.date)),
+        E('span', {
+          className: 'dig-commit-date',
+          'data-format': absoluteDate ? 'absolute' : 'relative',
+          /* The column shows one form and the tooltip carries the other, so the
+             absolute reading never loses the "how long ago" it replaced. An
+             unreadable timestamp keeps the cell empty and gets no tooltip. */
+          title: dateTitle,
+        }, dateText),
         E('span', { className: 'dig-commit-author', title: commit.author }, commit.author),
         E(GraphCell, { row: props.row, height: 26 }),
         shown.map((decoration, index) => E('span', {
@@ -11832,6 +13845,23 @@ window.__ModuleLoader__.load({
         }
         return found.sort()
       }, [commits])
+
+      /* Scope options come from the BRANCH LIST, not from the refs carried by
+         the loaded commits: the whole point of a scope switch is to reach a
+         branch whose commits are not in the current page yet (issue #25). */
+      const scopeBranches = useMemo(() => {
+        const found = []
+        const data = props.branches
+        if (data === null || typeof data !== 'object') return found
+        for (const group of [data.local, data.remote]) {
+          if (Array.isArray(group) === false) continue
+          for (const entry of group) {
+            const name = entry !== null && typeof entry === 'object' ? entry.name : ''
+            if (typeof name === 'string' && name !== '' && found.indexOf(name) < 0) found.push(name)
+          }
+        }
+        return found.sort()
+      }, [props.branches])
 
       const filtered = useMemo(() => {
         const needle = text.trim().toLowerCase()
@@ -12039,6 +14069,17 @@ window.__ModuleLoader__.load({
           onChange: (event) => setText(event.target.value),
         }),
         E(FilterSelect, {
+          label: t('history.scope'), value: props.scope === undefined ? '' : props.scope,
+          hint: t('history.scope'),
+          options: [
+            { value: '', label: t('history.scopeCurrent') },
+            { value: '*', label: t('history.scopeAll') },
+          ].concat(scopeBranches.map((name) => ({ value: name, label: name }))),
+          onOpenMenu: (event, options) => openFilterMenu(event, options, props.scope === undefined ? '' : props.scope, (value) => {
+            if (props.onScopeChange !== undefined) props.onScopeChange(value)
+          }),
+        }),
+        E(FilterSelect, {
           label: t('filter.branch'), value: refName, hint: t('filter.branch'),
           options: [allOption].concat(refOptions.map((name) => ({ value: name, label: name }))),
           onOpenMenu: (event, options) => openFilterMenu(event, options, refName, setRefName),
@@ -12131,6 +14172,7 @@ window.__ModuleLoader__.load({
           visibleRows.map((row) => E(CommitRow, {
             key: row.commit.hash,
             commit: row.commit, row: row, t: t,
+            dateFormat: props.dateFormat === 'absolute' ? 'absolute' : 'relative',
             selected: props.selectedHash === row.commit.hash
               || (props.pickedHashes !== undefined && props.pickedHashes.has(row.commit.hash) === true),
             onRowClick: handleRowClick, onOpenDetail: props.onSelect, onMenu: props.onMenu, openMenuAt: props.openMenuAt,
@@ -12177,6 +14219,86 @@ window.__ModuleLoader__.load({
             file.deletions > 0 ? E('span', { className: 'dig-stat-del' }, '-' + file.deletions) : null))))
     }
 
+    /* Worktrees view (v0.22.0): the repository's real working trees, read from
+       summary.worktrees (git worktree list --porcelain -z). It is a full-body
+       view rather than a fourth pane: opening one switches the panel's
+       repository to that path, and every row action stays inside the current
+       panel. Current / primary / locked / prunable trees are protected here for
+       the same reasons the host refuses them; the host is still the authority. */
+    function WorktreesPane(props) {
+      const t = props.t
+      const items = Array.isArray(props.worktrees) ? props.worktrees : []
+      const busy = props.busy === true
+      const hasPrunable = items.some((item) => item.prunable === true)
+      const open = (item) => {
+        if (item.current === true || item.prunable === true) return
+        props.onOpen(item.path)
+      }
+      const badgesOf = (item) => {
+        const badges = []
+        if (item.current === true) badges.push({ key: 'current', className: 'dig-wt-badge-current', label: t('worktrees.current'), title: undefined })
+        if (item.primary === true) badges.push({ key: 'primary', className: 'dig-wt-badge-primary', label: t('worktrees.primary'), title: undefined })
+        if (item.locked === true) badges.push({ key: 'locked', className: 'dig-wt-badge-locked', label: t('worktrees.locked'), title: item.lockReason === '' || item.lockReason === undefined ? t('worktrees.locked') : item.lockReason })
+        if (item.prunable === true) badges.push({ key: 'prunable', className: 'dig-wt-badge-prunable', label: t('worktrees.prunable'), title: item.pruneReason === '' || item.pruneReason === undefined ? t('worktrees.prunable') : item.pruneReason })
+        return badges
+      }
+      const removable = (item) => item.current !== true && item.primary !== true && item.locked !== true && item.prunable !== true
+      return E('div', { className: 'dig-wt' },
+        E('div', { className: 'dig-wt-head' },
+          E('span', { className: 'dig-wt-title' }, t('worktrees.title')),
+          E('span', { className: 'dig-wt-count' }, String(items.length)),
+          E('span', { className: 'dig-topbar-spacer' }),
+          E('button', {
+            type: 'button', className: 'dig-icon-btn', title: t('worktrees.new'), disabled: busy,
+            onClick: props.onCreate,
+          }, E(Icon, { name: 'branchCreate', size: 14 })),
+          E('button', {
+            type: 'button', className: 'dig-icon-btn', title: t('worktrees.prune'), disabled: busy || hasPrunable !== true,
+            onClick: props.onPrune,
+          }, E(Icon, { name: 'trash', size: 14 })),
+          E('button', {
+            type: 'button', className: 'dig-icon-btn', title: t('worktrees.back'),
+            onClick: props.onBack,
+          }, E(Icon, { name: 'chevron', size: 14 }))),
+        items.length === 0
+          ? E('div', { className: 'dig-empty' }, t('worktrees.empty'))
+          : E('div', { className: 'dig-wt-scroll' }, items.map((item) => {
+            const badges = badgesOf(item)
+            const label = item.detached === true ? t('worktrees.detached') : String(item.branch === undefined || item.branch === '' ? t('worktrees.detached') : item.branch)
+            return E('div', {
+              key: item.path,
+              className: 'dig-wt-row' + (item.current === true ? ' dig-wt-row-current' : ''),
+              onDoubleClick: () => open(item),
+            },
+              E('div', { className: 'dig-wt-row-main' },
+                E('div', { className: 'dig-wt-top' },
+                  E(Icon, { name: item.detached === true ? 'commit' : 'branch', size: 13 }),
+                  E('span', { className: 'dig-wt-branch', title: label }, label),
+                  badges.length === 0 ? null : E('span', { className: 'dig-wt-badges' }, badges.map((badge) => E('span', {
+                    key: badge.key, className: 'dig-wt-badge ' + badge.className, title: badge.title === undefined ? badge.label : badge.title,
+                  }, badge.label)))),
+                E('div', { className: 'dig-wt-path dig-mono', title: item.path }, String(item.path)),
+                E('div', { className: 'dig-wt-meta' },
+                  item.head === undefined || item.head === null || item.head === '' ? null : E('span', { className: 'dig-wt-hash dig-mono' }, String(item.head).slice(0, 8)),
+                  item.pruneReason === '' || item.pruneReason === undefined ? null : E('span', { className: 'dig-wt-reason', title: item.pruneReason }, item.pruneReason))),
+              E('div', { className: 'dig-wt-row-actions' },
+                E('button', {
+                  type: 'button', className: 'dig-icon-btn dig-icon-btn-small', title: t('worktrees.open'),
+                  disabled: busy || item.current === true || item.prunable === true,
+                  onClick: () => open(item),
+                }, E(Icon, { name: 'checkout', size: 13 })),
+                E('button', {
+                  type: 'button', className: 'dig-icon-btn dig-icon-btn-small', title: t('action.copyPath'),
+                  onClick: () => props.onCopy(item.path),
+                }, E(Icon, { name: 'copy', size: 13 })),
+                E('button', {
+                  type: 'button', className: 'dig-icon-btn dig-icon-btn-small', title: t('worktrees.remove'),
+                  disabled: busy || removable(item) !== true,
+                  onClick: () => props.onRemove(item),
+                }, E(Icon, { name: 'trash', size: 13 }))))
+          })))
+    }
+
     /* ============================== panel ============================== */
 
     function Panel(props) {
@@ -12188,6 +14310,11 @@ window.__ModuleLoader__.load({
          | commit list | commit details) that the rail's branch button opens in
          its own tab. Same component, same data, two layouts. */
       const explore = props.mode === 'explore'
+      /* One registration, two faces: the changes face is a single column (its
+         commit box has its own px-sized divider), so no pane geometry runs
+         there; the explorer face keeps the resizable tree / detail / diff
+         panes. Stored sizes for BOTH live in PANE_STORAGE_KEYS. */
+      const paneKeysOf = () => explore === true ? PANE_FACE_KEYS[chrome] : []
       const hostRef = useRef(null)
       const railHostRef = useRef(null)
       const [size, setSize] = useState({ width: 0, height: 0 })
@@ -12201,6 +14328,9 @@ window.__ModuleLoader__.load({
       const [commits, setCommits] = useState([])
       const [hasMore, setHasMore] = useState(false)
       const [error, setError] = useState(null)
+      /* Named failure code (push-rejected / pull-conflict / ...), kept beside
+         the raw message so the banner can lead with an actionable sentence. */
+      const [errorCode, setErrorCode] = useState(null)
       const [note, setNote] = useState(null)
       const [busy, setBusy] = useState(false)
       const [view, setView] = useState('history')
@@ -12227,11 +14357,37 @@ window.__ModuleLoader__.load({
       const [selectedPath, setSelectedPath] = useState(null)
       const [patch, setPatch] = useState('')
       const [patchLoading, setPatchLoading] = useState(false)
+      /* The compact chrome's lower window is tabbed (history | diff) instead of
+         split, so opening a file does not take the history list away: the diff
+         gets its own tab and the user can switch back (v0.26.0). */
+      const [splitTab, setSplitTab] = useState('history')
+      useEffect(() => {
+        if (splitTab === 'diff' && patch === '' && patchLoading === false) setSplitTab('history')
+      }, [splitTab, patch, patchLoading])
+      /* v0.26.3: the row fires onDiff from its single click now, so a double
+         click used to open the same diff three times — and the responses raced
+         (a slow first request could land after the second and paint the wrong
+         file under the new title). `diffSeq` stamps each request and only the
+         newest one is allowed to write; `diffLast` swallows the burst a double
+         click produces. */
+      const diffSeq = useRef(0)
+      const diffLast = useRef({ key: '', at: 0 })
       /* What the open diff pane shows (v0.13.5): the pane is shared by the
          commit detail (hash + subject) and the working tree (staged or not),
          and the selection menu's payload must say which. Cleared everywhere
          the patch is cleared. */
       const [diffContext, setDiffContext] = useState(null)
+      /* v0.27: closing / switching away must also invalidate the request in
+         flight and reset the double-click guard. Without the stamp bump a
+         late response repainted the closed pane; without the diffLast reset
+         reopening the same file within 400ms was swallowed. */
+      const resetDiff = useCallback(() => {
+        diffSeq.current += 1
+        diffLast.current = { key: '', at: 0 }
+        setPatch('')
+        setPatchLoading(false)
+        setDiffContext(null)
+      }, [])
       /* ---- multi-select (issue #13): the change list's selection lives here
          so the right-click menu, the keyboard and the selection bar act on one
          set; the branch tree and the history keep theirs closer to their rows
@@ -12265,6 +14421,10 @@ window.__ModuleLoader__.load({
       const onChangeSelection = useCallback((update) => { setChangeSelection(update); clearPicksExcept('changes') }, [clearPicksExcept])
       const onCommitPicks = useCallback((update) => { setPickedCommits(update); clearPicksExcept('history') }, [clearPicksExcept])
       const [menu, setMenu] = useState(null)
+      /* The header repo/branch switchers need a search box and a branch tree,
+         which a plain ContextMenu item list cannot express; they share the
+         same anchored surface through its `body` prop. */
+      const [picker, setPicker] = useState(null)
       const [dialog, setDialog] = useState(null)
       const [tick, setTick] = useState(0)
       const [favTick, setFavTick] = useState(0)
@@ -12311,14 +14471,8 @@ window.__ModuleLoader__.load({
       // its own — v0.1.3 already made that mistake with a height < 330 test (a
       // 1500x300 workbench came out single-column) and v0.3.5 still let
       // height < 200 flip a 1320x180 workbench into the right-sidebar chrome.
-      /* Where the gear goes: the plugin's own settings page when this host has
-         both the row Config and the navigation to it, the in-panel editor
-         otherwise (see RAIL_NS / railForm). */
-      const railSettingsTarget = () => (railForm === null || props.openSettings === null || props.openSettings === undefined ? 'panel' : 'page')
-      const openSettingsPage = () => {
-        if (props.openSettings === null || props.openSettings === undefined) return
-        props.openSettings()
-      }
+      /* The gear always opens the in-panel editor: it is the only surface that
+         edits BOTH visibility and order, and rc.1's plugin page cannot show it. */
 
       /* The immersive conversation seat (v0.14) hands the panel a SQUARE-ish
          box by construction: the conversation column clamps content width
@@ -12332,6 +14486,7 @@ window.__ModuleLoader__.load({
       useMeasureLayoutEffect(() => {
         const node = hostRef.current
         const holder = node === null || typeof node.closest !== 'function' ? null : node.closest('.dig-conversation-seat[data-immersive="1"]')
+        if (gateNestedLoop() === false) return
         setImmersiveSeat(holder !== null)
       })
       const compact = size.width > 0 && size.width < COMPACT_MAX_WIDTH
@@ -12393,19 +14548,53 @@ window.__ModuleLoader__.load({
          re-clamps a stored size has to see the same numbers the drag did — a drag
          allowed further than the render allows snaps back under the cursor. The
          bail-out comparison is what keeps this from looping. */
-      useEffect(() => {
+      /* A LAYOUT effect: on mount this runs before the first paint, so the
+         fallback layout (paneGeometry's stylesheet/literal defaults) is
+         replaced by the live one inside the same frame instead of being
+         painted and then jumped a frame later. Painting both is the "height
+         animation" on tab switches from issue #16 — two visible layouts ~80px
+         apart read as a smooth resize in a low-fps screen recording. Later
+         runs still track content arrival; the layout-phase cost is one
+         querySelectorAll over the 3-4 panes the post-paint run already paid. */
+      /* ---------- measurement loop fuse (issue #17) ---------- */
+
+      /* Every effect below runs on EVERY render and feeds a state update.
+         In a steady UI the bail-out comparisons stop the chain, but when the
+         realized layout disagrees with the just-measured one — a float pane
+         being created/resized on the desktop client hit exactly this — each
+         render re-measures a DIFFERENT box, the update nests synchronously
+         and React aborts at depth 50 with #185, leaving the pane white
+         behind the host's slot boundary. The gate detects that nesting
+         directly: runs are counted in a 40 ms window and a nested render
+         loop (50 commits inside one task) trips it long before React's
+         limit, while legitimate per-event work (a pointermove drag renders
+         at most twice in 40 ms) never comes close. Skipping a measurement
+         during a pathological burst only freezes the affected number until
+         the next window — degraded ratios for a frame, never a white pane. */
+      const measureGate = useRef({ n: 0, at: 0 })
+      const gateNestedLoop = () => {
+        const slot = measureGate.current
+        const now = Date.now()
+        if (now - slot.at > 40) { slot.at = now; slot.n = 0 }
+        slot.n += 1
+        return slot.n <= 6
+      }
+
+      useMeasureLayoutEffect(() => {
         const found = measurePanes()
+        if (gateNestedLoop() === false) return
         setPaneSizes((current) => (samePaneSizes(current, found) ? current : found))
       })
       useEffect(() => {
         const node = hostRef.current
         const holder = node === null || typeof node.closest !== 'function' ? null : node.closest('[data-dockkit-float]')
         const next = holder === null ? null : holder.getAttribute('data-dockkit-float')
+        if (gateNestedLoop() === false) return
         setFloatPaneId((current) => (current === next ? current : next))
       })
       const dock = props.dock === undefined ? null : props.dock
       const dockState = dockActionState(dock, floatPaneId)
-      const paneLayout = paneGeometry(chrome, paneBox, panes, paneSizes)
+      const paneLayout = paneGeometry(chrome, paneBox, panes, paneSizes, paneKeysOf())
 
       const commitPanes = (next) => {
         panesRef.current = next
@@ -12419,7 +14608,7 @@ window.__ModuleLoader__.load({
       const dragPane = (key, rawPx) => {
         const live = measurePanes()
         setPaneSizes((current) => (samePaneSizes(current, live) ? current : live))
-        const layout = paneGeometry(chrome, paneBox, panesRef.current, live)
+        const layout = paneGeometry(chrome, paneBox, panesRef.current, live, paneKeysOf())
         const limit = layout.limits[key]
         // The diff divides the body HEIGHT in every chrome (see paneGeometry).
         const reference = key === 'diff' ? paneBox.height : (paneByWidth ? paneBox.width : paneBox.height)
@@ -12526,10 +14715,13 @@ window.__ModuleLoader__.load({
       const guard = useCallback(async (work) => {
         setBusy(true)
         setError(null)
+        setErrorCode(null)
         try {
           return await work()
         } catch (caught) {
-          setError(caught instanceof Error ? caught.message : String(caught))
+          const failure = caught instanceof Error ? caught : new Error(String(caught))
+          setError(failure.message)
+          setErrorCode(typeof failure.code === 'string' ? failure.code : null)
           return undefined
         } finally {
           setBusy(false)
@@ -12574,7 +14766,7 @@ window.__ModuleLoader__.load({
             writePaintRepos(cwd, data)
             apply(data, readPaintRoot(cwd))
           } catch (caught) {
-            if (!cancelled) setError(caught instanceof Error ? caught.message : String(caught))
+            if (!cancelled) { setErrorCode(null); setError(caught instanceof Error ? caught.message : String(caught)) }
           }
         })()
         return () => { cancelled = true }
@@ -12584,7 +14776,14 @@ window.__ModuleLoader__.load({
          rail action, invariant 14) can drive the same groupBy and the sort
          order it introduces — one source of truth, wherever the click came
          from. sortKey 'git' keeps git's own status order. */
-      const [groupBy, setGroupBy] = useState('flat')
+      /* Both the panel and the ⋯ menu write through this wrapper, so the
+         choice survives a remount (the menu used to be the only writer that
+         did not persist, and a repo/session switch silently reset it). */
+      const [groupBy, setGroupByState] = useState(readChangesGroupBy)
+      const setGroupBy = useCallback((value) => {
+        setGroupByState(value)
+        rememberChangesGroupBy(value)
+      }, [])
       const [sortKey, setSortKey] = useState('git')
       /* The Git-output drawer (VS Code showOutput): null = closed, an array =
          the entries it currently shows. Opened on demand, refreshed by hand or
@@ -12595,6 +14794,7 @@ window.__ModuleLoader__.load({
           const data = await request('gitLogs', {})
           setGitOutput(Array.isArray(data.entries) ? data.entries : [])
         } catch (caught) {
+          setErrorCode(null)
           setError(caught instanceof Error ? caught.message : String(caught))
         }
       }, [request])
@@ -12673,7 +14873,11 @@ window.__ModuleLoader__.load({
       const loadCommits = useCallback(async (skip, overridePath) => {
         const activePath = overridePath === undefined ? pathFilter : overridePath
         const payload = Object.assign({}, base, { skip: skip === undefined ? 0 : skip, limit: 120 })
-        if (browseRev !== '') payload.rev = browseRev
+        /* '*' is the "all branches" scope (issue #25): the host turns it into
+           --branches --remotes, so an unrelated/ahead branch's commits are part
+           of the log instead of being filtered out after the fact. */
+        if (browseRev === '*') payload.allBranches = true
+        else if (browseRev !== '') payload.rev = browseRev
         if (activePath !== undefined && activePath !== '') payload.path = activePath
         const data = await request('log', payload)
         setCommits((previous) => (skip === undefined || skip === 0 ? data.commits : previous.concat(data.commits)))
@@ -12750,6 +14954,15 @@ window.__ModuleLoader__.load({
           } catch (error) { void error }
         }
       }, [base, request])
+      /* The history scope control: '' = HEAD, '*' = every branch + remote,
+         anything else = that branch. Changing it is a fresh view, not a filter
+         over the rows already loaded, so the merge anchor from a previous
+         double-click no longer applies either. */
+      const setHistoryScope = useCallback((value) => {
+        lastBrowseRef.current = null
+        setMergeAnchor(null)
+        setBrowseRev(typeof value === 'string' ? value : '')
+      }, [])
       /* A repository switch forgets the browsing context entirely. */
       useEffect(() => {
         lastBrowseRef.current = null
@@ -12820,9 +15033,31 @@ window.__ModuleLoader__.load({
 
       const run = useCallback(async (method, payload) => {
         const result = await guard(() => request(method, Object.assign({}, base, payload)))
-        if (result !== undefined) await refresh()
+        /* A failed pull/push still changes repository state (merge conflicts,
+           or a merge that landed before the push was rejected), so refresh on
+           those failures too — otherwise the Changes list hides the conflict
+           files the banner is asking the user to resolve. */
+        if (result !== undefined || method === 'pull' || method === 'push') {
+          await refresh()
+          /* v0.21.2: the composer pill is a separate tree; without this it only
+             learned about an in-panel checkout/commit at the next 30s poll. The
+             panel's own watcher skips source 'panel' (refresh already ran). */
+          if (repoRoot !== null) notifyBranchSwitched(sessionId, repoRoot, 'panel')
+        }
         return result
-      }, [base, guard, refresh])
+      }, [base, guard, refresh, sessionId, repoRoot])
+
+      /* Issue #25: one merge verb, four intents. --no-commit alone is refused by
+         git when the merge could fast-forward, so that mode always carries
+         --no-ff; the pair leaves MERGE_HEAD behind for review, which the
+         "Abort merge" entry in the more menu (mergeAbort) backs out of. */
+      const mergeWithMode = useCallback((branch, mode) => {
+        const payload = { branch: branch }
+        if (mode === 'noFf') payload.noFf = true
+        else if (mode === 'squash') payload.squash = true
+        else if (mode === 'noCommit') { payload.noFf = true; payload.noCommit = true }
+        void run('merge', payload)
+      }, [run])
 
       const pickRepo = useCallback((path) => {
         setRepoRoot(path)
@@ -12838,11 +15073,10 @@ window.__ModuleLoader__.load({
         headRef.current = null
         setDetail(null)
         setSelectedHash(null)
-        setPatch('')
-        setDiffContext(null)
+        resetDiff()
         setView('history')
         setPathFilter('')
-      }, [sessionId])
+      }, [sessionId, resetDiff])
 
       /* The composer status pill and this panel are separate trees; when the
          pill (or any other seat) switches the repository or the branch, this
@@ -12855,8 +15089,9 @@ window.__ModuleLoader__.load({
           if (sid !== sessionId || typeof root !== 'string' || root === '') return
           setRepoRoot((current) => (current === root ? current : pickRepo(root)))
         }
-        const onBranch = () => {
-          if (repoRoot === null) return
+        const onBranch = (sid, root, source) => {
+          if (sid !== sessionId || source === 'panel') return
+          if (repoRoot === null || root !== repoRoot) return
           void refresh()
         }
         composerRepoWatchers.add(onRepo)
@@ -12868,15 +15103,24 @@ window.__ModuleLoader__.load({
       }, [sessionId, repoRoot, pickRepo, refresh])
 
       const openDiff = useCallback(async (seed) => {
+        const key = JSON.stringify([base, seed])
+        const now = Date.now()
+        if (key === diffLast.current.key && now - diffLast.current.at < 400) return
+        diffLast.current = { key: key, at: now }
+        const run = diffSeq.current + 1
+        diffSeq.current = run
         setPatchLoading(true)
         setPatch('')
         try {
           const data = await request('diff', Object.assign({}, base, seed))
+          if (diffSeq.current !== run) return
           setPatch(data.patch)
         } catch (caught) {
+          if (diffSeq.current !== run) return
+          setErrorCode(null)
           setError(caught instanceof Error ? caught.message : String(caught))
         } finally {
-          setPatchLoading(false)
+          if (diffSeq.current === run) setPatchLoading(false)
         }
       }, [base])
 
@@ -12892,6 +15136,11 @@ window.__ModuleLoader__.load({
          repoRoot 并进它自己的 git 调用,多仓库工作区不会落错仓库。 */
       const previewDiff = useCallback((seed) => {
         if (repoRoot === null) return false
+        /* Inline-first (issue #22): the switch defaults to ON, so the panel's
+           own diff pane — and its split / wrap controls — is what a click
+           opens. Turning it off hands the preview to the external chain
+           below, which is the only behaviour older releases had. */
+        if (inlineDiffEnabled() === true) return false
         const commitHash = seed.hash !== undefined && seed.hash !== null ? String(seed.hash) : null
         const ref = commitHash !== null
           ? { kind: 'commit', hash: commitHash.slice(0, 7), hashFull: commitHash, subject: seed.subject || '', worktree: repoRoot, repoRoot: repoRoot }
@@ -12952,6 +15201,11 @@ window.__ModuleLoader__.load({
          file menu, working-diff shortcut): external first, inline fallback. */
       const showDiff = useCallback((seed) => {
         if (previewDiff(seed) === true) return
+        /* The pane header names the file; its close button clears the selection
+           again, so the inline path owns selectedPath here too. */
+        setSelectedPath(seed.path === undefined ? null : seed.path)
+        /* Compact chrome: the diff lives in a tab, so opening a file shows it. */
+        setSplitTab('diff')
         if (seed.hash !== undefined && seed.hash !== null) {
           setDiffContext({ kind: 'commit', hash: seed.hash, subject: seed.subject || '' })
           void openDiff({ hash: seed.hash, path: seed.path })
@@ -12964,16 +15218,16 @@ window.__ModuleLoader__.load({
       const selectCommit = useCallback(async (commit) => {
         setSelectedHash(commit.hash)
         setSelectedPath(null)
-        setPatch('')
-        setDiffContext(null)
+        resetDiff()
         setView('detail')
         setDetail(null)
         try {
           setDetail(await request('commitDetail', Object.assign({}, base, { hash: commit.hash })))
         } catch (caught) {
+          setErrorCode(null)
           setError(caught instanceof Error ? caught.message : String(caught))
         }
-      }, [base])
+      }, [base, resetDiff])
 
       const checkout = useCallback(async (entry) => {
         if (entry.tag === true) { void run('checkout', { branch: entry.name }); return }
@@ -13000,12 +15254,29 @@ window.__ModuleLoader__.load({
       const openMenuAt = useCallback((event, items) => {
         const element = hostRef.current
         const rect = element === null ? null : element.getBoundingClientRect()
+        setPicker(null)
         setMenu({
           x: event.clientX - (rect === null ? 0 : rect.left),
           y: event.clientY - (rect === null ? 0 : rect.top),
           boundsWidth: rect === null ? 0 : Math.round(rect.width),
           boundsHeight: rect === null ? 0 : Math.round(rect.height),
           items: items,
+        })
+      }, [])
+
+      /* Same anchor math as openMenuAt, but the body is a SearchPicker instead
+         of a fixed item list. Keeping it separate means the generic context
+         menus do not grow search state they never use. */
+      const openPickerAt = useCallback((event, kind) => {
+        const element = hostRef.current
+        const rect = element === null ? null : element.getBoundingClientRect()
+        setMenu(null)
+        setPicker({
+          kind: kind,
+          x: event.clientX - (rect === null ? 0 : rect.left),
+          y: event.clientY - (rect === null ? 0 : rect.top),
+          boundsWidth: rect === null ? 0 : Math.round(rect.width),
+          boundsHeight: rect === null ? 0 : Math.round(rect.height),
         })
       }, [])
 
@@ -13133,6 +15404,72 @@ window.__ModuleLoader__.load({
         copyText(clipboardLines(values))
         pushToast({ text: fill(t('selection.copied'), { n: values.length }), icon: 'tag', tone: 'ok', ttl: 2500 })
       }, [pushToast, t])
+
+      /* ---------- worktrees (v0.22.0) ---------- */
+      /* These bypass run(): worktreeAdd/Remove/Prune have their own payload
+         shapes and refresh only the repository's worktree list, and a dirty
+         removal is a two-step confirm (the first attempt returns
+         worktree-dirty, which reopens the confirm with the destructive force
+         wording). Busy is held by hand because refresh() has its own guard. */
+      const createWorktree = async (draft) => {
+        setBusy(true)
+        setError(null)
+        setErrorCode(null)
+        try {
+          await request('worktreeAdd', Object.assign({}, base, draft))
+          setDialog(null)
+          pushToast({ text: fill(t('toast.worktreeAdded'), { path: draft.path }), icon: 'check', tone: 'ok' })
+          await refresh()
+          return null
+        } catch (caught) {
+          return caught instanceof Error ? caught.message : String(caught)
+        } finally {
+          setBusy(false)
+        }
+      }
+      const removeWorktree = async (tree, force) => {
+        setBusy(true)
+        setError(null)
+        setErrorCode(null)
+        try {
+          await request('worktreeRemove', Object.assign({}, base, { path: tree.path, confirm: true, force: force === true }))
+          setDialog(null)
+          pushToast({ text: fill(t('toast.worktreeRemoved'), { path: tree.path }), icon: 'check', tone: 'ok' })
+          await refresh()
+          return null
+        } catch (caught) {
+          const message = caught instanceof Error ? caught.message : String(caught)
+          if (caught instanceof Error && caught.code === 'worktree-dirty' && force !== true) {
+            setDialog({ kind: 'worktreeRemove', tree: tree, force: true })
+            return message
+          }
+          setDialog(null)
+          setErrorCode(null)
+          setError(message)
+          return message
+        } finally {
+          setBusy(false)
+        }
+      }
+      const pruneWorktrees = async () => {
+        setBusy(true)
+        setError(null)
+        setErrorCode(null)
+        try {
+          const data = await request('worktreePrune', Object.assign({}, base, { confirm: true }))
+          setDialog(null)
+          pushToast({ text: t('toast.worktreePruned'), icon: 'check', tone: 'ok' })
+          await refresh()
+          return data
+        } catch (caught) {
+          setDialog(null)
+          setErrorCode(null)
+          setError(caught instanceof Error ? caught.message : String(caught))
+          return null
+        } finally {
+          setBusy(false)
+        }
+      }
 
       /* Resolve the change selection against the CURRENT summary: paths move
          between groups on every stage/unstage, so the key ('group:path') is
@@ -13307,16 +15644,60 @@ window.__ModuleLoader__.load({
           ].filter((item) => item !== null))
           return
         }
+        /* v0.24.0: the label was always 拉取, but this only ran git fetch.
+           The checked-out branch now takes a real pull (merge, the new
+           default); a non-HEAD branch keeps the safe refspec update, because
+           git pull would merge into HEAD instead of into that branch. */
+        const updateItem = {
+          id: 'update', icon: 'fetch', tone: 'cyan', label: t('action.update'),
+          run: () => {
+            if (entry.head === true) {
+              const upstream = entry.upstream
+              if (upstream === null || upstream === undefined || upstream === '') { void run('fetch', { prune: true }); return }
+              void run('pull', { mode: 'merge' })
+              return
+            }
+            const upstream = entry.upstream
+            if (upstream === null || upstream === undefined || upstream === '') { void run('fetch', { prune: true }); return }
+            const slash = upstream.indexOf('/')
+            const remote = slash >= 0 ? upstream.slice(0, slash) : upstream
+            void run('fetch', { remote: remote, branch: entry.name + ':' + entry.name })
+          },
+        }
+        const pushItem = { id: 'push', icon: 'push', tone: 'success', label: t('action.push'), disabled: blocked, reason: t('operation.hint'), run: () => setDialog({ kind: 'push' }) }
         const items = [
           { id: 'checkout', icon: 'checkout', tone: 'accent', label: t('action.checkout'), disabled: entry.head === true || entry.tag === true || blocked, reason: blocked ? t('operation.hint') : reason, run: () => { void checkout(entry) } },
+          // v0.21.2: on a LOCAL row the two high-frequency verbs sit right under
+          // 签出 (2nd/3rd) instead of past 删除; remote/tag rows keep the old
+          // tail placement (their menu is about the ref, not the working tree).
+          isLocal ? updateItem : null,
+          isLocal ? pushItem : null,
           isLocal ? { id: 'rebase', icon: 'compare', tone: 'violet', label: t('action.rebaseCurrentOnto'), disabled: entry.head === true || blocked, reason: blocked ? t('operation.hint') : reason, run: () => { void run('rebase', { onto: entry.name }) } } : null,
-          isLocal ? { id: 'merge', icon: 'compare', tone: 'accent', label: t('action.mergeIntoCurrent'), disabled: entry.head === true || blocked, reason: blocked ? t('operation.hint') : reason, run: () => { void run('merge', { branch: entry.name }) } } : null,
+          isLocal ? { id: 'merge', icon: 'compare', tone: 'accent', label: t('action.mergeIntoCurrent'), disabled: entry.head === true || blocked, reason: blocked ? t('operation.hint') : reason, run: () => setDialog({ kind: 'merge', branch: entry.name }) } : null,
           { id: 'compare', icon: 'filter', tone: 'violet', label: t('action.compare'), disabled: entry.head === true || current === '', reason: reason, run: () => { void compareWith(current, entry.name) } },
           { id: 'send', icon: 'send', tone: 'accent', label: t('menu.sendToChat'), run: () => sendGitSummaryToChat('send.branchText', { name: entry.name, repo: repoLabel }) },
           { id: 'copy', icon: 'tag', tone: 'secondary', label: t('action.copyName'), run: () => copyValues([entry.name]) },
           null,
           { id: 'favorite', icon: 'star', tone: 'warn', label: t('action.favorite'), active: favorites.indexOf(entry.name) >= 0, run: () => toggleFavoriteBranch(entry.name) },
-          { id: 'newBranch', icon: 'plus', tone: 'success', label: t('action.newBranchFrom'), run: () => setDialog({ kind: 'newBranch', from: entry.name }) },
+          /* Upstream management (issue #18). The remote-picker submenu is
+             built INSIDE run() — branches.remote is read at click time, not
+             render time, so branchMenu's useCallback deps stay untouched
+             (remoteBranches is defined AFTER this callback; a render-time
+             reference would be the classic hooks TDZ trap). */
+          isLocal ? { id: 'setUpstream', icon: 'fetch', tone: 'cyan', label: t('action.setUpstream'), disabled: branches === null || branches.remote.length === 0, reason: reason, run: (event) => openMenuAt(event, branches.remote.map((remoteEntry) => ({
+            id: 'upstream:' + remoteEntry.name,
+            icon: 'fetch', tone: 'cyan',
+            label: remoteEntry.name,
+            active: entry.upstream === remoteEntry.name,
+            run: () => { void run('branch-upstream', { branch: entry.name, upstream: remoteEntry.name }) },
+          }))) } : null,
+          isLocal && entry.upstream !== null && entry.upstream !== undefined ? { id: 'unsetUpstream', icon: 'undo', tone: 'secondary', label: t('action.unsetUpstream'), run: () => { void run('branch-upstream', { branch: entry.name, unset: true }) } } : null,
+          /* Remote rows get the tracking form: the local branch is created
+             FROM the remote ref with --track in one step (issue #18 item 5),
+             replacing the plain "new branch from" which could not bind. */
+          entry.remote === true
+            ? { id: 'createTracking', icon: 'branchCreate', tone: 'success', label: t('action.createLocalBranch'), run: () => setDialog({ kind: 'createTracking', from: entry.name, name: entry.name.slice(entry.name.indexOf('/') + 1) }) }
+            : { id: 'newBranch', icon: 'plus', tone: 'success', label: t('action.newBranchFrom'), run: () => setDialog({ kind: 'newBranch', from: entry.name }) },
           isLocal ? { id: 'rename', icon: 'file', tone: 'primary', label: t('action.rename'), run: () => setDialog({ kind: 'renameBranch', from: entry.name }) } : null,
           isLocal ? { id: 'delete', icon: 'trash', tone: 'danger', label: t('action.delete'), danger: true, disabled: entry.head === true, reason: reason, run: () => setDialog({ kind: 'deleteBranch', name: entry.name }) } : null,
           entry.tag === true
@@ -13332,11 +15713,11 @@ window.__ModuleLoader__.load({
                 },
               }),
           null,
-          { id: 'update', icon: 'fetch', tone: 'cyan', label: t('action.update'), run: () => { void run('fetch', { prune: true }) } },
-          { id: 'push', icon: 'push', tone: 'success', label: t('action.push'), disabled: blocked, reason: t('operation.hint'), run: () => setDialog({ kind: 'push' }) },
+          isLocal ? null : updateItem,
+          isLocal ? null : pushItem,
         ].filter((item) => item !== null)
         openMenuAt(event, items)
-      }, [branches, checkout, run, t, compareWith, toggleFavoriteBranch, openMenuAt, favorites, blocked, sendGitSummaryToChat, repoLabel, copyValues])
+      }, [branches, checkout, run, mergeWithMode, t, compareWith, toggleFavoriteBranch, openMenuAt, favorites, blocked, sendGitSummaryToChat, repoLabel, copyValues])
 
       const commitMenu = useCallback((event, commit) => {
         const shortHash = commit.hash.slice(0, 7)
@@ -13492,6 +15873,9 @@ window.__ModuleLoader__.load({
       const submitDialog = useCallback(async (state, value) => {
         setDialog(null)
         if (state.kind === 'newBranch') { await run('checkout', { branch: value, create: true, startPoint: state.from }); return }
+        /* From a remote ref (issue #18): --track binds the upstream in the
+           same checkout -b, so "create" and "set upstream" are one motion. */
+        if (state.kind === 'createTracking') { await run('checkout', { branch: value, create: true, startPoint: state.from, track: true }); return }
         if (state.kind === 'renameBranch') { await run('branchRename', { from: state.from, to: value }); return }
         if (state.kind === 'newTag') { await run('tagCreate', { name: value, hash: state.hash }); return }
         if (state.kind === 'deleteTag') { await run('tagDelete', { name: value }); return }
@@ -13611,38 +15995,44 @@ window.__ModuleLoader__.load({
 
       /* ---------- shared pieces ---------- */
 
-      const repoOptions = repoState === null ? [] : repoState.repos
+      /* The scanned row keeps the branch it had when the workspace was
+         listed; after a checkout the branch pill and the tree move on, so the
+         repo label must follow the live HEAD instead of naming the old
+         branch. */
+      const repoOptions = repoState === null ? [] : repoState.repos.map((repo) => (
+        repo.path === repoRoot && branches !== null ? Object.assign({}, repo, { branch: branches.branch }) : repo
+      ))
+      /* A linked worktree opened from the worktree view is a repository root
+         the workspace scan never listed. Without a header entry the top bar
+         kept naming the primary checkout while every branch and change below
+         it came from the worktree. Append the current root as a transient
+         option so the header names what the panel is actually showing. */
+      let headerRepos = repoOptions
+      if (repoRoot !== null && repoOptions.every((repo) => repo.path !== repoRoot)) {
+        const origin = summary === null ? '' : summary.origin
+        headerRepos = repoOptions.concat([{
+          path: repoRoot,
+          name: origin !== undefined && origin !== null && origin !== '' ? origin : baseNameOf(repoRoot),
+          branch: branches === null ? null : branches.branch,
+          worktree: true,
+        }])
+      }
       const dirty = summary === null ? 0 : summary.changes.staged.length + summary.changes.unstaged.length + summary.changes.untracked.length + summary.changes.conflicted.length
 
       /* Both header switchers are menu-driven now (see RepoSelect): the
          popovers reuse openMenuAt, so they clamp to the panel box and share
          the opaque, frosted menu surface instead of the OS select popup. */
       const openRepoMenu = useCallback((event) => {
-        openMenuAt(event, repoOptions.map((repo) => ({
-          id: 'repo:' + repo.path,
-          icon: 'folder',
-          tone: 'accent',
-          label: repo.name + (repo.branch === null || repo.branch === undefined ? '' : ' · ' + repo.branch),
-          active: repo.path === repoRoot,
-          run: () => { if (repo.path !== repoRoot) pickRepo(repo.path) },
-        })))
-      }, [openMenuAt, repoOptions, repoRoot, pickRepo])
+        openPickerAt(event, 'repo')
+      }, [openPickerAt])
 
       const openBranchSwitchMenu = useCallback((event) => {
-        const local = branches === null ? [] : branches.local
-        openMenuAt(event, local.map((entry) => ({
-          id: 'switch:' + entry.name,
-          icon: entry.head === true ? 'star' : 'branch',
-          tone: entry.head === true ? 'warn' : 'accent',
-          label: entry.name,
-          active: entry.head === true,
-          run: () => { if (entry.head !== true) void checkout(entry) },
-        })))
-      }, [openMenuAt, branches, checkout])
+        openPickerAt(event, 'branch')
+      }, [openPickerAt])
 
       const topBar = E('div', { className: 'dig-topbar' },
         E(RepoSelect, {
-          t: t, repos: repoOptions, value: repoRoot,
+          t: t, repos: headerRepos, value: repoRoot,
           loading: repoState === null,
           onOpenMenu: openRepoMenu,
         }),
@@ -13667,9 +16057,29 @@ window.__ModuleLoader__.load({
         E('span', { className: 'dig-topbar-spacer' }),
         busy ? E('span', { className: 'dig-busy' }, t('status.busy')) : null)
 
+      /* Named git failures get a sentence that says what to do; the raw git
+         output stays one hover away in the title. The two recoverable ones
+         (push rejected, ff-only divergence) also offer the exact next action:
+         Sync = pull with merge, then push again. */
+      const errorHint = errorCode === 'push-rejected' ? t('error.pushRejected')
+        : errorCode === 'pull-diverged' ? t('error.pullDiverged')
+          : errorCode === 'pull-conflict' ? t('error.pullConflict')
+            : errorCode === 'pull-dirty' ? t('error.pullDirty')
+              : null
+      const syncFromBanner = () => {
+        setError(null)
+        setErrorCode(null)
+        void (async () => {
+          const pulled = await run('pull', { mode: 'merge' })
+          if (pulled !== undefined) await run('push', { confirm: true })
+        })()
+      }
       const banner = error === null ? null : E('div', { className: 'dig-banner' },
-        E('span', { className: 'dig-banner-text' }, error),
-        E('button', { type: 'button', className: 'dig-link', onClick: () => setError(null) }, t('error.dismiss')))
+        E('span', { className: 'dig-banner-text', title: errorHint === null ? undefined : error }, errorHint === null ? error : errorHint),
+        errorHint !== null && (errorCode === 'push-rejected' || errorCode === 'pull-diverged')
+          ? E('button', { type: 'button', className: 'dig-link', onClick: syncFromBanner }, t('more.sync'))
+          : null,
+        E('button', { type: 'button', className: 'dig-link', onClick: () => { setError(null); setErrorCode(null) } }, t('error.dismiss')))
 
       const noteBanner = note === null ? null : E('div', { className: 'dig-note' },
         E('span', { className: 'dig-banner-text' }, note),
@@ -13679,10 +16089,14 @@ window.__ModuleLoader__.load({
       /* The log and the commit detail are built separately because the explorer
          shows them SIDE BY SIDE (IDE style: list in the middle, detail on the
          right). Every other layout keeps the swap — one pane that is either the
-         log or the detail — which is all a narrow column can afford. */
+         log or the detail — which is all a narrow column can afford.
+         main's v0.27/v0.29 HistoryList options (branch scope, date format)
+         ride along here, so BOTH faces show the same list. */
       const logPane = E(HistoryList, {
         t: t, commits: commits, hasMore: hasMore, busy: busy, selectedHash: selectedHash,
+        dateFormat: readDateFormat(),
         hideSearch: compact, pathFilter: pathFilter, openMenuAt: openMenuAt,
+        branches: branches, scope: browseRev, onScopeChange: setHistoryScope,
         onPathFilter: (value) => setPathFilter(value),
         onSelect: (commit) => { void selectCommit(commit) },
         onMenu: commitMenu,
@@ -13701,9 +16115,11 @@ window.__ModuleLoader__.load({
          detail column passes nothing and gets no back button. */
       const detailPane = (back) => E(CommitDetail, {
         t: t, detail: detail, selectedPath: selectedPath,
-        onBack: back === true
-          ? () => { setView('history'); setSelectedPath(null); setPatch(''); setDiffContext(null) }
-          : undefined,
+        /* main's resetDiff funnel (v0.27): leaving the detail cancels an
+           in-flight patch request AND clears the 400ms dedupe window. `back`
+           is kept for the two callers (the swapping pane and the explorer's
+           detail column); the back button itself is CommitDetail's own guard. */
+        onBack: () => { setView('history'); setSelectedPath(null); resetDiff() },
         /* Plain click only highlights the file; the DOUBLE-click opens its
            diff (v0.18.3, one click model across every list). */
         onSelectFile: (file) => { setSelectedPath(file.path) },
@@ -13720,11 +16136,20 @@ window.__ModuleLoader__.load({
 
       const historyPane = view === 'detail' ? detailPane(true) : logPane
 
-      const diffPane = patch === '' && patchLoading === false ? null : E('div', { className: 'dig-diff-pane', 'data-pane': 'diff', style: paneStyle('diff'), onContextMenu: onDiffPaneContextMenu },
+      /* The compact chrome renders the diff INSTEAD of the changes list (the
+         narrow right column has no neighbour to show it beside), so it needs a
+         filling variant; every other chrome keeps the 55%-tall split pane. */
+      const diffPaneOf = (fill) => patch === '' && patchLoading === false ? null : E('div', { className: 'dig-diff-pane' + (fill === true ? ' dig-diff-pane-fill' : ''), 'data-pane': 'diff', style: fill === true ? null : paneStyle('diff'), onContextMenu: onDiffPaneContextMenu },
         E('div', { className: 'dig-diff-head' },
           E('span', { className: 'dig-mono dig-diff-path' }, selectedPath === null ? '' : selectedPath),
-          E('button', { type: 'button', className: 'dig-icon-btn', onClick: () => { setPatch(''); setSelectedPath(null); setDiffContext(null) } }, E(Icon, { name: 'close', size: 12 }))),
+          E('button', {
+            type: 'button',
+            className: 'dig-icon-btn',
+            title: t('toast.close'),
+            onClick: () => { resetDiff(); setSelectedPath(null); setSplitTab('history') },
+          }, E(Icon, { name: 'close', size: 12 }))),
         E(DiffBody, { patch: patch, loading: patchLoading, t: t }))
+      const diffPane = diffPaneOf(false)
 
       /* ---------- rail (IDE-style left action strip) ---------- */
 
@@ -13743,7 +16168,7 @@ window.__ModuleLoader__.load({
           run: () => {
             if (kind === 'checkout') { void run('checkout', { branch: entry.name }); return }
             if (kind === 'delete') { setDialog({ kind: 'deleteBranch', name: entry.name }); return }
-            if (kind === 'merge') { void run('merge', { branch: entry.name }); return }
+            if (kind === 'merge') { setDialog({ kind: 'merge', branch: entry.name }); return }
             if (kind === 'rebase') { void run('rebase', { onto: entry.name }); return }
             void compareWith(current, entry.name)
           },
@@ -13871,7 +16296,7 @@ window.__ModuleLoader__.load({
           ] },
           null,
           /* —— top-level sync (VS Code header row) —— */
-          { id: 'mm-pull', icon: 'pull', tone: 'accent', label: t('toolbar.pull'), disabled: remoteReady !== true || tracked !== true || blocked, reason, run: () => { void run('pull', { mode: 'ff-only' }) } },
+          { id: 'mm-pull', icon: 'pull', tone: 'accent', label: t('toolbar.pull'), disabled: remoteReady !== true || tracked !== true || blocked, reason, run: () => { void run('pull', { mode: 'merge' }) } },
           { id: 'mm-push', icon: 'push', tone: 'success', label: t('toolbar.push'), disabled: remoteReady !== true || blocked, reason, run: () => setDialog({ kind: 'push' }) },
           { id: 'mm-clone', icon: 'plus', tone: 'secondary', label: t('more.clone'), run: () => setDialog({ kind: 'clone' }) },
           { id: 'mm-checkout', icon: 'checkout', tone: 'accent', label: t('action.checkout') + '...', disabled: otherBranches.length === 0 || blocked, reason, run: (ev) => pickBranchMenu(ev, 'checkout') },
@@ -13884,6 +16309,7 @@ window.__ModuleLoader__.load({
             null,
             { id: 'c-undo', label: t('more.undoCommit'), disabled: commits.length === 0 || blocked, reason, run: () => setDialog({ kind: 'undoCommit' }) },
             { id: 'c-abort', label: t('more.rebaseAbort'), disabled: operation !== 'rebase', reason, run: () => { void run('rebaseAbort', {}) } },
+            { id: 'c-merge-abort', label: t('more.mergeAbort'), disabled: operation !== 'merge', reason, run: () => { void run('mergeAbort', {}) } },
             null,
             { id: 'c-staged-amend', label: t('more.commitStagedAmend'), disabled: stagedPaths.length === 0 || commits.length === 0, reason, run: () => setDialog({ kind: 'commitMsg', all: false, amend: true, sign: false }) },
             { id: 'c-all-amend', label: t('more.commitAllAmend'), disabled: allChangePaths.length === 0 || commits.length === 0, reason, run: () => setDialog({ kind: 'commitMsg', all: true, amend: true, sign: false }) },
@@ -13900,12 +16326,12 @@ window.__ModuleLoader__.load({
           ] },
           /* —— SCM ▸ Pull, Push ▸ —— */
           { id: 'sub-pullpush', icon: 'pull', tone: 'accent', label: t('more.pullpushGroup'), items: [
-            { id: 'pp-sync', label: t('more.sync'), disabled: remoteReady !== true || tracked !== true || blocked, reason, run: () => { void (async () => { await run('pull', { mode: 'ff-only' }); await run('push', { confirm: true }) })() } },
+            { id: 'pp-sync', label: t('more.sync'), disabled: remoteReady !== true || tracked !== true || blocked, reason, run: () => { void (async () => { await run('pull', { mode: 'merge' }); await run('push', { confirm: true }) })() } },
             { id: 'pp-sync-rebase', label: t('more.syncRebase'), disabled: remoteReady !== true || tracked !== true || blocked, reason, run: () => { void (async () => { await run('pull', { mode: 'rebase' }); await run('push', { confirm: true }) })() } },
             null,
-            { id: 'pp-pull', label: t('toolbar.pull'), disabled: remoteReady !== true || tracked !== true || blocked, reason, run: () => { void run('pull', { mode: 'ff-only' }) } },
+            { id: 'pp-pull', label: t('toolbar.pull'), disabled: remoteReady !== true || tracked !== true || blocked, reason, run: () => { void run('pull', { mode: 'merge' }) } },
             { id: 'pp-pull-rebase', label: t('more.pullRebase'), disabled: remoteReady !== true || tracked !== true || blocked, reason, run: () => { void run('pull', { mode: 'rebase' }) } },
-            { id: 'pp-pull-from', label: t('more.pullFrom'), disabled: remoteNames.length === 0, reason, run: pickRemote((name) => { void run('pull', { mode: 'ff-only', remote: name }) }) },
+            { id: 'pp-pull-from', label: t('more.pullFrom'), disabled: remoteNames.length === 0, reason, run: pickRemote((name) => { void run('pull', { mode: 'merge', remote: name }) }) },
             null,
             { id: 'pp-push', label: t('toolbar.push'), disabled: remoteReady !== true || blocked, reason, run: () => setDialog({ kind: 'push' }) },
             { id: 'pp-push-force', label: t('more.pushForce'), danger: true, disabled: remoteReady !== true || blocked, reason, run: () => setDialog({ kind: 'pushForce' }) },
@@ -13926,6 +16352,17 @@ window.__ModuleLoader__.load({
             { id: 'br-delete-remote', label: t('more.deleteRemoteBranch'), danger: true, disabled: remoteBranches.length === 0 || blocked, reason, run: (ev) => pickRemoteBranchMenu(ev) },
             null,
             { id: 'br-publish', label: t('more.publish'), disabled: remoteReady !== true || tracked === true || blocked, reason, run: () => { void run('push', { setUpstream: true, confirm: true }) } },
+            /* Upstream management for the CURRENT branch (issue #18): same
+               verbs as the branch-row menu, reachable without selecting a
+               branch first. Submenu built inside run() like rm-remove. */
+            { id: 'br-upstream', label: t('more.setUpstreamHead'), icon: 'fetch', tone: 'cyan', disabled: headBranch === '' || remoteBranches.length === 0 || blocked, reason, run: (ev) => openMenuAt(ev, remoteBranches.map((remoteEntry) => ({
+              id: 'head-upstream:' + remoteEntry.name,
+              icon: 'fetch', tone: 'cyan',
+              label: remoteEntry.name,
+              active: summary.upstream === remoteEntry.name,
+              run: () => { void run('branch-upstream', { branch: headBranch, upstream: remoteEntry.name }) },
+            }))) },
+            { id: 'br-unset-upstream', label: t('more.unsetUpstreamHead'), icon: 'undo', tone: 'secondary', disabled: headBranch === '' || tracked !== true || blocked, reason, run: () => { void run('branch-upstream', { branch: headBranch, unset: true }) } },
           ] },
           /* —— SCM ▸ Remote ▸ —— */
           { id: 'sub-remote', icon: 'fetch', tone: 'violet', label: t('more.remoteGroup'), items: [
@@ -13973,7 +16410,7 @@ window.__ModuleLoader__.load({
         onCommitDrag: dragCommitBox,
         onCommitEnd: endCommitBoxDrag,
         onCommitReset: resetCommitBox,
-        t: t, summary: summary, busy: busy, compact: compact, hideHeader: compact,
+        t: t, ctx: props.ctx, summary: summary, busy: busy, compact: compact, hideHeader: compact,
         groupBy: groupBy, sortKey: sortKey, onGroupBy: setGroupBy,
         foldedDirs: foldedDirs, onFoldedDirs: setFoldedDirs,
         onMoreMenu: moreMenu,
@@ -14030,7 +16467,7 @@ window.__ModuleLoader__.load({
       const pullPickedBranches = async (picked) => {
         for (const item of picked) {
           if (item.kind !== 'local') continue
-          if (item.entry.head === true) { await run('pull', { mode: 'ff-only' }); continue }
+          if (item.entry.head === true) { await run('pull', { mode: 'merge' }); continue }
           const upstream = item.entry.upstream
           if (upstream === null || upstream === undefined || upstream === '') continue
           const slash = upstream.indexOf('/')
@@ -14089,7 +16526,7 @@ window.__ModuleLoader__.load({
         }
         else if (spec.id === 'pull') {
           if (railPickedLocals.length > 0) { entry.label = fill(t('toolbar.pullPicked'), { n: railPickedLocals.length }); entry.disabled = blocked; entry.run = () => { void pullPickedBranches(railPickedLocals) } }
-          else { entry.disabled = remoteReady !== true || tracked !== true || blocked; entry.run = () => { void run('pull', { mode: 'ff-only' }) } }
+          else { entry.disabled = remoteReady !== true || tracked !== true || blocked; entry.run = () => { void run('pull', { mode: 'merge' }) } }
         }
         else if (spec.id === 'push') {
           if (railPickedLocals.length > 0) { entry.label = fill(t('toolbar.pushPicked'), { n: railPickedLocals.length }); entry.disabled = blocked; entry.run = () => setDialog({ kind: 'pushMany', items: railPickedLocals.map((item) => ({ name: item.name, upstream: item.entry.upstream })) }) }
@@ -14099,7 +16536,7 @@ window.__ModuleLoader__.load({
           /* One slot, two faces (user request 2026-10-19): in the explorer the
              branch button folds the tree column it owns; in the changes face
              there is no tree to fold, so the same button opens the explorer in
-             its own tab. The seat supplies the door — a host that cannot open
+             its own tab. The host supplies the door — a host that cannot open
              one hides the button instead of showing a dead one. */
           if (explore === true) { entry.active = treeOpen; entry.run = () => foldTree(!treeOpen) }
           else {
@@ -14107,6 +16544,10 @@ window.__ModuleLoader__.load({
             entry.available = typeof props.openExplore === 'function'
             entry.run = () => { props.openExplore() }
           }
+        }
+        else if (spec.id === 'worktrees') {
+          entry.active = view === 'worktrees'
+          entry.run = () => { resetDiff(); setView(view === 'worktrees' ? 'history' : 'worktrees') }
         }
         else if (spec.id === 'float') {
           // Label AND icon follow where the panel actually is: floating panels get
@@ -14234,23 +16675,19 @@ window.__ModuleLoader__.load({
           type: 'button',
           className: 'dig-rail-btn dig-rail-settings',
           'data-action': 'settings',
-          // On a host that serves the row Config this button opens the plugin's own
-          // settings page (where the card below the description edits the rail);
-          // on an older host it keeps the in-panel editor. Never both.
-          title: railSettingsTarget() === 'page' ? t('rail.openSettings') : t('rail.settings'),
-          onClick: () => {
-            const target = railSettingsTarget()
-            if (target === 'page') { openSettingsPage(); return }
-            setRailSettings(true)
-          },
+          title: t('rail.settings'),
+          onClick: () => setRailSettings(true),
         }, E(Icon, { name: 'settings', size: 18 })))
         return E('div', { className: vertical ? 'dig-rail' : 'dig-rail-row', ref: railHostRef }, children)
       }
 
       /* ---------- body per chrome ---------- */
 
+      const worktrees = summary !== null && Array.isArray(summary.worktrees) ? summary.worktrees : []
+
       /* The history↔diff separator only exists while a diff is on screen, and it
-         lives inside the middle pane — the diff is the pane below it. */
+         lives inside the middle pane — the diff is the pane below it. Only the
+         three-column chrome keeps that split (v0.26.1). */
       const diffGutter = diffPane === null ? null : gutter('diff', 'next')
 
       /* One branch tree, one wrapper per chrome (the class decides how the pane
@@ -14264,6 +16701,51 @@ window.__ModuleLoader__.load({
       const detailColumn = view === 'detail'
         ? detailPane(false)
         : E('div', { className: 'dig-empty' }, t('detail.pickHint'))
+      /* v0.26.1 — the stacked chromes (stack and compact) show the history list
+         and the diff in ONE tabbed window below the changes list: clicking a
+         file flips that window to the diff tab instead of splitting the diff out
+         and squeezing the history. `withCount` only matters on compact, whose
+         changes head (and with it the "changes {n}" badge) is hidden; `withTree`
+         adds the tree toggle that chrome has no other way to reach. */
+      const noDiff = patch === '' && patchLoading === false
+      const fillDiff = diffPaneOf(true)
+      const splitTabs = (withCount, withTree) => E('div', { className: 'dig-split-tabs' },
+        withCount === true ? E('span', { className: 'dig-compact-count' }, fill(t('seg.changes'), { n: dirty })) : null,
+        E('button', {
+          type: 'button',
+          className: 'dig-tab',
+          'data-active': splitTab === 'history' ? 'true' : 'false',
+          'data-action': 'history-tab',
+          onClick: () => setSplitTab('history'),
+        }, t('seg.history')),
+        E('button', {
+          type: 'button',
+          className: 'dig-tab',
+          'data-active': splitTab === 'diff' ? 'true' : 'false',
+          'data-action': 'diff-tab',
+          disabled: noDiff,
+          title: noDiff ? t('diff.empty') : t('diff.codeLabel'),
+          onClick: () => setSplitTab('diff'),
+        }, t('diff.codeLabel')),
+        E('span', { className: 'dig-topbar-spacer' }),
+        withTree === true ? E('button', {
+          type: 'button',
+          className: 'dig-icon-btn' + (treeOpen ? ' dig-icon-btn-active' : ''),
+          'data-action': 'tree',
+          'aria-pressed': treeOpen ? 'true' : 'false',
+          title: t('toolbar.tree'),
+          onClick: () => foldTree(!treeOpen),
+        }, E(Icon, { name: treeOpen ? 'eye' : 'eyeOff' })) : null)
+
+      /* v0.26.3: a tabbed window keeps BOTH panes mounted and only hides the
+         inactive one. Swapping the elements out unmounted the history list (and
+         the commit detail) on every diff switch, which threw away its scroll
+         position and the windowed list's state. `display:none` keeps the
+         scrollTop (verified in Chromium). The hidden diff measures 0 tall and
+         is dropped by measurePanes' `live > 0` filter, so pane geometry stays
+         honest. */
+      const diffActive = splitTab === 'diff' && fillDiff !== null
+      const tabPane = (active, node) => node === null ? null : E('div', { className: 'dig-tab-pane' + (active === true ? '' : ' dig-tab-pane-hidden') }, node)
 
       let body
       if (repoState === null) {
@@ -14275,49 +16757,73 @@ window.__ModuleLoader__.load({
         body = E('div', { className: 'dig-body', ref: bodyRef }, E(RepoPicker, {
           t: t, cwd: cwd === undefined ? '' : cwd, repos: repoOptions, onPick: pickRepo,
         }))
-      } else if (explore !== true) {
-        /* ---------- the DEFAULT face: 变更 + commit box (user request) -------
-           One column in every chrome: the branch tree and the commit list moved
-           into the explorer tab, so there is nothing to segment or fold here.
-           The chrome class stays on the body element (the layout probes read
-           the chrome off it), and the inline diff pane stays as the LAST-RESORT
-           fallback for a host where neither the base's diff tab nor the native
-           preview tab can take the diff. */
-        body = E('div', { className: 'dig-body dig-body-' + chrome + ' dig-body-changes', ref: bodyRef },
-          E('div', { className: 'dig-pane dig-pane-main' }, changesPane, diffGutter, diffPane))
-      } else if (compact) {
-        body = E('div', { className: 'dig-body dig-body-compact', ref: bodyRef },
-          E('div', { className: 'dig-compact-bar' },
-            E('span', { className: 'dig-topbar-spacer' }),
-            // Two-way on purpose: treeOpen is persisted, so a header button that
-            // only rendered while the tree was OPEN left a folded tree with no way
-            // back on this chrome (the rail now carries one too, for the others).
-            E('button', {
-              type: 'button',
-              className: 'dig-icon-btn' + (treeOpen ? ' dig-icon-btn-active' : ''),
-              'data-action': 'tree',
-              'aria-pressed': treeOpen ? 'true' : 'false',
-              title: t('toolbar.tree'),
-              onClick: () => foldTree(!treeOpen),
-            }, E(Icon, { name: treeOpen ? 'eye' : 'eyeOff' }))),
-          treeOpen ? branchTree('dig-compact-tree') : null,
-          treeOpen ? gutter('tree', 'prev') : null,
-          E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane))
-      } else if (columns) {
-        /* The IDE shape: tree | log | detail, the log and the detail at the SAME
-           time. The right column reuses the changes pane's width key and its
-           divider, so a user who widened either face keeps one width. */
-        body = E('div', { className: 'dig-body dig-body-columns', ref: bodyRef },
-          treeOpen ? branchTree('dig-pane dig-pane-tree') : null,
-          treeOpen ? gutter('tree', 'prev') : null,
-          E('div', { className: 'dig-pane dig-pane-main' }, logPane, diffGutter, diffPane),
-          gutter('changes', 'next'),
-          E('div', { className: 'dig-pane dig-pane-changes', 'data-pane': 'changes', style: paneStyle('changes') }, detailColumn))
+      } else if (explore === true) {
+        /* ---------- EXPLORER face: tree | log | detail (fork) ----------
+           The branch tree, the commit list and the commit detail live here,
+           in their own tab. columns puts all three side by side; the stacked
+           chromes fold them into tree above, log/detail in the middle and the
+           diff below. */
+        if (columns) {
+          body = E('div', { className: 'dig-body dig-body-columns dig-body-explore', ref: bodyRef },
+            treeOpen ? branchTree('dig-pane dig-pane-tree') : null,
+            treeOpen ? gutter('tree', 'prev') : null,
+            E('div', { className: 'dig-pane dig-pane-main' }, logPane, diffGutter, diffPane),
+            gutter('changes', 'next'),
+            E('div', { className: 'dig-pane dig-pane-changes', 'data-pane': 'changes', style: paneStyle('changes') }, detailColumn))
+        } else if (compact) {
+          body = E('div', { className: 'dig-body dig-body-compact dig-body-explore', ref: bodyRef },
+            E('div', { className: 'dig-compact-bar' },
+              E('span', { className: 'dig-topbar-spacer' }),
+              E('button', {
+                type: 'button',
+                className: 'dig-icon-btn' + (treeOpen ? ' dig-icon-btn-active' : ''),
+                'data-action': 'tree',
+                'aria-pressed': treeOpen ? 'true' : 'false',
+                title: t('toolbar.tree'),
+                onClick: () => foldTree(!treeOpen),
+              }, E(Icon, { name: treeOpen ? 'eye' : 'eyeOff' }))),
+            treeOpen ? branchTree('dig-compact-tree') : null,
+            treeOpen ? gutter('tree', 'prev') : null,
+            E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane))
+        } else {
+          body = E('div', { className: 'dig-body dig-body-stack dig-body-explore', ref: bodyRef },
+            treeOpen ? branchTree('dig-pane dig-pane-tree-stack') : null,
+            treeOpen ? gutter('tree', 'prev') : null,
+            E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane))
+        }
+      } else if (view === 'worktrees') {
+        body = E('div', { className: 'dig-body dig-body-worktrees', ref: bodyRef }, E(WorktreesPane, {
+          t: t,
+          worktrees: worktrees,
+          busy: busy,
+          onBack: () => setView('history'),
+          onCreate: () => setDialog({ kind: 'worktreeAdd' }),
+          onPrune: () => setDialog({ kind: 'worktreePrune' }),
+          onOpen: pickRepo,
+          onCopy: (path) => copyValues([path]),
+          onRemove: (tree) => setDialog({ kind: 'worktreeRemove', tree: tree, force: false }),
+        }))
       } else {
-        body = E('div', { className: 'dig-body dig-body-stack', ref: bodyRef },
-          treeOpen ? branchTree('dig-pane dig-pane-tree-stack') : null,
-          treeOpen ? gutter('tree', 'prev') : null,
-          E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane))
+        /* ---------- DEFAULT face ----------
+           fork's single column (changes list + the draggable IDEA commit box) is
+           the DEFAULT look: the row-Config switch `showHistory` (default OFF,
+           user request 2026-11-06) decides whether main's v0.26 tabbed
+           history | diff window appears below it. When hidden, the inline diff
+           pane goes back under the changes list, so clicking a changed file
+           still opens a diff. The branch tree and the commit detail belong to
+           the explorer face; the chrome token stays on the body because the
+           layout probes read it there. */
+        const showHistory = showHistoryEnabled()
+        body = E('div', { className: 'dig-body dig-body-' + chrome + ' dig-body-changes', ref: bodyRef },
+          showHistory === true
+            ? E('div', { className: 'dig-pane dig-pane-changes-stack', 'data-pane': 'changes', style: paneStyle('changes') }, changesPane)
+            : E('div', { className: 'dig-pane dig-pane-main' }, changesPane, diffGutter, diffPane),
+          showHistory === true
+            ? E('div', { className: 'dig-pane dig-pane-main' },
+              splitTabs(compact, false),
+              tabPane(diffActive === false, historyPane),
+              fillDiff === null ? null : tabPane(diffActive, fillDiff))
+            : null)
       }
 
       /* ---------- overlays ---------- */
@@ -14331,6 +16837,37 @@ window.__ModuleLoader__.load({
           boundsHeight: menu.boundsHeight,
           items: menu.items,
           onClose: () => setMenu(null),
+        }))
+      }
+      if (picker !== null) {
+        /* The panel header's repo/branch switchers share the ContextMenu
+           surface (same clamping and outside-click), but their body is the
+           searchable picker instead of an item list. */
+        const branchList = branches === null ? [] : branches.local
+        overlays.push(E(ContextMenu, {
+          key: 'picker',
+          anchor: { x: picker.x, y: picker.y },
+          boundsWidth: picker.boundsWidth,
+          boundsHeight: picker.boundsHeight,
+          items: [],
+          body: E(SearchPicker, {
+            key: picker.kind,
+            mode: picker.kind,
+            t: t,
+            repos: picker.kind === 'repo' ? headerRepos : [],
+            branches: picker.kind === 'branch' ? branchList : [],
+            current: picker.kind === 'repo' ? repoRoot : (branches === null ? '' : branches.branch),
+            onPick: (value, row) => {
+              setPicker(null)
+              if (picker.kind === 'repo') {
+                if (value !== repoRoot) pickRepo(value)
+                return
+              }
+              if (row.head !== true) void checkout(row)
+            },
+            onClose: () => setPicker(null),
+          }),
+          onClose: () => setPicker(null),
         }))
       }
       if (railSettings === true) {
@@ -14351,13 +16888,13 @@ window.__ModuleLoader__.load({
           onClose: () => setRailSettings(false),
         }))
       }
-      if (dialog !== null && (dialog.kind === 'newBranch' || dialog.kind === 'renameBranch' || dialog.kind === 'newTag' || dialog.kind === 'deleteTag' || dialog.kind === 'commitMsg')) {
-        const titles = { newBranch: t('prompt.newBranch'), renameBranch: t('prompt.renameBranch'), newTag: t('prompt.newTag'), deleteTag: t('prompt.deleteTag'), commitMsg: t('prompt.commitMessage') }
+      if (dialog !== null && (dialog.kind === 'newBranch' || dialog.kind === 'createTracking' || dialog.kind === 'renameBranch' || dialog.kind === 'newTag' || dialog.kind === 'deleteTag' || dialog.kind === 'commitMsg')) {
+        const titles = { newBranch: t('prompt.newBranch'), createTracking: t('prompt.createTracking'), renameBranch: t('prompt.renameBranch'), newTag: t('prompt.newTag'), deleteTag: t('prompt.deleteTag'), commitMsg: t('prompt.commitMessage') }
         overlays.push(E(PromptDialog, {
           key: 'prompt',
           title: titles[dialog.kind],
           placeholder: dialog.from === undefined ? t('prompt.fromHead') : dialog.from,
-          initialValue: dialog.kind === 'renameBranch' ? dialog.from : '',
+          initialValue: dialog.kind === 'renameBranch' ? dialog.from : (dialog.kind === 'createTracking' ? dialog.name : ''),
           okLabel: t('confirm.ok'), cancelLabel: t('confirm.cancel'),
           onCancel: () => setDialog(null),
           onSubmit: (value) => { void submitDialog(dialog, value) },
@@ -14372,6 +16909,42 @@ window.__ModuleLoader__.load({
           okLabel: t('clone.run'), cancelLabel: t('confirm.cancel'),
           onCancel: () => setDialog(null),
           onSubmit: (url, dir) => { setDialog(null); void run('clone', { url: url, dir: dir }) },
+        }))
+      }
+      if (dialog !== null && dialog.kind === 'merge') {
+        overlays.push(E(MergeDialog, {
+          key: 'merge', t: t, branch: dialog.branch,
+          onCancel: () => setDialog(null),
+          onSubmit: (mode) => { setDialog(null); mergeWithMode(dialog.branch, mode) },
+        }))
+      }
+      if (dialog !== null && dialog.kind === 'worktreeAdd') {
+        overlays.push(E(WorktreeDialog, {
+          key: 'worktreeAdd', t: t,
+          title: t('worktrees.new'),
+          cancelLabel: t('confirm.cancel'),
+          onSubmit: (draft) => createWorktree(draft),
+        }))
+      }
+      if (dialog !== null && dialog.kind === 'worktreeRemove') {
+        const force = dialog.force === true
+        overlays.push(E(ConfirmDialog, {
+          key: 'worktreeRemove', t: t,
+          title: t('worktrees.remove'),
+          text: fill(force === true ? t('worktrees.removeDirty') : t('worktrees.removeConfirm'), { path: dialog.tree.path }),
+          okLabel: t('worktrees.remove'), cancelLabel: t('confirm.cancel'),
+          onCancel: () => setDialog(null),
+          onConfirm: () => { const tree = dialog.tree; const forced = force; void removeWorktree(tree, forced) },
+        }))
+      }
+      if (dialog !== null && dialog.kind === 'worktreePrune') {
+        overlays.push(E(ConfirmDialog, {
+          key: 'worktreePrune', t: t,
+          title: t('worktrees.prune'),
+          text: t('worktrees.pruneConfirm'),
+          okLabel: t('worktrees.prune'), cancelLabel: t('confirm.cancel'),
+          onCancel: () => setDialog(null),
+          onConfirm: () => { void pruneWorktrees() },
         }))
       }
       /* SCM ▸ additions (v0.15): each destructive one is a ConfirmDialog whose
@@ -14734,15 +17307,10 @@ window.__ModuleLoader__.load({
       // gb-card pattern the sibling plugins draw.
       '.dig-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md,12px);background:var(--dsw-alias-bg-layer-3);transition:border-color .16s,background .16s}',
       '.dig-card:hover{border-color:var(--dsw-alias-label-dimmed)}',
-      '.dig-card.dig-card-open{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}',
-      '.dig-card-header{width:100%;appearance:none;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--dsw-radius-md,12px)}',
-      '.dig-card-header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}',
-      '.dig-card-header-flat{cursor:default}',
+      '.dig-card-header{width:100%;border:0;background:none;font:inherit;color:inherit;text-align:left;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--dsw-radius-md,12px)}',
       '.dig-card-head-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}',
       '.dig-card-name{font-size:15px;font-weight:600;line-height:1.4;color:var(--dsw-alias-label-primary)}',
       '.dig-card-desc{font-size:13px;line-height:1.5;color:var(--dsw-alias-label-tertiary)}',
-      '.dig-card-chevron{flex:none;display:inline-flex;color:var(--dsw-alias-label-tertiary);transition:transform .16s}',
-      '.dig-card-chevron.dig-card-chevron-open{transform:rotate(180deg)}',
       '.dig-card-body{padding:8px 16px 16px}',
       '.dig-card-page{max-width:640px}',
       '.dig-settings{display:flex;flex-direction:column;gap:8px;min-width:0}',
@@ -14810,6 +17378,22 @@ window.__ModuleLoader__.load({
       '.dig-pane-main{flex:1;min-width:0}',
       '.dig-pane-changes{width:290px;flex:none;border-left:1px solid var(--dsw-alias-border-l2)}',
       '.dig-compact-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;flex:none}',
+      '.dig-pane-changes-stack{max-height:46%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      /* v0.26.1: both stacked chromes show history and diff in one tabbed
+         window; the strip is the window's tab bar (the compact chrome also
+         hosts the changes count and the tree toggle in it). */
+      '.dig-split-tabs{display:flex;align-items:center;gap:4px;padding:4px 6px;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      /* v0.26.3: the tabbed window's bodies stay mounted; the inactive one is
+         hidden so the history list keeps its scroll position and the detail
+         keeps its expanded state. */
+      '.dig-tab-pane{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0}',
+      '.dig-tab-pane-hidden{display:none}',
+      '.dig-compact-count{color:var(--dsw-alias-label-secondary);font-weight:500;font-size:11px;padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}',
+      '.dig-tab{border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11px;font-weight:500;padding:2px 10px;border-radius:var(--dsw-radius-sm,8px);cursor:pointer;white-space:nowrap;flex:none}',
+      '.dig-tab:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.dig-tab[data-active="true"]{background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary)}',
+      '.dig-tab:disabled{opacity:.45;cursor:default}',
+      '.dig-tab:disabled:hover{background:transparent;color:var(--dsw-alias-label-secondary)}',
       '.dig-compact-tree{max-height:42%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
       // A divider: an 8px hit area (a fingertip needs it) painted as a 1px hairline
       // that lights up on hover, focus or while dragging. touch-action:none is what
@@ -14825,6 +17409,13 @@ window.__ModuleLoader__.load({
       '.dig-pane-dragging,.dig-pane-dragging *{user-select:none}',
       '.dig-pane-dragging-v{cursor:col-resize}',
       '.dig-pane-dragging-h{cursor:row-resize}',
+      '.dig-seg{display:inline-flex;gap:2px;padding:2px;border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-interactive-bg-hover);flex:none}',
+      '.dig-seg-item{border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-weight:500;padding:2px 10px;border-radius:calc(var(--dsw-radius-sm,8px) - 2px);cursor:pointer;white-space:nowrap}',
+      '.dig-seg-item:hover{color:var(--dsw-alias-label-primary)}',
+      '.dig-seg-item[data-active="true"]{background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary)}',
+      /* Issue #25: four flags do not fit on one line in every dictionary. */
+      '.dig-merge-dialog .dig-seg{display:flex;flex-wrap:wrap}',
+      '.dig-merge-hint{font-size:12px;line-height:1.5}',
       '.dig-search{padding:4px 6px;flex:none}',
       '.dig-input{width:100%;box-sizing:border-box;padding:4px 6px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;outline:none}',
       '.dig-input::placeholder{color:var(--dsw-alias-label-tertiary)}',
@@ -14839,6 +17430,46 @@ window.__ModuleLoader__.load({
       '.dig-picker-name{flex:none;font-weight:600}',
       '.dig-picker-kind{color:var(--dsw-alias-label-tertiary);flex:none}',
       '.dig-picker-path{color:var(--dsw-alias-label-tertiary);margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50%}',
+      /* v0.27 searchable repo / branch picker (panel header + composer pill).
+         The list scrolls, the search field stays pinned on top.
+         v0.27.1: the composer popover follows dsh-any-background's input
+         opacity (--dsh-any-op-menu-cordis) instead of pinning a solid layer.
+         v0.27.2: the search strip and input are transparent on purpose. They
+         used to inherit a pinned --dsw-alias-bg-layer-* from .dig-cs-menu,
+         which stacked a second solid surface over the menu and ignored the
+         plugin's alpha (white field, wallpaper nowhere in sight).
+         The popover itself stacks the plugin fill one extra time: 37% alpha
+         alone leaves the list too ghostly over a busy wallpaper, while a
+         second 37% pass reads as a surface without becoming opaque. This is
+         unconditional (the plugin may keep input blur at 0, so there is no
+         html.dab-input-frost marker); without the plugin the extra layer is
+         transparent over the stock opaque fallback. */
+      '.dig-pick{display:flex;flex-direction:column;gap:2px;width:300px;max-width:100%;min-height:0;color:var(--dsw-alias-label-primary)}',
+      '.dig-pick-search{position:sticky;top:0;z-index:1;padding:2px 2px 6px;background:transparent}',
+      /* v0.27.2: the search field never paints its own fill. It sits directly on
+         the popover surface, so it fades and frosts with the menu instead of
+         stacking a second opaque layer over it (the old layer pin made this
+         field solid white while the Git panel's commit box stayed transparent). */
+      '.dig-pick-input{background:transparent}',
+      '.dig-pick-list{display:flex;flex-direction:column;gap:1px;overflow:auto;min-height:0;max-height:300px;overscroll-behavior:contain}',
+      '.dig-pick-row{display:flex;align-items:center;gap:6px;width:100%;padding:4px 8px;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:inherit;font:inherit;font-size:13px;text-align:left;cursor:pointer;min-width:0}',
+      '.dig-pick-row:hover:not(:disabled),.dig-pick-folder:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dig-pick-row-active{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dig-pick-row-current{color:var(--dsw-alias-brand-primary)}',
+      '.dig-pick-row-disabled{opacity:.45;cursor:default}',
+      '.dig-pick-row-head{font-weight:600}',
+      '.dig-pick-folder{display:flex;align-items:center;gap:5px;width:100%;padding:3px 8px;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;text-align:left;cursor:pointer;min-width:0}',
+      '.dig-pick-chevron{display:inline-flex;flex:none;transition:transform .12s ease;opacity:.6}',
+      '.dig-pick-chevron-open{transform:rotate(90deg)}',
+      '.dig-pick-main{display:flex;flex-direction:column;min-width:0;flex:1}',
+      '.dig-pick-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.dig-pick-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:12px}',
+      '.dig-pick-icon{display:inline-flex;flex:none}',
+      '.dig-pick-badge{margin-left:auto;flex:none;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 6px;border-radius:999px;corner-shape:round;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);font-size:10px;line-height:16px}',
+      '.dig-pick-note{flex:none;color:var(--dsw-alias-label-tertiary);font-size:11px}',
+      '.dig-pick-count{margin-left:auto;flex:none;color:var(--dsw-alias-label-tertiary);font-size:11px;font-variant-numeric:tabular-nums}',
+      '.dig-pick-empty{padding:10px 8px;color:var(--dsw-alias-label-tertiary);font-size:12px}',
+      '.dig-cs-menu.dig-cs-picker{width:300px;min-width:260px;max-width:340px;max-height:360px;padding:4px;overflow:hidden;background-color:var(--dsh-any-op-menu-cordis,var(--dsw-static-neutral-bluish-00,#fff));background-image:linear-gradient(var(--dsh-any-op-menu-cordis,transparent),var(--dsh-any-op-menu-cordis,transparent))}',
       /* position:relative: the marquee box paints against this wrapper (the
          scroll container is offset by the search field — same rule as
          .dig-history above). */
@@ -14861,6 +17492,11 @@ window.__ModuleLoader__.load({
       '.dig-folder-head:hover{color:var(--dsw-alias-label-primary)}',
       '.dig-folder-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.dig-count{margin-left:auto;opacity:.6;font-weight:400}',
+      /* v0.26.2: the changes head is the one count that belongs to the WORD, not
+         to the right edge — .dig-count pushes itself to the far right (fine for the
+         branch groups), so the changes header opts back in to sitting right after
+         its title (user report: the number floated in the middle of the row). */
+      '.dig-changes-head .dig-count{margin-left:0}',
       '.dig-chevron{display:inline-flex;transform:rotate(-90deg);transition:transform .12s ease}',
       '.dig-chevron-open{transform:rotate(0deg)}',
       '.dig-row{display:flex;align-items:center;gap:5px;padding:2px 8px;cursor:pointer;white-space:nowrap;overflow:hidden}',
@@ -14881,12 +17517,22 @@ window.__ModuleLoader__.load({
          tone) via the host's body[data-ds-dark-theme] switch. Selection reads
          as gray on both themes, wallpaper/frost stays visible, never white. */
       '.dig-row-selected{background:color-mix(in srgb,var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover)) 58%,var(--dsw-static-neutral-bluish-75,var(--dsw-alias-bg-layer-3)) 42%);color:var(--dsw-alias-label-primary);box-shadow:inset 2px 0 0 var(--dsw-alias-brand-primary)}',
-      'body[data-ds-dark-theme] .dig-row-selected{background:color-mix(in srgb,var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover)) 58%,var(--dsw-static-neutral-bluish-800,var(--dsw-alias-bg-layer-3)) 42%)}',
+      /* v0.21.2: the checked-out row is amber; selecting it must not wash that
+         out to primary — the selection is a frame, not a recolour. */
+      '.dig-row-head.dig-row-selected{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
+      /* v0.21.2 (user): on the dark theme the 58/42 charcoal mix still read as
+         a bright frame over a wallpaper — the selection should be a BLACK frame
+         that the wallpaper shows through, not a lit one. rgba(0,0,0,.55) is
+         opaque enough to hold the amber/primary label, transparent enough to
+         stay in the any-background story. The light theme keeps the host gray. */
+      'body[data-ds-dark-theme] .dig-row-selected{background:rgba(0,0,0,.55)}',
       '.dig-row-remote .dig-row-label{color:var(--dsw-alias-label-secondary);font-weight:500}',
       '.dig-row-tag .dig-row-label{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-weight:500}',
       '.dig-row-head .dig-row-label{font-weight:600}',
       '.dig-row-icon{display:inline-flex;flex:none;opacity:.9}',
       '.dig-row-label{overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;font-weight:600}',
+      // Inline tracking target (issue #18): flex:none so it never starves the
+      // label, capped and ellipsised so a long origin/… cannot push the badges.
       '.dig-row-sub{color:var(--dsw-alias-label-tertiary);font-size:11px;flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis}',
       '.dig-row-dir{margin-left:auto;opacity:.75}',
       '.dig-badge{font-size:10px;padding:0 5px;border-radius:999px;corner-shape:round;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);flex:none}',
@@ -14903,7 +17549,10 @@ window.__ModuleLoader__.load({
          filter bar, and painting from the wrong rect was the v0.19.2 drift. */
       '.dig-history{display:flex;flex-direction:column;min-height:0;flex:1;position:relative}',
       '.dig-history-scroll{flex:1;overflow:auto}',
-      '.dig-commit{display:flex;align-items:center;gap:6px;padding:1px 8px 1px 0;cursor:pointer;height:26px;overflow:hidden}',
+      // The row's left edge follows the bars above it (filter row / compact
+      // switch: 4px 6px padding), so the time column and the graph start on the
+      // same inset as the input box instead of flush against the pane edge.
+      '.dig-commit{display:flex;align-items:center;gap:6px;padding:1px 8px 1px 6px;cursor:pointer;height:26px;overflow:hidden}',
       '.dig-commit:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       /* Same theme-aware gray mix as .dig-row-selected (see it). */
       '.dig-commit-selected{background:color-mix(in srgb,var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover)) 58%,var(--dsw-static-neutral-bluish-75,var(--dsw-alias-bg-layer-3)) 42%);color:var(--dsw-alias-label-primary);box-shadow:inset 2px 0 0 var(--dsw-alias-brand-primary)}',
@@ -14918,6 +17567,9 @@ window.__ModuleLoader__.load({
          class only marks them for tests/probes. */
       '.dig-graph{flex:none}',
       '.dig-commit-date{color:var(--dsw-alias-label-tertiary);flex:none;width:54px;font-variant-numeric:tabular-nums;font-weight:500}',
+      /* Absolute mode (#26): `YYYY/MM/DD HH:mm` is the widest shape, and a fixed
+         width keeps every row's author/graph columns aligned. */
+      '.dig-commit-date[data-format="absolute"]{width:116px}',
       '.dig-commit-author{color:var(--dsw-alias-label-secondary);flex:none;width:96px;overflow:hidden;text-overflow:ellipsis;font-weight:500}',
       '.dig-commit-subject{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}',
       '.dig-commit-fill{flex:1 1 0;min-width:0}',
@@ -15028,6 +17680,7 @@ window.__ModuleLoader__.load({
       '.dig-detail-files{display:flex;flex-direction:column}',
       '.dig-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}',
       '.dig-diff-pane{flex:none;max-height:55%;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--dsw-alias-border-l2)}',
+      '.dig-diff-pane-fill{flex:1;max-height:none;border-top:none}',
       '.dig-diff-head{display:flex;align-items:center;gap:8px;padding:3px 8px;color:var(--dsw-alias-label-tertiary);flex:none;min-width:0}',
       '.dig-diff-path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}',
       '.dig-diff{flex:1;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:calc(12px + var(--dsh-code-font-delta, 0px));line-height:1.5;font-weight:500;min-height:0}',
@@ -15186,12 +17839,24 @@ window.__ModuleLoader__.load({
       // pick a checkout on the arrow): pulled tight against the name it still
       // reads as one control, but the two hover targets stay separate.
       '.dig-cs-caret{padding:0 4px;margin-left:-2px}',
-      '.dig-cs-name{overflow:hidden;text-overflow:ellipsis;max-width:150px}',
+      '.dig-cs-name{overflow:hidden;text-overflow:ellipsis;max-width:260px;white-space:nowrap;display:inline-block;vertical-align:bottom}',
+      '.dig-cs-mrun{display:inline-flex;text-overflow:clip;-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 14px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 14px),transparent)}',
+      '.dig-cs-mrun .dig-cs-run{display:inline-flex;flex:none;will-change:transform}',
+      '.dig-cs-mrun .dig-cs-chunk{flex:none;white-space:nowrap;padding-right:28px}',
+      '.dig-cs-mrun:hover .dig-cs-run{animation:dig-cs-marquee var(--dig-cs-marquee-dur,10s) linear infinite}',
+      '@keyframes dig-cs-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}',
       '.dig-cs-pill svg{flex:none}',
       '.dig-cs-badge{display:inline-flex;align-items:center;font-size:12px;line-height:20px;font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 3px;font-weight:500}',
       '.dig-cs-changes{color:var(--dsw-alias-state-warn-primary)}',
       '.dig-cs-behind{color:var(--dsw-alias-state-business-primary)}',
       '.dig-cs-ahead{color:var(--dsw-alias-state-success-primary)}',
+      /* v0.19.12: file-level add/del split rides INSIDE the ± chip at one
+         step down (11px) so the two +/− groups read as two levels — small
+         green/red = FILES, full-size green/red = LINES. */
+      '.dig-cs-split{font-size:11px;line-height:20px;font-variant-numeric:tabular-nums;margin-left:2px}',
+      '.dig-cs-add{color:var(--dsw-alias-state-success-primary)}',
+      '.dig-cs-del{color:var(--dsw-alias-state-error-primary)}',
+      '.dig-cs-lines{display:inline-flex;align-items:center;gap:2px;margin-left:5px}',
       '.dig-cs-error{display:inline-flex;align-items:center;color:var(--dsw-alias-state-error-primary);font-size:12px;padding:0 3px;cursor:help}',
       // .dig-cs-menu opens upward (the composer sits at the bottom of the UI). The surface
       // carries no backdrop-filter of its own: the data-cordis-panel attribute opts the popover
@@ -15201,12 +17866,13 @@ window.__ModuleLoader__.load({
       // surface sampling misses and that remap would otherwise IVCT to transparent).
       // --dsh-any-op-menu-cordis at the input opacity tier, plus its input blur rule), so fill
       // opacity and frost follow the composer card exactly. Without that plugin the
-      // theme-owned menu material applies. The light re-declaration on the rule below
-      // pins the LIGHT static surface (see the .dig-selection-bar note); dark themes
-      // need the matching override right after it, or the menu renders white under
-      // light text (issue #15).
-      '.dig-cs-menu{--dsw-alias-bg-layer-1:var(--dsw-static-neutral-bluish-00,#fff);--dsw-alias-bg-layer-2:var(--dsw-static-neutral-bluish-00,#fff);position:absolute;bottom:calc(100% + 6px);left:0;z-index:60;min-width:220px;max-width:320px;max-height:320px;overflow:auto;padding:6px;border-radius:var(--dsw-radius-lg,12px);background:var(--dsh-any-op-menu-cordis,var(--dsw-alias-bg-layer-2));box-shadow:var(--dsw-elevation-prominent,var(--dsw-elevation-dimmed,0 8px 24px rgba(0,0,0,.2)));color:var(--dsw-alias-label-secondary);font-size:12px;line-height:20px}',
-      'body[data-ds-dark-theme] .dig-cs-menu{--dsw-alias-bg-layer-1:var(--dsw-static-neutral-bluish-875,#232324);--dsw-alias-bg-layer-2:var(--dsw-static-neutral-bluish-850,#2c2c2e)}',
+      // theme-owned menu material applies. The static fallback on the rule below lives
+      // on the menu surface only: re-declaring --dsw-alias-bg-layer-* here would inherit
+      // into the search field and pin it back to an opaque surface (the v0.27.1 white
+      // field bug). Dark themes get the matching fallback right after it, or the menu
+      // renders white under light text (issue #15).
+      '.dig-cs-menu{position:absolute;bottom:calc(100% + 6px);left:0;z-index:60;min-width:220px;max-width:320px;max-height:320px;overflow:auto;padding:6px;border-radius:var(--dsw-radius-lg,12px);background-color:var(--dsh-any-op-menu-cordis,var(--dsw-static-neutral-bluish-00,#fff));box-shadow:var(--dsw-elevation-prominent,var(--dsw-elevation-dimmed,0 8px 24px rgba(0,0,0,.2)));color:var(--dsw-alias-label-secondary);font-size:12px;line-height:20px}',
+      'body[data-ds-dark-theme] .dig-cs-menu{background-color:var(--dsh-any-op-menu-cordis,var(--dsw-static-neutral-bluish-850,#2c2c2e))}',
       '.dig-cs-item{display:flex;align-items:center;gap:8px;width:100%;padding:5px 10px;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px;cursor:pointer;text-align:left}',
       '.dig-cs-item:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
       '.dig-cs-item:disabled{opacity:.5;cursor:default}',
@@ -15218,6 +17884,66 @@ window.__ModuleLoader__.load({
       '.dig-cs-item-note{color:var(--dsw-alias-label-tertiary);font-size:11px;flex:none}',
       '.dig-cs-item-counts{display:inline-flex;gap:5px;margin-left:auto;flex:none;font-variant-numeric:tabular-nums;font-size:11px}',
       '.dig-cs-static{color:var(--dsw-alias-label-tertiary);cursor:default}',
+      /* ---- ModelRoutePicker (issue #19) ---- */
+      '.dig-mrp-root{position:relative;display:inline-flex;flex:none;min-width:0}',
+      '.dig-mrp-trigger{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:220px;font-size:11px;line-height:16px}',
+      '.dig-mrp-trigger[data-open=true]{color:var(--dsw-alias-brand-primary)}',
+      '.dig-mrp-badge{flex:none;display:inline-block;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;padding:0 6px;border-radius:999px;corner-shape:round;font-size:10px;line-height:15px;font-weight:500;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary)}',
+      '.dig-mrp-badge[data-tone=info]{background:color-mix(in srgb,var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary)) 12%,transparent);color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary))}',
+      '.dig-mrp-badge[data-tone=success]{background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 12%,transparent);color:var(--dsw-alias-state-success-primary)}',
+      '.dig-mrp-badge[data-tone=warning]{background:color-mix(in srgb,var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary)) 12%,transparent);color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
+      '.dig-mrp-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.dig-mrp-effort{flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:10px}',
+      '.dig-mrp-menu{max-width:300px}',
+      '.dig-mrp-row .dig-cs-item-name{display:none}',
+      '.dig-mrp-row-label{flex:none}',
+      '.dig-mrp-row-value{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:auto;color:var(--dsw-alias-label-tertiary)}',
+      '.dig-mrp-row-arrow{flex:none;display:inline-flex;color:var(--dsw-alias-label-tertiary)}',
+      '.dig-mrp-back{color:var(--dsw-alias-label-tertiary)}',
+      '.dig-mrp-group{padding:6px 10px 2px;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:14px}',
+      '.dig-mrp-empty{padding:10px;color:var(--dsw-alias-label-tertiary);font-size:12px}',
+      '.dig-mrp-error{padding:6px 10px;margin-bottom:2px;border-radius:var(--dsw-radius-sm,8px);background:rgba(220,38,38,.12);color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:16px;word-break:break-word}',
+      'body[data-ds-dark-theme] .dig-mrp-error{background:rgba(248,113,113,.16)}',
+      /* ---- worktrees view (v0.22.0) ---- */
+      '.dig-body-worktrees{flex-direction:column;min-width:0}',
+      '.dig-wt{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0}',
+      '.dig-wt-head{flex:none;display:flex;align-items:center;gap:5px;padding:4px 8px;min-height:26px;box-sizing:border-box;border-bottom:1px solid var(--dsw-alias-border-l1)}',
+      '.dig-wt-title{font-weight:600;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.dig-wt-count{flex:none;min-width:16px;padding:0 5px;border-radius:999px;corner-shape:round;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);font-size:10px;line-height:16px;text-align:center;font-variant-numeric:tabular-nums}',
+      '.dig-wt-head .dig-icon-btn{flex:none}',
+      '.dig-wt-scroll{flex:1;min-height:0;overflow:auto;padding:6px;display:flex;flex-direction:column;gap:4px}',
+      '.dig-wt-row{display:flex;align-items:flex-start;gap:4px;flex-wrap:wrap;padding:7px 8px;min-width:0;border:1px solid transparent;border-radius:var(--dsw-radius-md,10px);background:var(--dsw-alias-bg-layer-1)}',
+      '.dig-wt-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dig-wt-row-current{border-color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary));background:var(--dsw-alias-bg-layer-2)}',
+      '.dig-wt-row-current:hover{background:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-layer-2))}',
+      '.dig-wt-row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}',
+      '.dig-wt-top{display:flex;align-items:center;gap:5px;min-width:0}',
+      '.dig-wt-top svg{flex:none;color:var(--dsw-alias-label-secondary)}',
+      '.dig-wt-branch{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-primary);font-weight:600}',
+      '.dig-wt-badges{display:inline-flex;flex-wrap:wrap;gap:3px;flex:none;margin-left:2px}',
+      '.dig-wt-badge{display:inline-flex;align-items:center;padding:0 5px;border-radius:999px;corner-shape:round;font-size:10px;line-height:15px;font-weight:500;white-space:nowrap}',
+      '.dig-wt-badge-current{background:var(--dsw-alias-state-success-primary);color:var(--dsw-alias-label-primary-inverted,#fff)}',
+      '.dig-wt-badge-primary{background:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary));color:var(--dsw-alias-label-primary-inverted,#fff)}',
+      '.dig-wt-badge-locked{background:var(--dsw-alias-state-warn-primary);color:var(--dsw-alias-label-primary-inverted,#fff)}',
+      '.dig-wt-badge-prunable{background:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-label-primary-inverted,#fff)}',
+      '.dig-wt-path{color:var(--dsw-alias-label-secondary);font-size:11px;line-height:15px;word-break:break-all}',
+      '.dig-wt-meta{display:flex;align-items:center;gap:6px;min-width:0;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:14px}',
+      '.dig-wt-hash{flex:none;letter-spacing:.02em}',
+      '.dig-wt-reason{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.dig-wt-row-actions{flex:none;display:flex;align-items:center;gap:1px;margin-left:auto;opacity:.7}',
+      '.dig-wt-row:hover .dig-wt-row-actions,.dig-wt-row-current .dig-wt-row-actions{opacity:1}',
+      '.dig-wt-dialog{width:460px;max-width:calc(100% - 24px)}',
+      '.dig-wt-field{display:flex;flex-direction:column;gap:4px;min-width:0;margin-bottom:10px}',
+      '.dig-wt-label{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}',
+      '.dig-wt-error{padding:6px 8px;margin-bottom:8px;border-radius:var(--dsw-radius-sm,8px);background:rgba(220,38,38,.12);color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:16px;word-break:break-word}',
+      'body[data-ds-dark-theme] .dig-wt-error{background:rgba(248,113,113,.16)}',
+      /* ---- icon tooltip ---- */
+      /* A body child, not a panel child: the bottom workbench declares
+         `contain: layout style`, so a fixed element inside it would take the
+         panel box as its containing block and land off-screen (invariant 13).
+         Styled from the same menu tokens so it reads as part of the product. */
+      '.dig-tip{position:fixed;z-index:9999;display:none;box-sizing:border-box;max-width:280px;padding:5px 8px;border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1)));color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 8px 22px rgba(0,0,0,.32));font-family:var(--dsw-font-family,system-ui,sans-serif);font-size:calc(11px + var(--dsh-content-font-delta-secondary,0px));font-weight:500;line-height:1.45;text-align:left;white-space:normal;overflow-wrap:anywhere;pointer-events:none}',
+      '.dig-tip[data-show="true"]{display:block}',
     ].concat(LANE_TRACE_RULES).join('\n')
 
     /* ============================== plugin ============================== */
@@ -15343,7 +18069,9 @@ window.__ModuleLoader__.load({
        right repository without any extra wiring. */
 
     const composerRepoWatchers = new Set()   /* (sessionId, repoRoot) */
-    const composerBranchWatchers = new Set() /* (sessionId, repoRoot) */
+    /* (sessionId, repoRoot, source) — source is 'composer' | 'panel' so the
+       seat that performed the switch can skip its own echo (v0.21.2). */
+    const composerBranchWatchers = new Set()
 
     function rememberRepoShared(sessionId, repoRoot) {
       rememberRepo(sessionId, repoRoot)
@@ -15352,9 +18080,9 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function notifyBranchSwitched(sessionId, repoRoot) {
+    function notifyBranchSwitched(sessionId, repoRoot, source) {
       for (const watcher of composerBranchWatchers) {
-        try { watcher(sessionId, repoRoot) } catch (error) { void error }
+        try { watcher(sessionId, repoRoot, source) } catch (error) { void error }
       }
     }
 
@@ -15425,8 +18153,27 @@ window.__ModuleLoader__.load({
       return false
     }
 
+    /* Inline-first diff preview (issue #22). Default ON: the panel's own diff
+       pane owns the split / wrap switches, so installing dsh-better-sidebar or
+       opening the native preview seat must not silently take that capability
+       away. The settings card flips this field; false restores the external
+       hand-off chain in previewDiff. */
+    function inlineDiffEnabled() {
+      const ready = railFormReady()
+      if (ready === null) return true
+      const value = ready.value !== null && typeof ready.value === 'object' ? ready.value.inlineDiff : undefined
+      return value !== false
+    }
+
     const COMPOSER_POLL_MS = 30000
     const COMPOSER_ERROR_TTL_MS = 6000
+    /* Line counts re-run at most this often without a real change: the two
+       numstat passes are the expensive step on a big dirty tree (issue #11),
+       so the pill keeps its cheap stats:false poll and refreshes lines only
+       when the change set or HEAD moves — plus this slow floor for edits
+       that rewrite lines in already-dirty files (nothing else in the
+       fingerprint moves then). */
+    const COMPOSER_STATS_MS = 90000
 
     /* Windows paths ride backslashes, so both pill labels cut the leaf with
        this slash-aware split instead of a bare forward-slash split — a drive
@@ -15469,6 +18216,265 @@ window.__ModuleLoader__.load({
       return null
     }
 
+    /* Long repository/branch names: widen the label cap and, past it, run a
+       hover-only seamless marquee (the official sidebar rows scroll hovered
+       titles via useTitleMarquee, which this surface cannot require — this is
+       the CSS twin). The label is measured after paint; only overflowing text
+       switches to the duplicated-chunk structure, so short names keep the
+       plain ellipsis and never animate. Duration follows the text width so a
+       slightly-long name does not crawl. */
+    const COMPOSER_NAME_MAX_PX = 260
+    const MARQUEE_PX_PER_S = 28
+
+    function ComposerMarqueeName(props) {
+      const text = typeof props.text === 'string' ? props.text : ''
+      const boxRef = useRef(null)
+      const [run, setRun] = useState(false)
+      const [dur, setDur] = useState('')
+      useEffect(() => {
+        const box = boxRef.current
+        if (box === null) return undefined
+        const measure = () => {
+          if (boxRef.current !== box) return /* replaced or unmounted */
+          const overflow = box.scrollWidth > box.clientWidth + 1
+          setRun(overflow)
+          /* In the running structure scrollWidth covers BOTH chunks, so one
+             chunk is half of it; the plain structure measures the text alone. */
+          const unit = overflow === true && run === true ? box.scrollWidth / 2 : box.scrollWidth
+          setDur(overflow === true ? (unit / MARQUEE_PX_PER_S).toFixed(2) + 's' : '')
+        }
+        measure()
+        /* Webfonts land after paint and change text metrics — re-measure once. */
+        let frame = 0
+        const fonts = document.fonts
+        if (fonts !== undefined && fonts !== null && fonts.ready !== undefined && typeof fonts.ready.then === 'function') {
+          fonts.ready.then(() => { frame = requestAnimationFrame(measure) }, () => {})
+        }
+        return () => { if (frame !== 0) cancelAnimationFrame(frame) }
+      }, [text, run])
+      if (run !== true) {
+        return E('span', { ref: boxRef, className: 'dig-cs-name' }, text)
+      }
+      return E('span', { ref: boxRef, className: 'dig-cs-name dig-cs-mrun', style: dur !== '' ? { '--dig-cs-marquee-dur': dur } : undefined },
+        E('span', { className: 'dig-cs-run' },
+          E('span', { className: 'dig-cs-chunk' }, text),
+          E('span', { className: 'dig-cs-chunk', 'aria-hidden': 'true' }, text)))
+    }
+
+    /* ---- ModelRoutePicker (issue #19) ------------------------------------
+       The panel-side model + reasoning picker, bound to the SAME session model
+       route the composer's own selector writes: the host's ui-model-selection
+       plugin exposes the modelDirectories resolver, and directoryFor(sessionId)
+       hands out the session-scoped directory whose select() IS
+       sessions.selectModel — so this picker, the composer pill and the /model
+       command can never disagree. The VIEW is hand-drawn (ModelSelect is not
+       exported from the official package); the DATA and the selection semantics
+       are official end to end. The resolver arrives through a soft inject into
+       a module-level ref (a bare `ctx.modelDirectories` read throws "without
+       inject" on a real host — cordis gates EVERY property read behind an
+       inject declaration); until it lands, and on any older host, the picker
+       hides itself instead of throwing, and the AI-write button still works
+       through the host's served-models fallback. */
+    /* A listing badge's text may be a literal string or a language table
+       (llm-deepseek only accepts lowercase language ids plus "en"). The
+       official ModelSelect resolves this through its slot inject, which a
+       panel-side picker cannot see; read the active tag here the same way the
+       dictionary does, and fall back to English exactly like the host. */
+    function modelBadgeTextOf(ctx, badge) {
+      if (badge === null || typeof badge !== 'object') return ''
+      const text = badge.text
+      if (typeof text === 'string') return text
+      if (text === null || typeof text !== 'object') return ''
+      const tag = activeLocaleOf(ctx).toLowerCase()
+      const keys = []
+      if (tag !== '') {
+        keys.push(tag)
+        const primary = tag.split('-')[0]
+        if (primary !== '' && primary !== tag) keys.push(primary)
+      }
+      keys.push('en')
+      for (const key of keys) {
+        const candidate = text[key]
+        if (typeof candidate === 'string' && candidate !== '') return candidate
+      }
+      return ''
+    }
+    let modelDirectoriesRef = null
+    const modelDirectorySubs = new Set()
+    function ModelRoutePicker(props) {
+      const t = props.t
+      const sessionId = typeof props.sessionId === 'string' && props.sessionId !== '' ? props.sessionId : 'default'
+      const [injectVersion, setInjectVersion] = useState(0)
+      const [directory, setDirectory] = useState(null)
+      const [state, setState] = useState(null)
+      const [open, setOpen] = useState(false)
+      const [pane, setPane] = useState('root')
+      const rootRef = useRef(null)
+      /* The soft inject may land AFTER first paint (apply runs once, this slot
+         mounts per session view): re-render when the module ref refills. */
+      useEffect(() => {
+        const bump = () => setInjectVersion((v) => v + 1)
+        modelDirectorySubs.add(bump)
+        return () => modelDirectorySubs.delete(bump)
+      }, [])
+      const resolver = modelDirectoriesRef
+      const ok = resolver !== undefined && resolver !== null && typeof resolver.directoryFor === 'function'
+      /* Resolve the session-scoped directory once per session; subscribe AFTER
+         taking the snapshot so a change that lands between the two is not lost. */
+      useEffect(() => {
+        if (ok !== true) return undefined
+        let dir = null
+        try { dir = resolver.directoryFor(sessionId) } catch (error) { void error }
+        if (dir === null || dir === undefined) return undefined
+        setState(dir.store.getSnapshot())
+        setDirectory(dir)
+        /* Snapshot and subscription live on dir.store (uSES-safe); load()/
+           select() hang directly off the directory. */
+        return dir.store.subscribe(() => setState(dir.store.getSnapshot()))
+      }, [ok, resolver, sessionId, injectVersion])
+      /* The catalog loads on mount; failures surface through the store and the
+         menu shows them. A rejected load must not unmount or disable anything. */
+      useEffect(() => {
+        if (directory === null) return undefined
+        directory.load().catch(() => {})
+        return undefined
+      }, [directory])
+      /* Outside close. pointerdown + capture: the change list captures
+         pointerdown for the rubber band, so a plain mousedown listener can
+         miss the very click that opened another menu (v0.19.2 lesson). */
+      useEffect(() => {
+        if (open !== true) return undefined
+        const close = (event) => {
+          const root = rootRef.current
+          if (root !== null && root.contains(event.target) === true) return
+          setOpen(false)
+          setPane('root')
+        }
+        document.addEventListener('pointerdown', close, true)
+        return () => document.removeEventListener('pointerdown', close, true)
+      }, [open])
+      if (ok !== true || directory === null) return null
+      const s = state === null ? directory.getSnapshot() : state
+      const current = s === null || s.current === undefined ? null : s.current
+      const busy = s !== null && s.pending !== null && s.pending !== undefined
+      const groups = s === null || s.groups === undefined ? [] : s.groups
+      /* The current route's reasoning table, looked up through the SAME
+         directory groups the menu renders (official effectiveEffort rule). */
+      let routeGroup = null
+      let routeModel = null
+      if (current !== null) {
+        routeGroup = groups.filter((row) => row.id === current.provider)[0] || null
+        routeModel = routeGroup === null ? null : routeGroup.models.filter((row) => row.id === current.model)[0] || null
+      }
+      const reasoning = routeModel === null || routeModel.reasoning === undefined ? undefined : routeModel.reasoning
+      const effectiveEffort = current === null ? undefined : current.reasoningEffort !== undefined ? current.reasoningEffort : reasoning === undefined ? undefined : reasoning.defaultEffort
+      const effortName = (effort) => {
+        if (reasoning !== undefined) {
+          const hit = reasoning.efforts.filter((row) => row.id === effort)[0]
+          if (hit !== undefined) return hit.name
+        }
+        return effort === undefined ? t('modelRoute.effortDefault') : effort
+      }
+      const effortLabel = current === null ? '' : reasoning === undefined
+        ? (current.reasoningEffort === undefined ? '' : current.reasoningEffort)
+        : (effectiveEffort === undefined ? t('modelRoute.effortDefault') : effortName(effectiveEffort))
+      const modelName = current === null ? '' : routeModel === null ? current.model : routeModel.name
+      /* Listing badges are optional and independently translated; a model
+         without one renders exactly as before. Unknown tones fall to neutral,
+         matching the host's listing decoder. */
+      const badgeOf = (model) => {
+        if (model === null || model === undefined || model.badge === null || typeof model.badge !== 'object') return null
+        const text = modelBadgeTextOf(props.ctx, model.badge)
+        if (text === '') return null
+        const tone = model.badge.tone === 'info' || model.badge.tone === 'success' || model.badge.tone === 'warning' ? model.badge.tone : 'neutral'
+        return { text: text, tone: tone }
+      }
+      const badgeNode = (model) => {
+        const badge = badgeOf(model)
+        return badge === null ? null : E('span', { className: 'dig-mrp-badge', 'data-tone': badge.tone }, badge.text)
+      }
+      const routeBadge = badgeOf(routeModel)
+      const effortChoices = reasoning === undefined ? [] : ([
+        ...(reasoning.defaultEffort === undefined ? [{ key: 'provider-default', effort: undefined, label: t('modelRoute.effortDefault') }] : []),
+        ...reasoning.efforts.map((row) => ({ key: row.id, effort: row.id, label: row.name })),
+      ])
+      const closeMenu = () => { setOpen(false); setPane('root') }
+      const choose = (selection) => {
+        void directory.select(selection).then((result) => {
+          if (result !== undefined && result !== null && result.ok !== true) return
+          closeMenu()
+        }).catch(() => {})
+      }
+      const triggerTitle = t('modelRoute.trigger') + (current === null ? '' : ' · ' + current.provider + '/' + current.model + (effortLabel === '' ? '' : ' · ' + effortLabel))
+      return E('div', { className: 'dig-mrp-root', ref: rootRef },
+        E('button', {
+          type: 'button',
+          className: 'dig-btn dig-btn-small dig-mrp-trigger',
+          'data-open': open === true ? 'true' : undefined,
+          title: triggerTitle,
+          onClick: () => { setOpen(!open); setPane('root') },
+        },
+          E(Icon, { name: 'settings', size: 11 }),
+          routeBadge === null ? null : E('span', { className: 'dig-mrp-badge', 'data-tone': routeBadge.tone }, routeBadge.text),
+          E('span', { className: 'dig-mrp-label' }, current === null ? t('modelRoute.pick') : modelName),
+          effortLabel === '' ? null : E('span', { className: 'dig-mrp-effort' }, effortLabel),
+          E(Icon, { name: 'chevron', size: 9 })),
+        open !== true ? null : E('div', { className: 'dig-cs-menu dig-mrp-menu', role: 'menu' },
+          s !== null && typeof s.error === 'string' && s.error !== ''
+            ? E('div', { className: 'dig-mrp-error', role: 'status' }, s.error)
+            : null,
+          pane === 'root'
+            ? [
+              E('button', {
+                type: 'button', key: 'model', className: 'dig-cs-item dig-mrp-row', disabled: busy === true,
+                onClick: () => setPane('model'),
+              },
+                E('span', { className: 'dig-mrp-row-label' }, t('modelRoute.modelRow')),
+                E('span', { className: 'dig-mrp-row-value' }, current === null ? t('modelRoute.pick') : modelName),
+                E('span', { className: 'dig-mrp-row-arrow' }, E(Icon, { name: 'chevron', size: 9 }))),
+              E('button', {
+                type: 'button', key: 'effort', className: 'dig-cs-item dig-mrp-row', disabled: busy === true || current === null || effortChoices.length === 0,
+                onClick: () => setPane('effort'),
+              },
+                E('span', { className: 'dig-mrp-row-label' }, t('modelRoute.effortRow')),
+                E('span', { className: 'dig-mrp-row-value' }, effortChoices.length === 0 ? '' : (effortLabel === '' ? t('modelRoute.effortDefault') : effortLabel)),
+                E('span', { className: 'dig-mrp-row-arrow' }, E(Icon, { name: 'chevron', size: 9 }))),
+            ]
+            : [
+              E('button', {
+                type: 'button', key: 'back', className: 'dig-cs-item dig-mrp-back', disabled: busy === true,
+                onClick: () => setPane('root'),
+              }, '‹ ' + (pane === 'model' ? t('modelRoute.modelRow') : t('modelRoute.effortRow'))),
+            ],
+          pane === 'model' && groups.length === 0
+            ? E('div', { className: 'dig-mrp-empty' }, t('modelRoute.empty'))
+            : null,
+          pane === 'model' && groups.map((group) => E(Fragment, { key: group.id },
+            E('div', { className: 'dig-mrp-group' }, group.name === undefined || group.name === null || group.name === '' ? group.id : group.name),
+            group.models.map((model) => {
+              const selected = current !== null && current.provider === group.id && current.model === model.id
+              return E('button', {
+                type: 'button', key: model.id, className: 'dig-cs-item', 'data-current': selected === true ? 'true' : undefined,
+                disabled: busy === true,
+                title: group.id + '/' + model.id,
+                onClick: () => choose({ provider: group.id, model: model.id }),
+              },
+                E('span', { className: 'dig-cs-item-name' }, model.name === undefined || model.name === null ? model.id : model.name),
+                badgeNode(model),
+                E('span', { className: 'dig-cs-item-note' }, selected === true ? E(Icon, { name: 'check', size: 11 }) : null))
+            }))),
+          pane === 'effort' && current !== null && effortChoices.map((level) => {
+            const selected = effectiveEffort === level.effort
+            return E('button', {
+              type: 'button', key: level.key, className: 'dig-cs-item', 'data-current': selected === true ? 'true' : undefined,
+              disabled: busy === true,
+              onClick: () => choose({ provider: current.provider, model: current.model, reasoningEffort: level.effort }),
+            },
+              E('span', { className: 'dig-cs-item-name' }, level.label),
+              E('span', { className: 'dig-cs-item-note' }, selected === true ? E(Icon, { name: 'check', size: 11 }) : null))
+          })))
+    }
+
     function ComposerGitStatus(props) {
       const ctx = props.ctx
       const t = props.t
@@ -15500,6 +18506,13 @@ window.__ModuleLoader__.load({
       const [checkingOut, setCheckingOut] = useState('')
       const [error, setError] = useState('')
       const [tick, setTick] = useState(0)
+      /* Uncommitted line churn (+n −m), fetched lazily: only when the change
+         set or HEAD moves — never on the ambient 30s tick by itself (the
+         root tag keeps a previous repository's numbers from leaking into
+         this one's pill). */
+      const [lineStats, setLineStats] = useState(null)
+      const statsStampRef = useRef('')
+      const statsAtRef = useRef(0)
       const rootRef = useRef(null)
 
       /* The switch flips live through the same rail-config notify walk the
@@ -15566,7 +18579,7 @@ window.__ModuleLoader__.load({
          The panel keeps its own 12s poll for its bigger surface; 30s here is
          only the ambient state, never a correctness dependency. */
       useEffect(() => {
-        if (repoRoot === null || enabled !== true) { setSummary(null); return undefined }
+        if (repoRoot === null || enabled !== true) { setSummary(null); setLineStats(null); return undefined }
         let cancelled = false
         const load = async () => {
           try {
@@ -15578,6 +18591,27 @@ window.__ModuleLoader__.load({
                mount with zero round trips. Merge only our field — a panel
                page keeps its commits. */
             mergePaintPage(repoRoot, { summary: data })
+            /* Line counts ride the same tick only when something actually
+               moved (any status/path change or a new HEAD), or when the slow
+               floor elapsed for in-place edits of dirty files. A clean tree
+               skips the numstat passes entirely and just zeroes the badges. */
+            const fingerprint = composerFingerprintOf(data)
+            const stamp = repoRoot + '::' + fingerprint
+            const now = Date.now()
+            const count = data.changes === null || typeof data.changes !== 'object' ? 0 : data.changes.staged.length + data.changes.unstaged.length + data.changes.untracked.length
+            if (count === 0) {
+              statsStampRef.current = stamp
+              statsAtRef.current = now
+              setLineStats({ root: repoRoot, additions: 0, deletions: 0 })
+            } else if (stamp !== statsStampRef.current || now - statsAtRef.current >= COMPOSER_STATS_MS) {
+              try {
+                const pack = await request('stats', { cwd: cwd, repoRoot: repoRoot })
+                if (cancelled === true) return
+                statsStampRef.current = stamp
+                statsAtRef.current = now
+                setLineStats(Object.assign({ root: repoRoot }, composerStatsLinesOf(pack)))
+              } catch (statsError) { void statsError }
+            }
           } catch (error) { void error }
         }
         const seed = readPaintPage(repoRoot)
@@ -15604,7 +18638,10 @@ window.__ModuleLoader__.load({
       /* A branch switched in the panel (or here) refreshes the summary now
          instead of at the next poll tick. */
       useEffect(() => {
-        const watcher = () => { setTick((value) => value + 1) }
+        const watcher = (sid, root, source) => {
+          if (sid !== sessionId || source === 'composer') return
+          setTick((value) => value + 1)
+        }
         composerBranchWatchers.add(watcher)
         return () => { composerBranchWatchers.delete(watcher) }
       }, [sessionId])
@@ -15648,6 +18685,18 @@ window.__ModuleLoader__.load({
       const changesCount = summary !== null && summary.changes !== null && typeof summary.changes === 'object'
         ? summary.changes.staged.length + summary.changes.unstaged.length + summary.changes.untracked.length
         : null
+      /* File-level add/del split (status letters, free) + the lazily fetched
+         line churn, assembled into one tooltip that reads as a sentence. */
+      const fileSplit = composerFileSplitOf(summary)
+      const linesLive = lineStats !== null && lineStats.root === repoRoot ? lineStats : null
+      const changesTitle = (() => {
+        let title = t('composer.changesHint')
+        if (changesCount !== null && changesCount > 0) {
+          title += ' · ' + fill(t('composer.fileHint'), { a: fileSplit.added, d: fileSplit.deleted })
+          if (linesLive !== null) title += ' · ' + fill(t('composer.linesHint'), { ins: linesLive.additions, del: linesLive.deletions })
+        }
+        return title
+      })()
 
       const openBranchMenu = async () => {
         setMenu('branch')
@@ -15670,7 +18719,7 @@ window.__ModuleLoader__.load({
           await request('checkout', { cwd: cwd, repoRoot: repoRoot, branch: name, confirm: true })
           setMenu(null)
           setTick((value) => value + 1)
-          notifyBranchSwitched(sessionId, repoRoot)
+          notifyBranchSwitched(sessionId, repoRoot, 'composer')
         } catch (caught) {
           setMenu(null)
           setError(caught instanceof Error ? caught.message : String(caught))
@@ -15712,7 +18761,7 @@ window.__ModuleLoader__.load({
           onClick: openPanel,
         },
           E(Icon, { name: 'commit', size: 13 }),
-          E('span', { className: 'dig-cs-name' }, repoName)),
+          E(ComposerMarqueeName, { text: repoName })),
         repoPill !== true || singleRepo === true ? null : E('button', {
           type: 'button',
           className: 'dig-cs-pill dig-cs-caret',
@@ -15728,58 +18777,63 @@ window.__ModuleLoader__.load({
           onClick: () => { if (menu !== 'branch') void openBranchMenu(); else setMenu(null) },
         },
           E(Icon, { name: 'branch', size: 13 }),
-          E('span', { className: 'dig-cs-name' }, detached === true ? t('composer.detached') : branchName),
+          E(ComposerMarqueeName, { text: detached === true ? t('composer.detached') : branchName }),
           E(Icon, { name: 'chevron', size: 10 })) : null,
         changesCount !== null && changesCount > 0
-          ? E('span', { className: 'dig-cs-badge dig-cs-changes', title: t('composer.changesHint') }, '±' + String(changesCount))
+          ? E('span', { className: 'dig-cs-badge dig-cs-changes', title: changesTitle }, '±' + String(changesCount),
+              fileSplit.added > 0 ? E('span', { className: 'dig-cs-split dig-cs-add' }, '+' + String(fileSplit.added)) : null,
+              fileSplit.deleted > 0 ? E('span', { className: 'dig-cs-split dig-cs-del' }, '−' + String(fileSplit.deleted)) : null)
+          : null,
+        linesLive !== null && (linesLive.additions > 0 || linesLive.deletions > 0)
+          ? E('span', { className: 'dig-cs-lines' },
+              linesLive.additions > 0 ? E('span', { className: 'dig-cs-badge dig-cs-add', title: changesTitle }, '+' + String(linesLive.additions)) : null,
+              linesLive.deletions > 0 ? E('span', { className: 'dig-cs-badge dig-cs-del', title: changesTitle }, '−' + String(linesLive.deletions)) : null)
           : null,
         behind > 0 ? E('span', { className: 'dig-cs-badge dig-cs-behind', title: t('composer.behindHint') }, '↓' + String(behind)) : null,
         ahead > 0 ? E('span', { className: 'dig-cs-badge dig-cs-ahead', title: t('composer.aheadHint') }, '↑' + String(ahead)) : null,
         error !== '' ? E('span', { className: 'dig-cs-error', title: error }, '×') : null,
-        repoPill === true && menu === 'repo' ? E('div', { className: 'dig-cs-menu', 'data-cordis-panel': '' },
+        repoPill === true && menu === 'repo' ? E('div', { className: 'dig-cs-menu' + ' dig-cs-picker', 'data-cordis-panel': '' },
           /* v0.19.2: one row per checkout — the repository's own name first
              (origin URL basename, falling back to the directory name), and the
              single-level directory name as a small sub line only when the two
              differ (two clones of one repository stay tellable apart). The
-             full path lives in the tooltip, not in the row. */
-          data.repos.map((row) => {
-            const dirName = baseNameOf(row.path)
-            const displayName = row.origin !== undefined && row.origin !== '' ? row.origin : dirName
-            return E('button', {
-              key: row.path,
-              type: 'button',
-              className: 'dig-cs-item',
-              'data-current': row.path === repoRoot ? 'true' : 'false',
-              title: row.path,
-              onClick: () => pickRepoRoot(row.path),
-            },
-              E(Icon, { name: 'commit', size: 11 }),
-              E('span', { className: 'dig-cs-item-main' },
-                E('span', { className: 'dig-cs-item-name' }, displayName),
-                dirName !== displayName ? E('span', { className: 'dig-cs-item-sub' }, dirName) : null))
+             full path lives in the tooltip, not in the row. v0.27 adds the
+             search field so seven clones need no scrolling to find one. */
+          E(SearchPicker, {
+            key: 'composer-repo',
+            mode: 'repo',
+            t: t,
+            repos: data.repos.map((row) => {
+              const dirName = baseNameOf(row.path)
+              const displayName = row.origin !== undefined && row.origin !== '' ? row.origin : dirName
+              return {
+                path: row.path,
+                name: displayName,
+                sub: dirName !== displayName ? dirName : undefined,
+              }
+            }),
+            current: repoRoot,
+            onPick: (path) => pickRepoRoot(path),
+            onClose: () => setMenu(null),
           }))
           : null,
         menu === 'branch' ? (branchLoading === true || branchList === null
           ? E('div', { className: 'dig-cs-menu', 'data-cordis-panel': '' }, E('div', { className: 'dig-cs-item dig-cs-static' }, '…'))
-          : E('div', { className: 'dig-cs-menu', 'data-cordis-panel': '' },
-            branchList.local.map((entry) => E('button', {
-              key: entry.name,
-              type: 'button',
-              className: 'dig-cs-item',
-              'data-current': entry.head === true ? 'true' : 'false',
-              disabled: entry.worktree !== null || checkingOut !== '',
-              title: entry.worktree !== null ? t('composer.inWorktree') : (checkingOut !== '' ? t('composer.busy') : entry.name),
-              onClick: () => { void checkoutBranch(entry.name) },
-            },
-              E(Icon, { name: 'branch', size: 11 }),
-              E('span', { className: 'dig-cs-item-name' }, entry.name),
-              entry.worktree !== null ? E('span', { className: 'dig-cs-item-note' }, t('composer.inWorktree')) : null,
-              checkingOut === entry.name ? E('span', { className: 'dig-cs-item-note' }, '…') : null,
-              entry.ahead > 0 || entry.behind > 0
-                ? E('span', { className: 'dig-cs-item-counts' },
-                  entry.ahead > 0 ? E('span', { className: 'dig-cs-ahead' }, '↑' + String(entry.ahead)) : null,
-                  entry.behind > 0 ? E('span', { className: 'dig-cs-behind' }, '↓' + String(entry.behind)) : null)
-                : null))))
+          : E('div', { className: 'dig-cs-menu dig-cs-picker', 'data-cordis-panel': '' },
+            E(SearchPicker, {
+              key: 'composer-branch',
+              mode: 'branch',
+              t: t,
+              branches: branchList.local,
+              current: branchName === null ? '' : branchName,
+              busyName: checkingOut,
+              worktreeNote: t('composer.inWorktree'),
+              onPick: (name, entry) => {
+                if (entry.head === true) { setMenu(null); return }
+                void checkoutBranch(name)
+              },
+              onClose: () => setMenu(null),
+            })))
           : null,
       )
     }
@@ -15983,9 +19037,9 @@ window.__ModuleLoader__.load({
        diff — whatever the store holds — fetched fresh from the host route on
        every seed. The seed carries cwd + repoRoot so a multi-root workspace
        lands on the right repository (the route requires cwd; repoRoot skips
-       the rev-parse). Rendered through the SAME DiffBody the inline pane uses,
-       so host DiffBlock reuse, the hand-drawn fallback and the binary/empty
-       states are all identical. */
+       the rev-parse). Rendered through the SAME LineDiff the inline pane's
+       DiffBody uses, so the header tool set (split / wrap / open file) and
+       the binary/empty states are identical on both surfaces. */
     function NativePreviewPanel(props) {
       const t = props.t
       const [seed, setSeed] = useState(() => previewStore.seed)
@@ -16086,12 +19140,204 @@ window.__ModuleLoader__.load({
               }))))
     }
 
+    /* ---- icon tooltips ----
+       Every icon action already carries its name in `title` (the rail adds the
+       disabled reason; the toolbar / mini / pill buttons carry the action
+       verb). Native title bubbles are the wrong surface for this product: the
+       bottom workbench is a dense horizontal strip, the bubble needs a full
+       second of rest, it is drawn in the browser's own styling, and over a
+       DISABLED rail button it never appears at all. Draw one themed card
+       instead, shared by every seat (panel, composer pill, diff preview) and
+       hung off <body> — see the `.dig-tip` note in CSS for why it can't live
+       inside the panel. The card mirrors the anchor's own `title`, which is
+       removed while the card is up so the native bubble never doubles it. */
+    const TIP_ID = 'dsh-ide-git-tip'
+    const TIP_DELAY_MS = 120
+    const TIP_GAP = 6
+    /* Only this plugin's own surfaces explain themselves. `.dig-root` is the
+       panel (native and better-sidebar seats alike), `.dig-cs-root` the
+       composer status pill, `.dig-preview-root` the external diff seat. */
+    const TIP_ROOTS = '.dig-root, .dig-cs-root, .dig-preview-root'
+
+    function installHoverTips() {
+      /* The SSR self-check drives apply() with a minimal document stub: it has
+         no body, no id lookup and no event targets. Those environments get the
+         no-op installer rather than a throw during plugin activation. */
+      if (typeof document === 'undefined' || document.body == null
+        || typeof document.createElement !== 'function'
+        || typeof document.getElementById !== 'function'
+        || typeof document.addEventListener !== 'function'
+        || typeof window === 'undefined'
+        || typeof window.addEventListener !== 'function') return () => {}
+      /* HMR / re-apply: never stack two cards (or two listener sets on one). */
+      const stale = document.getElementById(TIP_ID)
+      if (stale !== null) stale.remove()
+      const card = document.createElement('div')
+      card.id = TIP_ID
+      card.className = 'dig-tip'
+      card.setAttribute('data-dsh-ide-git', '')
+      card.setAttribute('role', 'tooltip')
+      card.setAttribute('aria-hidden', 'true')
+      document.body.appendChild(card)
+
+      /* `anchor` is the button the pointer is on (or about to rest on, while
+         `timer` runs); `shown` is the one whose title the card has taken. */
+      let anchor = null
+      let shown = null
+      let takenTitle = null
+      let timer = null
+
+      const restore = () => {
+        if (shown === null) return
+        /* React may have rewritten the attribute while the card was up (toggle
+           buttons swap their copy): only put the taken text back when nothing
+           else has claimed the slot, so a fresh label is never clobbered. */
+        try {
+          if (shown.getAttribute('title') === null && takenTitle !== null) shown.setAttribute('title', takenTitle)
+        } catch (error) { void error }
+        shown = null
+        takenTitle = null
+      }
+
+      const hide = () => {
+        if (timer !== null) { clearTimeout(timer); timer = null }
+        anchor = null
+        restore()
+        card.removeAttribute('data-show')
+        card.setAttribute('aria-hidden', 'true')
+        card.textContent = ''
+      }
+
+      /* Viewport coordinates on a body child: no panel containment to fight. */
+      const place = () => {
+        const rect = anchor.getBoundingClientRect()
+        const width = card.offsetWidth
+        const height = card.offsetHeight
+        const viewportW = window.innerWidth || document.documentElement.clientWidth || 0
+        const viewportH = window.innerHeight || document.documentElement.clientHeight || 0
+        /* The vertical action rail is a 24px column on the panel's left edge:
+           a card under an icon there would cover the icons below it, so this one
+           sits to its right and follows the row. (The horizontal rail uses
+           `.dig-rail-row`, so the `closest` query only matches the vertical
+           seat — top rows keep the below-the-button placement.) */
+        if (anchor.closest('.dig-rail') !== null) {
+          let left = rect.left + rect.width + TIP_GAP
+          if (left + width > viewportW - 4) left = rect.left - TIP_GAP - width
+          if (left < 4) left = 4
+          let top = rect.top + (rect.height - height) / 2
+          if (top + height > viewportH - 4) top = viewportH - height - 4
+          if (top < 4) top = 4
+          card.style.left = Math.round(left) + 'px'
+          card.style.top = Math.round(top) + 'px'
+          return
+        }
+        /* Below the anchor; flip above when the bottom edge would clip. */
+        let top = rect.bottom + TIP_GAP
+        if (top + height > viewportH - 4) top = rect.top - height - TIP_GAP
+        if (top < 4) top = 4
+        let left = rect.left + (rect.width - width) / 2
+        if (left + width > viewportW - 4) left = viewportW - width - 4
+        if (left < 4) left = 4
+        card.style.left = Math.round(left) + 'px'
+        card.style.top = Math.round(top) + 'px'
+      }
+
+      const reveal = () => {
+        timer = null
+        if (anchor === null) return
+        const label = anchor.getAttribute('title')
+        if (label === null || label === '') { hide(); return }
+        takenTitle = label
+        try { anchor.removeAttribute('title') } catch (error) { void error }
+        shown = anchor
+        card.textContent = label
+        card.setAttribute('data-show', 'true')
+        card.removeAttribute('aria-hidden')
+        place()
+      }
+
+      /* Whatever sits under the pointer, not whatever received the event: a
+         disabled button still hit-tests (rail icons), and the SVG glyph inside
+         the button is usually the element under the cursor. `closest` walks up
+         to the button. The label is read here, but the anchor's own copy is
+         already taken while its card is up — so the shown button answers from
+         the saved text, otherwise it would stop counting as a candidate the
+         moment the card opened. */
+      const buttonAt = (x, y) => {
+        if (typeof document.elementFromPoint !== 'function') return null
+        let hit = null
+        try { hit = document.elementFromPoint(x, y) } catch (error) { void error; return null }
+        if (hit === null || hit === undefined || typeof hit.closest !== 'function') return null
+        if (hit.closest(TIP_ROOTS) === null) return null
+        return hit.closest('button, [role="button"]')
+      }
+
+      const labelOf = (button) => {
+        if (button === shown) return takenTitle
+        const label = button.getAttribute('title')
+        return label === null || label === '' ? null : label
+      }
+
+      const onPointerMove = (event) => {
+        if (event !== null && event !== undefined && event.pointerType === 'touch') return
+        /* A drag is not a hover: reordering rail actions, dragging a divider or
+           selecting rows all sweep across buttons with a pressed pointer, and
+           no card should pop up under the drag. */
+        if (event !== null && event !== undefined && typeof event.buttons === 'number' && event.buttons !== 0) {
+          if (anchor !== null || timer !== null || shown !== null) hide()
+          return
+        }
+        const button = buttonAt(event === null || event === undefined ? 0 : event.clientX, event === null || event === undefined ? 0 : event.clientY)
+        if (button === null || labelOf(button) === null) {
+          if (anchor !== null || timer !== null || shown !== null) hide()
+          return
+        }
+        if (button === anchor) return
+        /* Another button: the old card (and the title it took) goes now, the
+           new one waits out the grace period — sweeping the rail must not
+           flash a card per icon. */
+        if (timer !== null) { clearTimeout(timer); timer = null }
+        restore()
+        card.removeAttribute('data-show')
+        anchor = button
+        timer = setTimeout(reveal, TIP_DELAY_MS)
+      }
+
+      document.addEventListener('pointermove', onPointerMove, { passive: true })
+      document.addEventListener('pointerdown', hide, true)
+      document.addEventListener('pointerleave', hide)
+      document.addEventListener('wheel', hide, { passive: true, capture: true })
+      /* Scroll and resize move the anchor under a card that cannot follow it:
+         the card would lie about where the button is. Drop it and let the next
+         pointer move re-open it. */
+      window.addEventListener('scroll', hide, true)
+      window.addEventListener('resize', hide)
+      window.addEventListener('blur', hide)
+
+      return () => {
+        hide()
+        document.removeEventListener('pointermove', onPointerMove)
+        document.removeEventListener('pointerdown', hide, true)
+        document.removeEventListener('pointerleave', hide)
+        document.removeEventListener('wheel', hide, { capture: true })
+        window.removeEventListener('scroll', hide, true)
+        window.removeEventListener('resize', hide)
+        window.removeEventListener('blur', hide)
+        card.remove()
+      }
+    }
+
     function apply(ctx) {
       const style = document.createElement('style')
       style.setAttribute('data-dsh-ide-git', '')
       style.textContent = CSS
       document.head.appendChild(style)
       ctx.effect(() => () => { style.remove() }, 'dsh-ide-git: panel styles')
+
+      /* Icon affordances explain themselves on hover wherever this plugin
+         draws one — the panel in any seat, the composer pill, the diff
+         preview. One document-level card covers them all. */
+      ctx.effect(() => installHoverTips(), 'dsh-ide-git: icon tooltips')
 
       const t = translatorOf(ctx)
 
@@ -16385,6 +19631,20 @@ window.__ModuleLoader__.load({
             armed.clear()
           }
         }, 'dsh-ide-git: session-switch prewarm')
+      })
+
+      /* ---- panel model picker: the official directories resolver ---- */
+      /* ui-model-selection exposes the resolver as a CONTEXT PROPERTY, and
+         cordis refuses bare property reads ("cannot get property … without
+         inject") — the only legal consumer path is a declared inject. Soft:
+         an older host without the service never fires this callback, the ref
+         stays null and the picker hides itself (the AI-write button keeps its
+         served-models fallback). Subscribers re-render the mounted pickers. */
+      ctx.inject(['modelDirectories'], (mdCtx) => {
+        const md = mdCtx.get('modelDirectories')
+        if (md === undefined || md === null || typeof md.directoryFor !== 'function') return
+        modelDirectoriesRef = md
+        for (const notify of modelDirectorySubs) { try { notify() } catch (error) { void error } }
       })
 
       /* ---- settings: the row Config is the rail's source of truth ---- */

@@ -18,6 +18,7 @@
   - 宿主半改动**只提示**用户(「宿主半改了,需要你重启 `dsh web` 后生效」),不代劳重启。
   - 万不得已动了用户的实例(动手前必须先告知):**收尾时把它杀掉**并说明当前状态,由用户自己重新敲命令启动——绝不留下一个「我们拉起来的」进程冒充他的环境。
   - **收尾清场**:本次启动的任何 `dsh web`(隔离实例、脚本拉起的进程)一个都不留,不留占用端口的孤儿进程(`lsof -tiTCP:<port> -sTCP:LISTEN` 自查)。
+- **真机验证用发布版 CLI,别用本机 dev checkout**:2026-10-29(issue #20)实测本机 checkout 的 0.2.2-alpha.2 缺 `packages/client/ui-trajectory/lib/typert.host.js`(typert loader `ERR_MODULE_NOT_FOUND`),导致 gateway 定义不可用、工作区/会话 RPC 全废——页面卡在「正在加载工作区…」,探针会全 FAIL 且与插件无关。此时从 npmmirror 装一个发布版(`npm install @deepseek-ai/dsh@<latest> --registry https://registry.npmmirror.com` 到 /tmp 独立目录,后台跑),用它的 `node_modules/.bin/dsh` 起隔离实例(同一 `DSH_HOME` 可复用,gate 状态已持久化);重启后 token 会变,从启动日志重新取。
 - **两道自检,覆盖面不同**:`scripts/ssr-check.mjs` 渲染的是「还没解析出仓库」的初始态——它**显式不覆盖** rail / 分支树 / 历史 / 变更这些要有数据才出现的 chrome;`scripts/layout-probe.mjs` 才是带真数据的真机渲染(它会捕获 pageerror,面板一崩就以非零码退出)。2026-09-14 的教训:`BranchRow` 里写了 `t('branches.pickHint')` 却没有 `const t = props.t`——空态根本不渲染分支行,所以 ssr-check 全绿,而真机上整个面板被 better-sidebar 的错误边界吞掉、`.dig-root` 压根不出现。**改到「有数据才出现」的代码,必须跑 layout-probe**。
   - **探针打开面板的选择器随底座版本变**:`dsh-better-sidebar` 0.21 把侧栏卡片渲染成带 `data-sidebar-right-guide-entry="<tab id>"` 的 guide-entry 按钮,**不再渲染 title/description 文案**(旧探针里那个 `span` 文案选择器因此一个都点不到,表现为 `the Git card is not on the sidebar start page`)。现在的写法是先用 `[data-sidebar-right-guide-entry="dsh-ide-git:panel"]`,取不到再回退到旧的描述文案探测;`scripts/panes-probe.mjs` / `scripts/dock-probe.mjs` 沿用同一套。
 
@@ -29,6 +30,19 @@
 - 主题与引导标记都写在 `DSH_HOME/settings.yaml`;**覆盖该文件会把 `ui-onboarding.welcomeNoticeVersion` 一起抹掉**,下次打开页面又会弹内测声明,挡住后续点击(截图脚本会先尝试点掉它)。
 - 面板要出现在底部工作台:会话头右侧的「展开底部面板」→ 面板 Tab 条 `+` → 卡片里的 **Git**;出现在原生右侧栏:点会话头右侧的「打开右侧边栏」→ 侧栏「开始」页里直接点 **Git** 卡片(那时没有 `+` 菜单可用)。这两个入口只在**会话真正开始之后**才存在(发一条消息即可,模型没有 key 也没关系)。
 
+## 适配分支纪律(2026-10-30 起)
+
+- 每轮适配 dsh 新版本,都从最新 `main` 开分支 `alpha适配`;本轮所有适配改动只提交到该分支,不直接推 `main`。
+- 在该分支跑完 `npm test` 与隔离实例真机验证,确认没问题后再合并回 `main`、再发版本。
+- 下一轮适配重新从 `main` 开同名 `alpha适配` 分支,不复用上一轮的分支;已合并的旧分支可删。
+- 本纪律与各仓库的「变更记录纪律」并列:CHANGELOG 记录改了什么,分支记录这一轮改动的边界。
+
+## 单代基线与大版本清理纪律
+
+- 运行时只服务 `engines.dsh` 声明的下限版本(当前 `>=0.2.2-rc.1`),不再为更老的 dsh 保留运行时探测分支;下限抬升走 0.x 的 minor,并在 CHANGELOG 标 breaking。
+- **每次 dsh 大版本或破坏性 rc 适配,重做一次全仓单代审计**:删除旧设置面(`settings.register` / `settingsScope` / `settings.get`)、旧版本能力探测、按旧宿主物化的资产与夹具、只为旧 host 存在的回退;官方已删除的 API 不保留“以防万一”的路径。
+- 例外必须保留:用户数据迁移(旧 localStorage / 旧物化目录 / 旧 profile 字段)、跨插件主动兼容(如 dsh-ops / FastCtx / ptc / better-sidebar 联动)、可选官方能力缺失时的防御性 fallback。审计时逐条写明保留理由。
+
 ## 变更记录纪律
 
 - **所有版本发布、修复、事故复盘、复现/验证记录一律写进 `CHANGELOG.md`**,不追加进本文件;本文件只保留仍然有效的规则、不变量与当前事实。
@@ -39,7 +53,8 @@
 
 | 路径 | 作用 |
 |---|---|
-| src/index.js | **宿主半**:`/dsh-ide-git/api` 前缀路由 + git 方法表(argv-only spawn)、参数校验、信任围栏、confirm 守卫 |
+| src/index.js | **宿主半入口**:只导出 `name` / `inject` / `Config` / 缓存与 `apply(ctx)`，把路由与 AI commit 服务接起来 |
+| src/host/ | **宿主半实现**:`config` 行配置、`core` 错误/校验/写队列、`git` argv spawn 与解析、`undo` 撤回栈、`read` 读方法、`write` 写方法、`repos` 仓库扫描、`commit-message` AI 提交信息、`http` 方法表与信任围栏 |
 | src/client.js | **客户端半(全部 UI)**:`window.__ModuleLoader__.load` 包装;注册 better-sidebar Tab;Panel 组件含分支树 / 图谱 / 变更 / 详情 / 历史筛选 / 可配置动作条 / 右键菜单 / 弹窗 / 撤回浮窗 / 样式 |
 | cordis.patch.yml | dsh plugin add 官方安装通道的挂载声明(insert 一行 `ide-git`) |
 | dsh.plugin.json | 插件注册表清单(id `dsh-external/dsh-ide-git`) |
@@ -56,7 +71,7 @@
 ## 核心不变量(改代码前必读)
 
 1. **无构建、单文件客户端**。`src/client.js` 必须保持 `window.__ModuleLoader__.load({ id, factory })` 包装;只能 require DSH 客户端基线模块(当前仅 `react`),冒烟测试用白名单强制执行。禁止 `import`、禁止新增第二个 client entry。
-2. **宿主半只 import `node:` 内置模块**(当前:`node:child_process` 的 `spawn`、`node:path`)。冒烟测试强制。
+2. **宿主半只 import `node:` 内置模块与自身相对模块**(`./host/*.js`);禁止任何第三方静态 import。唯一例外是懒加载、失败可降级的 `@deepseek-ai/schemastery`(行 Config)。冒烟测试强制。
 3. **git 调用永远是 argv 数组**:`spawn(gitBinary(), args, { cwd })`,禁止 `exec` / `shell: true` / 字符串拼接命令;用户输入先过 `requireAbsolute` / `requireRef`(不以 `-` 开头、无空白与控制字符)/ `requireRelativePath`(不越出仓库)。新增方法必须走同一套校验。
 4. **破坏性操作必须 `confirm: true`**:push、`reset --hard`、`branch -D`、丢弃未跟踪文件(`clean`)、`stash drop`。UI 侧对应动作一律先弹 ConfirmDialog。**唯一例外是「提交并推送」按钮**(v0.3.7):按钮文案已经把「会推送」写在脸上,点击即视为确认,不再二次弹框——它仍然把 `confirm: true` 传给宿主,所以守卫没有被绕过。冒烟测试校验这些守卫字符串存在。
 5. **两条信任围栏**:宿主路由只服务 loopback Host 或 `Sec-Fetch-Site: same-origin/same-site` 的请求;任何新路由都必须先过 `isTrusted(req)`,再检查 method 为 POST。
@@ -76,22 +91,27 @@
 12. **hooks 依赖数组在渲染期求值**。useCallback / useMemo / useEffect 的依赖数组当帧就会求值,引用「后面才声明的 const」直接 TDZ 报错(v0.1.6 就因此崩过一次:branchMenu 的依赖里写了定义在 rail 段的 toggleFavoriteBranch)。规则:被 hooks 依赖引用的函数与值必须先声明;派生值同理。SSR 自检(react-dom/server 真渲染一次 Tab 组件)能抓出这类错误,改完客户端半务必跑一遍。
 
 13. **面板内的浮层一律用「面板内定位」**。`dsh-better-sidebar` 的底部工作台声明了 `contain: layout style`,布局包含使它成为 `position: fixed` 后代的**包含块**——用视口坐标 + `position: fixed` 的浮层会被摆到面板之外(屏幕外),真机上表现为「右键点了没反应」。规则:菜单 / 遮罩 / 对话框都是 `.dig-root`(`position: relative`)内的 `position: absolute`;锚点先减去 `hostRef` 的 `getBoundingClientRect()`(见 `openMenuAt`),再按面板盒子夹取;浮层自带 `max-height` + 内部滚动,放不下时向上翻而不是溢出。
-14. **动作条是用户可配置的,`RAIL_SPECS` 是唯一权威**。增删动作只改 `RAIL_SPECS`;持久化(`dsh-ide-git.rail.v1`)只存「排列 + 隐藏」,读写一律过 `normalizeRail()`(丢弃未知 id、补齐缺失 id),所以新增动作不会让旧配置失效。设置按钮由 rail 自己追加、不参与配置;容量按 rail **自身**尺寸算(竖排看高度、横排看宽度),放不下才出现 `⋯ 更多`,而「更多」必须列出全部动作。
+14. **动作条是用户可配置的,`RAIL_SPECS` 是唯一权威**。增删动作只改 `RAIL_SPECS` 和宿主 `RAIL_CONFIG_IDS`;持久化是插件行 Config 的每个动作布尔 + `railOrder` 逗号串。读路径过 `railOrderOf()`(丢弃未知/重复 id、按 `RAIL_IDS` 补齐),写路径过 `railOrderText()`(代码顺序写成空串),所以新增动作不会被旧文档隐藏。旧 `localStorage` 只在 `migrateRailConfig()` 里读一次,写路径禁止回退到它。设置按钮由 rail 自己追加、不参与配置;齿轮始终打开面板内编辑器(它同时有拖动/上下移和显隐),插件页卡只做显隐;容量按 rail **自身**尺寸算(竖排看高度、横排看宽度),放不下才出现 `⋯ 更多`,而「更多」必须列出全部动作。
 
 15. **删除 / 覆盖类方法必须留下撤回句柄**。删除记对象 id(`pushUndo()`),覆盖工作区内容记**文件字节快照**(`snapshotForUndo()` 在动手前读、`snapshotState()` 记下操作后的样子),响应里统一返回 `undo: { id, kind, label }`;撤回逻辑集中在 `undoApply` 里按 `kind` 分支,不要另开方法。**快照不成立时不许假装能撤回**:符号链接 / 特殊文件 / 超过 `UNDO_MAX_FILES`(400)或 `UNDO_MAX_SNAPSHOT_BYTES`(4 MB)时返回 `undoBlocked: true` 而**不返回** `undo`,客户端如实提示「未保留撤回」。写回前必须逐个比对目标是否仍是操作后的样子(内容 sha1),有一个不一致就返回 `undo-conflict` 并且**一个文件都不写**。撤回是**一次性**的:成功后必须把数组写回(`undoStacks.set(root, list)`)——`undoEntriesOf()` 返回的是 `filter` 出来的新数组,v0.3.0 就因此漏过写回,导致同一个句柄重放时走到 `undo-conflict` 而不是 `undo-gone`。句柄有 TTL 与条数上限。
 16. **会改仓库的方法必须登记进 `WRITE_METHODS`**。路由按这个 Set 把写请求放进 per-repo 队列(`withRepoLock`),漏登记就等于重新打开并发写窗口;只读方法不要加进去,否则白白排队。
 17. **面板有两面,`mode` 说了算,explorer 只从分支图标进**(v0.20.0 起,用户需求)。`Panel` 的 `props.mode`(`'changes'` 默认 | `'explore'`)决定画哪一面:
-   - `changes`(默认页签)= **变更 + 提交框**,三种 chrome 下都是单列;body 类名保持 `dig-body dig-body-<chrome> dig-body-changes`——**chrome token 必须留在类名里**,`layout-probe` / `panes-probe` 靠它读布局判定;内容外层是 `dig-pane-main`(变更 + 内嵌 diff 兜底)。
+   - `changes`(默认页签)= **变更 + 提交框**单列在上方(`dig-pane-changes-stack`,保留 `data-pane="changes"` 与 `paneStyle('changes')`),下方接 main v0.26 的「历史 / 差异」双页签(`splitTabs(compact, false)` + `tabPane`,两个页签体都保持挂载);三种 chrome 都是这一列,而且**这段历史窗口默认隐藏**(row Config `showHistory`,缺省 = 关,见不变量 21)。body 类名保持 `dig-body dig-body-<chrome> dig-body-changes`——**chrome token 必须留在类名里**,`layout-probe` / `panes-probe` 靠它读布局判定。
    - `explore`(explorer 页签)= **分支树 | 提交图谱 | 提交详情**:`columns` 三栏并排(tree | log+diff | 详情列,详情列复用 `changes` 这个 pane key 的宽度与分隔条;未选中提交时显示 `detail.pickHint`),窄/堆叠时 tree 在上、log 与 detail 在中区互换、diff 在下。
    - **入口唯一**:动作条上的 `tree` 动作。changes 面上 `label = t('rail.explore')`、`run = props.openExplore()`(宿主没有开门能力时 `available: false`,按钮**根本不渲染**);explore 面上同一个按钮是 `foldTree(!treeOpen)`。双通道开门收在 `gitSeatHost(ctx)` + `openGitSeat(ctx, seat, sessionId, cwd)` 一对 helper 里(better-sidebar `openTab({ type, target: 'right' })`;原生 `sidebarRight.openTab(kind)`)。调用方两个:这枚 `tree` 动作(seat `'explore'`),以及**输入框的仓库胶囊**(seat `'panel'`,v0.20.0 删、v0.19.9/同日恢复并由 `composerRepoPill` 开关控制,见设置 →「面板放置」;关掉后输入框只剩分支胶囊 + ±/↑/↓ 计数)。
    - **explorer 不许进任何目录**:底座侧 `hidden: true`(不进 `+` 菜单、不进开始页卡片),原生侧**不写 `guide`**(开始页只留一张 Git 卡片)——开始页多出一张卡就是回归。
    - 回归:**改到「有数据才出现」的 explorer chrome,必须跑 `layout-probe` / `panes-probe` / `conversation-probe`**(树 / 提交列表 / 详情现在只在这两面里画);`ssr-check` 会把两面各渲染一次,但它只覆盖初始态。
 
 18. **提交框的上边框是可以拖的分隔条,而且它是「非窗格」的那个特例**(用户需求 2026-10-19,与不变量 17 同一批改动)。变更列表下方、提交框上方的 8px 分隔条就是提交框的**上边框**:复用同一个 `Gutter`(`side: 'next'` → 量到的是提交框本身),拖动它整只框长高、列表让位。三条容易踩的规矩:
-    - **它永远走高度轴**(`vertical: false`),与 chrome 无关——`columns` 里两侧的窗格按宽度拖,这一根不参与;**不要**把它塞进 `PANE_CHROME_KEYS` 的几何里(那套按 chrome 决定轴)。
-    - **尺寸按 px 记、与窗格同一把键、同一个 bucket**:`panes[<chrome>:<wide|tall>].commitBox`,`normalizePanes` 单独按 `COMMIT_BOX_MIN_PX..COMMIT_BOX_MAX_PX` 校验(px 不是比例,混进比例校验会被丢掉)。`withPaneRatio` 与 `withCommitBoxPx` 都必须保留对方的键——一次拖动不许抹掉另一个的记忆。
+    - **它永远走高度轴**(`vertical: false`),与 chrome 无关——`columns` 里两侧的窗格按宽度拖,这一根不参与;**不要**把它塞进 `PANE_CHROME_KEYS` / `PANE_FACE_KEYS` 的几何里(那套按 chrome 与面决定轴)。
+    - **尺寸按 px 记、与窗格同一把键、同一个 bucket**:`panes[<chrome>:<wide|tall>].commitBox`,`normalizePanes` 单独按 `COMMIT_BOX_MIN_PX..COMMIT_BOX_MAX_PX` 校验(px 不是比例,混进比例校验会被丢掉)。`normalizePanes` / `paneTokens` 用 **`PANE_STORAGE_KEYS`(两面所有窗格键的并集)**,所以 explorer 存的 diff 尺寸切到默认面再切回来不会丢。`withPaneRatio` 与 `withCommitBoxPx` 都必须保留对方的键——一次拖动不许抹掉另一个的记忆。
     - **钳制在 ChangesPanel 里,因为房间只有它量得到**(`.dig-changes-body`):`commitMax = max(MIN, bodyH - COMMIT_BOX_LIST_MIN_PX)`;**没有行程就没有元素**(`commitReady` 为假 → 整根不渲染,不给死控件),渲染与拖动共用同一个 `clampCommit`(面板变矮时存储值同样被钳)。Panel 半只负责「存 + 一个手势写一次盘」(`dragCommitBox` / `endCommitBoxDrag` / `resetCommitBox`,双击 = `null`)。文本框自己的 `resize` 已取消:同一根轴只留一个手势。
     - 回归:`conversation-probe` 的 2c-bis(保证落在默认面上)拖一次、断言盒子长高而**面板没长高**、落盘、双击复位;`tests/smoke.mjs` 的尺寸核心里有 `commitBox` 的读写与「窗格/盒子互不覆盖」守卫。
+
+
+19. **提交列表的日期格式是行 Config 的 `dateFormat`**(默认 `relative`,可写 `absolute`)。格式化只走 `commitDateText()`:同年 `MM-DD HH:mm`、跨年 `YYYY/MM/DD HH:mm`;非法时间戳返回空串且不生成 tooltip,绝对/相对的另一形态放在 `title`。设置卡在独立的「历史列表」节写入,新增文案时 21 门词典的 `settings.history.title` 与 `settings.date.*` 必须同步。
+20. **窗格几何按面启用,存储按并集**(合并 main v0.19.9~v0.29.0 后):`PANE_CHROME_KEYS` 是默认面的键(stacked = `tree`/`changes`),`PANE_FACE_KEYS` 是 explorer 面的键(stacked = `tree`/`diff`),`paneGeometry(chrome, box, config, laidOut, activeKeys)` 用第 5 个参数只量当前面真正渲染的窗格——`paneKeysOf()` 在默认面返回 `[]`,在 explorer 面返回 `PANE_FACE_KEYS[chrome]`。不传第 5 参数(纯函数切片测试)按 `PANE_CHROME_KEYS` 走。`PANE_LIMITS` 必须同时有两面的键(含 `stack:diff` / `compact:diff`),否则 explorer 的 diff 分隔条会因 `spec.max` 缺失而崩。改这两套键时同步 `tests/smoke.mjs` 的尺寸核心断言。
+21. **默认面历史窗口默认隐藏**(用户要求 2026-11-06):row Config 字段 `showHistory` 默认 `false`,声明在 `src/host/config.js`(`schema.boolean().default(false).volatile()`)。**缺省即关**与「面板放置」那些缺省即开的开关相反,所以设置卡片那一行不能用 `placementShown()`(它把 `undefined` 读成开),必须自己写 `: values[field] === true`。读取走模块级 `showHistoryEnabled()`(Panel 每次 render 读,靠 `subscribeRailConfig` 实时重绘);关掉时**必须把 `diffGutter` / `diffPane` 放回变更列下方**当内嵌 diff 兜底,否则点变更文件没地方看差异。设置行必须是 `fold('settings.history.title', ...)` 的**第二个 body**(闭合 `})()),` 要放在它后面)——写成折叠条外的顶层子节点会没有缩进地裸露在卡片里(2026-11-06 截图)。21 门词典的 `settings.history.visible` / `visibleHint` 必须同步补齐,且词典值一律用单引号(含撇号的译文转义成 `\'`),否则 `tests/smoke.mjs` 的 `keyLines` 扫描器认不出那一行。
 
 ## 文档规范
 
@@ -103,6 +123,8 @@
 
 - **Git 预览的 LineDiff(v0.14.3)是 ui-deliverables 审视图(ReviewTab + FileDiff)的逐文件移植**:头部(官方 Menu/PathLabel/Tooltip/图标,均来自 seed)、unified 双列行号、split 双列同步滚动、双侧 Shiki 高亮、± 统计、单边强制单列、5000 行截断——布局与状态层写在 `src/client.js`,其余积木(`useCodeHighlighter`、`languageForPath`、file-diff alias token、Menu/Tooltip/图标)全部来自平台 seed 表。配色自动跟随主题,**布局与功能不会**。
 - **机制事实(2026-10-08 实证,修正早前结论)**:boot 图行的包**可以**被插件 client bundle require(modules/manifest.ts 解析契约;真机实测 `require('@deepseek-ai/dsh-client-ui-deliverables')` 返回 `{apply, inject}` 不抛错);拿不到 FileDiff 仅因其入口未导出组件——官方一旦 re-export(讨论 #9148),LineDiff 整块删除换官方组件。
+- **cordis ctx 属性直读必须先 inject 声明(v0.21.0 血泪)**:渲染期直接读 `ctx.modelDirectories` 这类官方挂载的服务会抛 `cannot get property "..." without inject`,且炸掉整个宿主 slot(会话视图全白)。正确姿势是模块级 `let xxxRef = null` + 订阅集合,apply 里 `ctx.inject(['服务名'], (svcCtx) => { ...校验形状... xxxRef = svcCtx.get('服务名'); 逐个 notify() })`,组件挂载时加入订阅集合响应注入晚到(同款先例:better-workspace v0.32.x 的 ctx.remote 软注入)。
+- **官方模型目录(ui-model-selection)消费模式(v0.21.0 实证)**:`ctx.modelDirectories.directoryFor(sessionId)` 返回会话级 ModelDirectory;**快照/订阅在 `dir.store` 上**(`dir.store.getSnapshot()` / `dir.store.subscribe(fn)`),`dir.load()` / `dir.select({provider,model,reasoningEffort?})` 直接挂 directory;`select` 内部 `assertAvailable` 对 subagent 会话 throw、失败写 store(`status:'error'`,`error:'code: message'`);state.groups 形如 `{id,name,models:[{id,name,reasoning?}]}`(reasoning.efforts/defaultEffort)。官方 ModelSelect 组件**未从包入口 re-export**(v0.21.0 自绘面板选择器即因此)——入口一旦导出即整体切换。
 - **每次更新插件版本、以及 dsh 升级时,都主动查一遍「官方是否开放了整个预览模块」**(讨论 #9148:https://github.com/deepseek-ai/deepseek-harness/discussions/9148 )。两个落地形态,任一出现即整体切换:
   1. `ui-primitives` 把行号 diff 渲染提升为 seed 组件(查 `packages/client/ui-primitives/src/index.ts` 导出);
   2. `ui-deliverables` 的 client 入口 re-export `FileDiff` / `hunkRows` / `splitRows`(查 `packages/client/ui-deliverables/src/client/index.ts` 的导出——机制已实证可行,boot 图行可 require,只差这一行导出)。

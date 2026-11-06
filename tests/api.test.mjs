@@ -180,6 +180,74 @@ test('log parses hash, parents and paginates', async () => {
   assert.equal(rest.body.data.hasMore, false)
 })
 
+test('log widens to every branch + remote when asked (issue #25)', async () => {
+  const head = await call('log', { cwd: repo, limit: 20 })
+  assert.ok(
+    head.body.data.commits.some((commit) => commit.subject === 'third on feature') === false,
+    'the default HEAD view must not smuggle in the unrelated branch',
+  )
+  const all = await call('log', { cwd: repo, limit: 20, allBranches: true })
+  assert.equal(all.status, 200)
+  assert.ok(
+    all.body.data.commits.some((commit) => commit.subject === 'third on feature'),
+    'allBranches must surface commits that are not in HEAD history',
+  )
+})
+
+test('merge modes keep --no-ff / --no-commit and can be aborted (issue #25)', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-ide-git-merge-'))
+  const at = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' })
+  try {
+    at(root, 'init', '-q', '-b', 'main')
+    at(root, 'config', 'user.name', 'Check')
+    at(root, 'config', 'user.email', 'check@example.com')
+    writeFileSync(join(root, 'base.txt'), 'base\n')
+    at(root, 'add', '-A')
+    at(root, 'commit', '-q', '-m', 'base')
+    at(root, 'checkout', '-q', '-b', 'topic')
+    writeFileSync(join(root, 'topic.txt'), 'topic\n')
+    at(root, 'add', '-A')
+    at(root, 'commit', '-q', '-m', 'topic change')
+    at(root, 'checkout', '-q', 'main')
+    writeFileSync(join(root, 'main.txt'), 'main\n')
+    at(root, 'add', '-A')
+    at(root, 'commit', '-q', '-m', 'main change')
+    const before = at(root, 'rev-parse', 'HEAD').trim()
+
+    // --no-ff --no-commit: the merge is prepared, HEAD does not move, and the
+    // operation marker lets the panel offer Abort merge.
+    const stopped = await call('merge', { cwd: root, branch: 'topic', noFf: true, noCommit: true })
+    assert.equal(stopped.status, 200)
+    assert.equal(stopped.body.data.conflicted, false)
+    assert.equal(at(root, 'rev-parse', 'HEAD').trim(), before, '--no-commit must not move HEAD')
+    assert.equal((await call('summary', { cwd: root })).body.data.operation, 'merge')
+    assert.ok((await call('summary', { cwd: root })).body.data.changes.staged.some((file) => file.path === 'topic.txt'))
+
+    const aborted = await call('mergeAbort', { cwd: root })
+    assert.equal(aborted.status, 200)
+    assert.equal((await call('summary', { cwd: root })).body.data.operation, null)
+    assert.equal(at(root, 'rev-parse', 'HEAD').trim(), before)
+    assert.equal((await call('mergeAbort', { cwd: root })).status, 409, 'nothing to abort must be named, not ignored')
+
+    // --squash stages the changes without a commit and without MERGE_HEAD.
+    const squashed = await call('merge', { cwd: root, branch: 'topic', squash: true })
+    assert.equal(squashed.status, 200)
+    assert.equal((await call('summary', { cwd: root })).body.data.operation, null)
+    assert.ok((await call('summary', { cwd: root })).body.data.changes.staged.some((file) => file.path === 'topic.txt'))
+    at(root, 'reset', '--hard', '-q', before)
+
+    // --no-ff always leaves a two-parent merge commit, even when a fast-forward
+    // would have been possible for the files involved.
+    const merged = await call('merge', { cwd: root, branch: 'topic', noFf: true })
+    assert.equal(merged.status, 200)
+    assert.notEqual(at(root, 'rev-parse', 'HEAD').trim(), before)
+    const parents = at(root, 'rev-list', '--parents', '-n', '1', 'HEAD').trim().split(/\s+/)
+    assert.equal(parents.length, 3, 'a --no-ff merge commit has two parents')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('commitDetail returns body and per-file numstat', async () => {
   // v1 is tagged on the second commit — a stable anchor that earlier tests
   // (which add commits) cannot move.
@@ -281,7 +349,7 @@ test('argument validation blocks ref injection', async () => {
   assert.equal(unknown.body.error.code, 'not-found')
 })
 
-test('trust fence refuses cross-site requests and accepts same-origin remote hosts', async () => {
+test('trust fence refuses cross-site requests and accepts same-origin remote hosts (issue #20: plain-HTTP LAN sends no Sec-Fetch-*)', async () => {
   const hostile = await call('summary', { cwd: repo }, { host: 'evil.example.com', 'sec-fetch-site': 'cross-site' })
   assert.equal(hostile.status, 403)
   assert.equal(hostile.body.error.code, 'forbidden')
@@ -289,6 +357,31 @@ test('trust fence refuses cross-site requests and accepts same-origin remote hos
   assert.equal(remote.body.ok, true)
   const noHost = await call('summary', { cwd: repo }, { host: '' })
   assert.equal(noHost.status, 403)
+  // A page served over plain HTTP from a LAN address is not a secure context,
+  // so Chrome/Edge send NO Sec-Fetch-* header on its own same-origin calls
+  // (issue #20: the git panel answered 403 there). Origin and Referer are
+  // forbidden headers a page cannot forge; comparing either against Host
+  // restores the fence.
+  const lanHost = '192.168.100.100:3080'
+  const sameOrigin = await call('summary', { cwd: repo }, { host: lanHost, origin: 'http://' + lanHost })
+  assert.equal(sameOrigin.body.ok, true, 'a same-origin Origin admits the LAN page')
+  const sameReferer = await call('summary', { cwd: repo }, { host: lanHost, referer: 'http://' + lanHost + '/session/x' })
+  assert.equal(sameReferer.body.ok, true, 'a same-origin Referer admits the LAN page')
+  // Scheme-default ports normalize on both sides.
+  const httpDefault = await call('summary', { cwd: repo }, { host: 'git.example.com', origin: 'http://git.example.com' })
+  assert.equal(httpDefault.body.ok, true, 'an implicit Host port matches the http default')
+  const httpsDefault = await call('summary', { cwd: repo }, { host: 'git.example.com', origin: 'https://git.example.com' })
+  assert.equal(httpsDefault.body.ok, true, 'an implicit Host port also matches the https default')
+  const crossOrigin = await call('summary', { cwd: repo }, { host: lanHost, origin: 'http://198.51.100.7:3080' })
+  assert.equal(crossOrigin.status, 403, 'a foreign origin never passes')
+  const crossReferer = await call('summary', { cwd: repo }, { host: lanHost, referer: 'https://evil.example.net/session' })
+  assert.equal(crossReferer.status, 403, 'a foreign referer never passes')
+  const nullOrigin = await call('summary', { cwd: repo }, { host: lanHost, origin: 'null' })
+  assert.equal(nullOrigin.status, 403, 'the opaque null origin is not same-origin')
+  const portMismatch = await call('summary', { cwd: repo }, { host: 'git.example.com:3080', origin: 'http://git.example.com:3081' })
+  assert.equal(portMismatch.status, 403, 'a different port is a different origin')
+  const bare = await call('summary', { cwd: repo }, { host: lanHost })
+  assert.equal(bare.status, 403, 'no same-origin signal at all stays refused')
 })
 
 test('branch delete is reversible through the undo stack', async () => {
@@ -398,6 +491,78 @@ test('fetch accepts a refspec and fast-forwards a NON-checked-out branch (v0.18.
   execFileSync('git', ['branch', '-q', '-D', 'pullme'], { cwd: repo })
   execFileSync('git', ['remote', 'remove', 'origin'], { cwd: repo })
   rmSync(originRoot, { recursive: true, force: true })
+})
+
+test('pull defaults to merge and names the push/pull failures users hit (v0.24.0)', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-ide-git-sync-'))
+  const origin = join(root, 'origin.git')
+  const local = join(root, 'local')
+  const peer = join(root, 'peer')
+  const at = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' })
+  try {
+    execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin])
+    const seed = join(root, 'seed')
+    execFileSync('git', ['init', '-q', '-b', 'main', seed])
+    at(seed, 'config', 'user.name', 'Check')
+    at(seed, 'config', 'user.email', 'check@example.com')
+    writeFileSync(join(seed, 'base.txt'), 'base\n')
+    at(seed, 'add', '-A')
+    at(seed, 'commit', '-q', '-m', 'base')
+    at(seed, 'remote', 'add', 'origin', origin)
+    at(seed, 'push', '-q', '-u', 'origin', 'main')
+    execFileSync('git', ['clone', '-q', origin, local])
+    execFileSync('git', ['clone', '-q', origin, peer])
+    for (const dir of [local, peer]) {
+      at(dir, 'config', 'user.name', 'Check')
+      at(dir, 'config', 'user.email', 'check@example.com')
+    }
+
+    // A clean divergence (different files) is exactly the case the old
+    // --ff-only default answered with "Not possible to fast-forward".
+    writeFileSync(join(peer, 'peer.txt'), 'peer\n')
+    at(peer, 'add', '-A')
+    at(peer, 'commit', '-q', '-m', 'peer change')
+    at(peer, 'push', '-q', 'origin', 'main')
+    writeFileSync(join(local, 'local.txt'), 'local\n')
+    at(local, 'add', '-A')
+    at(local, 'commit', '-q', '-m', 'local change')
+    const pulled = await call('pull', { cwd: local })
+    assert.equal(pulled.status, 200)
+    assert.equal(pulled.body.data.mode, 'merge', 'pull must default to merge')
+    const log = at(local, 'log', '--format=%s')
+    assert.match(log, /peer change/)
+    assert.match(log, /local change/)
+
+    // A behind-tip push is named, not left as raw git output.
+    writeFileSync(join(peer, 'ahead.txt'), 'ahead\n')
+    at(peer, 'add', '-A')
+    at(peer, 'commit', '-q', '-m', 'peer ahead')
+    at(peer, 'push', '-q', 'origin', 'main')
+    const rejected = await call('push', { cwd: local, confirm: true })
+    assert.equal(rejected.status, 409)
+    assert.equal(rejected.body.error.code, 'push-rejected')
+
+    // Catch up, then make both sides touch the same file: the explicit
+    // --ff-only check names the divergence, and the default merge names the
+    // conflict instead of returning a wall of git output.
+    await call('pull', { cwd: local })
+    writeFileSync(join(peer, 'same.txt'), 'peer\n')
+    at(peer, 'add', '-A')
+    at(peer, 'commit', '-q', '-m', 'peer same file')
+    at(peer, 'push', '-q', 'origin', 'main')
+    writeFileSync(join(local, 'same.txt'), 'local\n')
+    at(local, 'add', '-A')
+    at(local, 'commit', '-q', '-m', 'local same file')
+    const diverged = await call('pull', { cwd: local, mode: 'ff-only' })
+    assert.equal(diverged.status, 409)
+    assert.equal(diverged.body.error.code, 'pull-diverged')
+    const conflicted = await call('pull', { cwd: local })
+    assert.equal(conflicted.status, 409)
+    assert.equal(conflicted.body.error.code, 'pull-conflict')
+    at(local, 'merge', '--abort')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test('the checked-out branch and protected branches are guarded', async () => {
@@ -555,6 +720,137 @@ test('only ANOTHER working tree marks a branch as occupied', async () => {
     git('worktree', 'remove', '--force', linked)
     git('branch', '-D', 'wt-branch')
     rmSync(linked, { recursive: true, force: true })
+  }
+})
+
+
+test('worktrees: create on a new branch, attach an existing branch, reject bad input', async () => {
+  const baseDir = mkdtempSync(join(tmpdir(), 'dsh-ide-git-wt-add-'))
+  // The space is deliberate: git worktree list --porcelain -z must keep a
+  // path with a space in one record, not split it across lines.
+  const targetNew = join(baseDir, 'wt one')
+  const targetExisting = join(baseDir, 'wt two')
+  const cleanup = () => {
+    for (const target of [targetNew, targetExisting]) {
+      if (existsSync(target) === false) continue
+      try { git('worktree', 'remove', '--force', target) } catch (error) { void error }
+    }
+    try { git('branch', '-D', 'wt/new') } catch (error) { void error }
+    git('worktree', 'prune')
+    rmSync(baseDir, { recursive: true, force: true })
+  }
+  try {
+    const created = await call('worktreeAdd', { cwd: repo, path: targetNew, branch: 'wt/new', createBranch: true })
+    assert.equal(created.status, 200)
+    assert.equal(created.body.data.created, true)
+    assert.equal(created.body.data.branch, 'wt/new')
+    assert.equal(existsSync(join(targetNew, 'a.txt')), true, 'the new checkout got the repository contents')
+
+    const listed = await call('summary', { cwd: repo })
+    const row = listed.body.data.worktrees.find((entry) => entry.branch === 'wt/new')
+    assert.ok(row !== undefined, 'summary lists the new worktree')
+    assert.equal(row.current, false)
+    assert.equal(row.primary, false)
+    assert.equal(row.detached, false)
+    assert.equal(row.path.endsWith('wt one'), true, 'path with a space survives porcelain -z: ' + row.path)
+
+    const existing = await call('worktreeAdd', { cwd: repo, path: targetExisting, branch: 'feature', createBranch: false })
+    assert.equal(existing.status, 200)
+    assert.equal(existing.body.data.created, false)
+    assert.equal(existsSync(join(targetExisting, 'c.txt')), true, 'the existing branch was checked out')
+
+    const duplicate = await call('worktreeAdd', { cwd: repo, path: targetNew, branch: 'wt/other', createBranch: true })
+    assert.equal(duplicate.status, 409)
+    assert.equal(duplicate.body.error.code, 'worktree-exists')
+
+    const invalid = await call('worktreeAdd', { cwd: repo, path: join(baseDir, 'invalid'), branch: 'bad..name', createBranch: true })
+    assert.equal(invalid.status, 400)
+    assert.match(invalid.body.error.message, /invalid branch name/)
+    assert.equal(existsSync(join(baseDir, 'invalid')), false, 'a rejected branch never creates a checkout')
+  } finally {
+    cleanup()
+  }
+})
+
+test('worktrees: removal guards confirm, current/primary, locked and dirty trees', async () => {
+  const baseDir = mkdtempSync(join(tmpdir(), 'dsh-ide-git-wt-remove-'))
+  const dirtyTree = join(baseDir, 'wt dirty')
+  const lockedTree = join(baseDir, 'wt locked')
+  const cleanup = () => {
+    for (const target of [dirtyTree, lockedTree]) {
+      if (existsSync(target) === false) continue
+      try { git('worktree', 'remove', '--force', target) } catch (error) { void error }
+    }
+    for (const branch of ['wt/dirty', 'wt/locked']) {
+      try { git('branch', '-D', branch) } catch (error) { void error }
+    }
+    git('worktree', 'prune')
+    rmSync(baseDir, { recursive: true, force: true })
+  }
+  try {
+    const created = await call('worktreeAdd', { cwd: repo, path: dirtyTree, branch: 'wt/dirty', createBranch: true })
+    assert.equal(created.status, 200)
+    writeFileSync(join(dirtyTree, 'scratch.txt'), 'scratch\n')
+
+    const noConfirm = await call('worktreeRemove', { cwd: repo, path: dirtyTree })
+    assert.equal(noConfirm.status, 400)
+
+    const current = await call('worktreeRemove', { cwd: repo, path: repo, confirm: true })
+    assert.equal(current.status, 409)
+    assert.equal(current.body.error.code, 'protected-worktree')
+
+    const dirty = await call('worktreeRemove', { cwd: repo, path: dirtyTree, confirm: true })
+    assert.equal(dirty.status, 409)
+    assert.equal(dirty.body.error.code, 'worktree-dirty')
+    assert.equal(existsSync(dirtyTree), true, 'a refused removal leaves the checkout in place')
+
+    const forced = await call('worktreeRemove', { cwd: repo, path: dirtyTree, confirm: true, force: true })
+    assert.equal(forced.status, 200)
+    assert.equal(forced.body.data.forced, true)
+    assert.equal(forced.body.data.dirty, true)
+    assert.equal(existsSync(dirtyTree), false, 'force removal deletes the dirty checkout')
+
+    const lockedCreated = await call('worktreeAdd', { cwd: repo, path: lockedTree, branch: 'wt/locked', createBranch: true })
+    assert.equal(lockedCreated.status, 200)
+    git('worktree', 'lock', lockedTree)
+    const locked = await call('worktreeRemove', { cwd: repo, path: lockedTree, confirm: true })
+    assert.equal(locked.status, 409)
+    assert.equal(locked.body.error.code, 'worktree-locked')
+    git('worktree', 'unlock', lockedTree)
+    const unlocked = await call('worktreeRemove', { cwd: repo, path: lockedTree, confirm: true })
+    assert.equal(unlocked.status, 200)
+    assert.equal(existsSync(lockedTree), false)
+  } finally {
+    cleanup()
+  }
+})
+
+test('worktrees: prune forgets a directory deleted outside the panel', async () => {
+  const baseDir = mkdtempSync(join(tmpdir(), 'dsh-ide-git-wt-prune-'))
+  const target = join(baseDir, 'wt gone')
+  try {
+    const created = await call('worktreeAdd', { cwd: repo, path: target, branch: 'wt/gone', createBranch: true })
+    assert.equal(created.status, 200)
+    rmSync(target, { recursive: true, force: true })
+
+    const stale = await call('summary', { cwd: repo })
+    const row = stale.body.data.worktrees.find((entry) => entry.branch === 'wt/gone')
+    assert.ok(row !== undefined, 'the stale admin record is still listed')
+    assert.equal(row.prunable, true)
+
+    const refused = await call('worktreePrune', { cwd: repo })
+    assert.equal(refused.status, 400)
+
+    const pruned = await call('worktreePrune', { cwd: repo, confirm: true })
+    assert.equal(pruned.status, 200)
+
+    const after = await call('summary', { cwd: repo })
+    assert.equal(after.body.data.worktrees.some((entry) => entry.branch === 'wt/gone'), false,
+      'prune drops the record of the missing checkout')
+  } finally {
+    try { git('worktree', 'prune') } catch (error) { void error }
+    try { git('branch', '-D', 'wt/gone') } catch (error) { void error }
+    rmSync(baseDir, { recursive: true, force: true })
   }
 })
 
@@ -737,10 +1033,23 @@ test('commit-message: a thrown adapter failure is still a loud failure', async (
   assert.match(result.body.error.message, /adapter exploded/)
 })
 
-test('commit-message: no session route, unknown provider and unknown model are refused with a next step', async () => {
-  const noRoute = await withServices(fakeLlm([{ type: 'finish', reason: { kind: 'stop' } }]), { list: () => [{ id: 'sess-1', requestHeader: () => ({ config: {} }) }] }, (call) => call('commit-message', { cwd: repo, sessionId: 'sess-1' }))
-  assert.equal(noRoute.status, 502)
-  assert.equal(noRoute.body.error.code, 'no-route')
+test('commit-message: a blank session falls back to the served models; unknown provider and unknown model are refused with a next step', async () => {
+  // Issue #19: 'no-route' used to kill the panel button on a fresh session.
+  // The host now falls back to the first served provider/model, and the
+  // response admits it through routeSource: 'fallback'.
+  writeFileSync(join(repo, 'ai-fallback.txt'), 'fallback probe\n')
+  git('add', 'ai-fallback.txt')
+  const seen = []
+  const fallback = await withServices(fakeLlm([{ type: 'text-delta', index: 0, text: 'chore: fallback' }, { type: 'finish', reason: { kind: 'stop' } }], seen), { list: () => [{ id: 'sess-1', requestHeader: () => ({ config: {} }) }] }, (call) => call('commit-message', { cwd: repo, sessionId: 'sess-1' }))
+  assert.equal(fallback.status, 200, JSON.stringify(fallback.body))
+  assert.equal(fallback.body.data.routeSource, 'fallback', 'the response names the fallback route')
+  assert.equal(seen[0].provider, 'deepseek-official', 'the fallback serves the first provider')
+  assert.equal(seen[0].model, 'deepseek-flash', 'the fallback serves that provider\'s first model')
+  // And when the host serves nothing at all, the refusal still names a next step.
+  const noModels = await withServices({ listProviders: () => [], listModels: async () => [] }, { list: () => [{ id: 'sess-1', requestHeader: () => ({ config: {} }) }] }, (call) => call('commit-message', { cwd: repo, sessionId: 'sess-1' }))
+  assert.equal(noModels.status, 502)
+  assert.equal(noModels.body.error.code, 'no-models')
+  assert.match(noModels.body.error.message, /pick a model/, 'the refusal carries the old next step')
   const noSession = await withServices(fakeLlm([{ type: 'finish', reason: { kind: 'stop' } }]), { list: () => [] }, (call) => call('commit-message', { cwd: repo, sessionId: 'ghost' }))
   assert.equal(noSession.body.error.code, 'no-session')
   const badShape = await withServices(fakeLlm([]), fakeSessions({ provider: 'p', model: 'm' }), (call) => call('commit-message', { cwd: repo, sessionId: 's', model: 'deepseek-flash' }))

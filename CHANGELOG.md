@@ -5,6 +5,30 @@
 
 ## Unreleased
 
+**类型**:fix(历史开关别裸露在折叠条外)
+
+- **症状**(用户 2026-11-06 截图):「在默认面显示历史列表」开关连说明一起掉在「历史列表」折叠条**外面**,没有 `dig-stack` 容器与缩进,hint 直接压到下一节上。
+- **根因**:新行被放在 `fold('settings.history.title', …)` 的 `})()),` **之后**,成了设置卡片的顶层子节点;收起折叠条时它依然露在外面。
+- **解法**:把 fold 的闭合括号挪到开关行之后,让日期格式行与开关行同为该折叠节的两个 body(收起时一并藏起、展开时统一排版);中英文 hint 缩短成一句。`tests/smoke.mjs` 增加切片断言,防止开关再次跑到折叠条外。
+- **验证**:`npm test` 148/148;只动客户端半,刷页面即生效,不用重启宿主。
+
+**类型**:feat(设置里可隐藏默认面的历史列表,默认隐藏)
+
+- **需求**(用户 2026-11-06,附真机截图):默认页签下半屏的「历史 / 差异」双页签太占地方,要在「Git 工具窗口设置」里加一个开关,**默认隐藏**。
+- **新增 row Config 字段 `showHistory`**(`src/host/config.js`,`schema.boolean().default(false).volatile()`):与「面板放置」那些缺省即开的开关相反,**缺省 = 关**,老 profile 自动保持紧凑的默认面;不声明为 volatile 会被宿主拒写。
+- **设置卡片**「历史列表」节新增一行「在默认面显示历史列表」+ 说明(21 门词典补齐 `settings.history.visible` / `settings.history.visibleHint`),沿用同一套乐观写入与实时重绘;开关翻转后 Panel 因 `subscribeRailConfig` 重渲染即时生效,不用刷新。
+- **默认面两种形态**:关 = fork 原来的单列「变更 + 提交框」,**内嵌 diff 兜底回到变更列表下方**(点变更文件仍看得到差异,不会因隐藏窗口丢功能);开 = 变更区在上 + main 的「历史 / 差异」双页签在下。分支树 / 提交列表 / 提交详情始终在 explorer 页签,不受影响。
+- **验证**:`npm test` 148/148(新增一条冒烟断言覆盖字段声明、默认 false、词典 21 门、两种渲染分支与 diff 兜底);`typeof Config === 'function'`;宿主半改了行配置,**需要用户自己重启 `dsh web`**。
+
+**类型**:chore(把 main v0.19.9~v0.29.0 合进 fork,保留两面设计)
+
+- **合并范围**:`main`(61690e5,31 个提交)合入 `fork`(7af1d03,6 个独有提交)。冲突 80 处,集中在 `src/client.js`(65)、文档(11)、`tests/smoke.mjs`(3)、`src/index.js`(1)。
+- **宿主半**:采用 main 的拆分(`src/index.js` 薄入口 + `src/host/*.js`),fork 独有的 `composerRepoPill` row Config 字段移植到 `src/host/config.js`;`@deepseek-ai/schemastery` devDependency 与仓库地址安装说明保留。
+- **客户端半**:`props.mode` 两面正交分流——默认面 = fork 的单列「变更 + 提交框」(含可拖上边框、AI 模型选择器)+ main 的「历史 / 差异」双页签;explorer 面 = fork 的 tree | log | detail + main 的日期格式 / 分支范围 / 工作树视图 / 内嵌 diff 开关。窗格尺寸按面启用不同 key(`PANE_FACE_KEYS`),存储用并集(`PANE_STORAGE_KEYS`),避免两套布局互相挤占。
+- **取舍**:fork 默认面「不显示历史列表」的设计被 main 的双页签取代(历史列表回到默认面);fork 的 explorer 第二 Tab、提交框拖动、仓库胶囊开关、真机截图全部保留。`tests/smoke.mjs` 中写死旧结构的断言已按融合后的实现更新(不删断言,改为对新结构的等价校验),`npm test` 147 项全绿。
+- **注意**:两套 UI 的真机观感仍需复核;改到「有数据才出现」的 explorer chrome 后要跑 `layout-probe` / `panes-probe` / `conversation-probe`(需要隔离实例,不碰用户自己的 `dsh web`)。
+
+
 **类型**:feat(输入框仓库胶囊回来了,并带自己的开关)
 
 - **feat 恢复仓库胶囊 + 新增开关**(用户要求:「commit a8a2441 删掉的仓库胶囊找回来,然后放到面板放置里设置是否展示」):把 a8a2441 整颗删掉的「commit 图标 + 仓库名」胶囊(`.dig-cs-pill.dig-cs-repo`)原样搬回来——连同箭头按钮(`.dig-cs-caret`)、仓库选择菜单(`menu === 'repo'`)、`pickRepoRoot` / `baseNameOf` 两个 helper、`.dig-cs-caret` / `.dig-cs-item-main` / `.dig-cs-item-sub` 三条样式,以及 `composer.openPanel` / `composer.repoHint` 两个文案键(21 门词典一并补回)。点仓库名仍然开右侧 Git 面板(座位仍按宿主自动选),箭头仍开仓库选择菜单。
@@ -61,6 +85,251 @@
 - 行为变化:提交信息在两种 chrome 下都是多行文本,**回车只换行**,提交走 `Ctrl+Enter`(macOS `Cmd+Enter`)——窄栏此前是「回车即提交」,多行消息与 `--amend` 需要这个改动;占位符文案本就写着 `(Ctrl+Enter)`。文本框自己右下角的拖拽手柄(`resize`)随之取消:同一根轴只留一个手势(拖动框的上边框)。
 - 回归:**119 项测试全绿**(新增守卫:两种 chrome 的排布、共用 `commitButtons()`、消息不再是 `<input>`、`.dig-commit-actions .dig-btn-primary{margin-left:0}`、中文标签恰为 `Amend`;分块尺寸核心里 `commitBox` 的读写与范围校验,以及「窗格拖动不丢盒子尺寸、盒子拖动不丢窗格比例」;分隔条就在提交框上方、`side: 'next'`、`vertical: false`、没有行程就整根不渲染)。**探针**:`conversation-probe` 新增一步(会话区 Git 标签页是必经的默认面)——定位 `.dig-changes-body .dig-gutter`、往上拖、断言盒子真的长高而**面板没长高**、`pointerup` 落盘 `commitBox`、双击复位并删除;`panes-probe` 不涉及(它在 explorer 面量窗格,默认面的分隔条不参与)。新文案键 `pane.commitBox` 21 门一次补齐。
 - **真机复验**:拖提交框**上边框**改高(双击复位、方向键微调)、勾 Amend 提一次确认走 `--amend`、回车换行 + `Ctrl+Enter` 提交、提交按钮贴在左下角。
+## v0.29.0 — 2026-11-05
+
+**类型**:feat(合并 PR #27:提交列表日期列相对/绝对时间切换)+ fix(收尾)
+
+- **日期格式(issue #26 / PR #27,作者 @Serendipity-55428)**:提交列表的日期列默认仍显示相对时间(如 `4h`),可在插件设置 →「历史列表」切换到绝对时间;同年显示 `MM-DD HH:mm`,跨年显示 `YYYY/MM/DD HH:mm`。列里只显示一种形态,悬停的 `title` 给出另一种,所以切到绝对时间也不会丢掉「多久以前」。
+- **行 Config**:新增 `dateFormat` 字符串字段(默认 `relative`,可写 `absolute`),直接 `.volatile()`;设置卡通过现有的 `selectRow` 写入,21 门词典同步 `settings.date.label/relative/absolute`。
+- **收尾**:日期行从「面板放置」节移出,放进独立的「历史列表」节(21 门新增 `settings.history.title`),节标题与行语义一致;修正波兰语 absolute 为 `Absolutny`、俄语改为「Относительное время / Абсолютное время」,中文括号统一为 ASCII。
+- **非法时间戳**:`commitDateText()` 返回空串时,单元格保持空白且不再生成 ` · ` 拼接的 tooltip;正常时间戳的绝对/相对互补提示不变。
+- **文档**:两份 README 的提交列表行与设置面说明补上日期格式;AGENTS.md 新增不变量 17(格式化入口、非法值、21 门文案同步)。
+- **验证**:`npm test` 142/142(0 fail / 0 skip;新增 PR 自带的 102 行日期测试与 1 条非法时间戳断言);`node --check src/client.js src/host/config.js`; `scripts/ssr-check.mjs` 四项 OK。相关:issue [#26](https://github.com/KannaKuron/dsh-ide-git/issues/26)、PR [#27](https://github.com/KannaKuron/dsh-ide-git/pull/27)。
+
+## v0.28.0 — 2026-11-05
+
+**类型**:breaking(兼容下限抬到 dsh >=0.2.2-rc.1)+ feat(动作条排序持久化)
+
+- **单代基线**:`engines.node` 改为 `>=24.9.0`;`engines.dsh` 与 `@deepseek-ai/dsh` peer 同步改为 `>=0.2.2-rc.1`(peer 仍 optional、无上界);`dsh.plugin.json` 同步。兼容门禁以 `engines.dsh` 为准,不再保留 `>=0.1.6-alpha.2` 的旧声明。
+- **设置面单代**:`src/host/config.js` 删除 `live()` 探测,17 个动作布尔、`commitModel` / `commitReasoning` / `commitPrompt`、`conversationTab` / `immersive` / `composerStatus` / `inlineDiff` 全部直接 `.volatile()`;新增 `railOrder` 字符串字段(默认空串=代码顺序)。`dsh.client.inject` 补声明 `@deepseek-ai/dsh-client-ui-settings`。
+- **动作条排序真正持久化**:此前 `writeRailConfig` 只写动作布尔、忽略 `order`,面板里拖动或上下移只改当次 state,重启即丢。现在读写都走 `railOrderOf()` / `railOrderText()`:丢弃未知/重复 id、按 `RAIL_IDS` 补全,代码顺序写成空串;旧 `localStorage` 文档由 `migrateRailConfig()` 一次性迁入(含排序),写路径不再回退到它。
+- **设置卡与入口**:插件详情页的 `plugins.bundle.config` 卡改成始终平铺的页面卡(rc.1 只以 `view:'page'` 渲染,不再有 li 折叠壳);删掉不存在的 `props.scope` 探测,统一读模块级 `railForm`;补 `loading` 与 `unavailable` 两种状态和 21 门文案。齿轮始终打开面板内编辑器(排序与显隐都在那里),不再按 `railSettingsTarget` 跳插件页;删除废弃的 `rail.openSettings` 文案与 `pluginNavigation` 读取。
+- **其它清理**:删除重复的 `return commitCatalogFlight`;21 门词典同步新的排序/加载说明。`src/index.js` 的 `typeof ctx.inject` 守卫保留——它是测试用最小 ctx 的防御,不是旧宿主版本分支。
+- **验证**:`npm test` 132/132 pass,0 fail;`node --check src/client.js src/host/config.js` 通过;`scripts/ssr-check.mjs` 四项 OK。隔离实例真机验证(动作条拖动/上下移重启后保持、插件页卡显隐与加载态、齿轮打开面板编辑器)待发布前完成。
+
+## v0.27.4 — 2026-11-04
+
+**类型**:feat(issue #25:历史范围 + 合并模式 + 中止合并)
+
+- **历史范围(issue #25)**:历史筛选栏新增「范围」选择器——当前分支(默认,行为不变)、全部分支、以及任意本地/远程分支。选「全部分支」时宿主把日志起点换成 `git log --branches --remotes`,指向具体分支时直接把该 ref 交给 `git log`;范围来自分支树列表,不再只从已加载提交的 refs 里收集,所以一个与当前分支无关、或领先于当前分支的分支,它的提交现在能真正出现在历史里。切换范围会清掉双击分支产生的合并锚点;范围是视图起点,不参与「一键清除」的文本过滤。
+- **合并模式(issue #25)**:分支行动作与分支右键的「合并到当前分支」现在都先打开合并对话框,可选 **默认 / `--no-ff` / `--squash` / `--no-ff --no-commit`**,并在选项下方说明各自后果。`--no-commit` 必须与 `--no-ff` 搭配,否则 git 在可快进时会拒绝;宿主 `merge` 新增 `noCommit` 旗标。
+- **中止合并**:新增宿主方法 `mergeAbort`(`git merge --abort`)与「更多操作 → 提交 → 中止合并」菜单项。`--no-ff --no-commit` 会留下 `MERGE_HEAD` 与已暂存改动,没有这个入口用户只能回终端退出;无合并进行中时路由返回 409,菜单项只在操作状态为 merge 时可用。
+- **文案**:21 门词典同步新增范围、合并标题/说明/四种模式与提示、中止合并共 14 个键;模式标签直接显示 git 旗标,`{branch}` 占位符在提示里替换为实际分支名。
+- **验证**:`npm test` 132/132(0 fail / 0 skip,新增历史范围、四模式映射、`mergeAbort` 的路由/写队列/菜单断言,以及 api 层的全分支日志、`--no-commit` 留 `MERGE_HEAD` 后中止、`--squash`、`--no-ff` 双父提交);`node --check` 全部通过;`node scripts/ssr-check.mjs` 四项全 OK;`node scripts/layout-probe.mjs` 在 1600→380px 共 11 档宽度全部通过、无 pageerror。隔离实例真机:dsh 0.2.2-rc.1 + 测试仓库(alpha 与 main 分叉),「全部分支」能看到 alpha only change;四种合并模式逐一执行,--no-commit 留下「合并进行中」与已暂存文件、中止后恢复干净,--no-ff 生成双父合并提交,--squash 只留暂存改动;console 无报错。
+- 相关:issue [#25](https://github.com/KannaKuron/dsh-ide-git/issues/25);README 中英文的功能与筛选表同步更新。
+
+## v0.27.3 — 2026-11-04
+
+**类型**:chore(复核并声明 dsh 0.2.2-rc.1 兼容;零代码改动)
+
+- **宿主面复核**:0.2.2-rc.1 的 `ui-sidebar-right` 只新增可选 `direction` / `isFloating` 与菜单字段,本插件使用的 `openTab` / `openResource` / `float` / `dock` 契约未变;`ui-workspace` 内置菜单迁到官方 `contextMenus` 与本插件无关。
+- **composer 复核**:rc.1 的 `ui-conversation` 新增「固定浮层应 portal 到 body」的说明;本插件的仓库/分支选择器使用 `.dig-cs-root` 内的 absolute 菜单,不是 fixed 浮层。隔离实例中菜单完整展开、未被 composer 裁剪。
+- **真机**:dsh 0.2.2-rc.1 隔离实例里 Git 面板、仓库/分支 SearchPicker、分支树、composer 两个 pill 的搜索与签出均正常;v0.27.2 的透明输入适配不受影响;无控制台错误。
+- 测试:129 项全绿。
+
+## v0.27.2 — 2026-11-04
+
+**类型**:fix(搜索选择器的输入框跟随 dsh-any-background 真正透明)
+
+- **背景**:用户使用背景插件时,输入框工具条的仓库/分支搜索浮层里,搜索框仍是一块实白,而 Git 面板的「提交信息」输入框能正常透出壁纸。v0.27.1 的灰罩只在 `html.dab-input-frost`(插件开启输入磨砂)时生效;用户的真实主题是 input 透明度 0.37、input blur 0,根本没有这个 class,所以灰罩从未出现,搜索框仍是白的。
+- **根因**:v0.27.1 为了避免 issue #15 的浅色菜单白底,在 `.dig-cs-menu` 上重新声明了 `--dsw-alias-bg-layer-1/2`。这两个自定义属性会继承给菜单里的搜索条和输入框,把插件的透明输入层又钉回静态实色;面板提交框不在这个菜单里,所以一直正常。
+- **改动**:删掉 `.dig-cs-menu` 上的 layer 变量钉死,菜单表面只在自身规则里用静态 token 作为 `background-color` 回退(浅色 `--dsw-static-neutral-bluish-00`、深色 `--dsw-static-neutral-bluish-850`,issue #15 的兜底仍在);`.dig-pick-search` 与新增的 `.dig-pick-input` 都改为 `background:transparent`。输入框工具条的浮层把插件填充变量 `--dsh-any-op-menu-cordis` 再叠一层:0.37 的单层在繁忙壁纸上太虚,叠成约 0.60 后与面板选择器的菜单材质一致,但仍是半透明;这层不依赖 `dab-input-frost`,插件不存在时渐变透明、官方不透明回退不受影响。两层都不新增 `backdrop-filter`,模糊仍由 `[data-cordis-panel]` 提供。
+- **验证**:`npm test` 129/129(0 fail / 0 skip);`node --check src/client.js`;`node scripts/ssr-check.mjs` 四项全 OK。隔离实例(全局 dsh 0.2.1-rc.2 + dsh-any-background 0.4.3,复制真实主题:input 0.37 / blur 0 / dark / 壁纸)真机确认:输入框 computed `background-color: rgba(0,0,0,0)`,菜单 `rgba(135,135,135,0.37)` + 同色渐变(合成约 0.60),html 无 `dab-input-frost`,console 无报错;面板的 `.dig-menu::before` 为 `rgba(135,135,135,0.6)`,两处表面一致。截图 `/tmp/idegit-glass-03-first.png`、`/tmp/idegit-glass-panel-picker.png`。
+
+## v0.27.1 — 2026-11-04
+
+**类型**:fix(透明输入状态下的搜索选择器仍能看出是一块可输入的面)
+
+- **背景**:用户截图反馈,输入框工具条的仓库/分支搜索浮层叠在聊天内容上时几乎全透明,背后的正文清晰透出,搜索框像悬空的输入光标,不容易看出这是一个可以输入的下拉面板。
+- **改动**:基础规则只保留 dsh-any-background 的输入层填充变量 `--dsh-any-op-menu-cordis`(缺省回退 `--dsw-alias-bg-layer-2`),不再无条件叠加灰罩;新增 `.dab-input-frost .dig-cs-menu.dig-cs-picker` 作用域,只在插件确实开启输入磨砂(html 带 `dab-input-frost`)时叠一层 20% 的 `--dsw-alias-label-secondary` 中性灰。没有该插件、插件改名标记,或用户把透明度设为 0 时,菜单回到官方的不透明/原样材质,不覆盖用户设置。两层都不新增 `backdrop-filter`——`[data-cordis-panel]` 已经提供模糊。
+- **验证**:`npm test` 129/129(0 fail / 0 skip);`node --check src/client.js`;`node scripts/ssr-check.mjs` 四项全 OK。隔离实例(全局 dsh 0.2.1-rc.2 + dsh-any-background 0.4.3)真机确认:html 为 `dab-input-frost` 时菜单 computed `background-color: rgba(248,249,250,0.58)` + `background-image: linear-gradient(... 0.2 ...)`,搜索框与分支行清晰可读;临时移除该 class 后 `background-image` 回到 `none`,证明灰罩只在透明输入状态生效。亮色截图 /tmp/idegit-css-scoped-open.png;深色只做了 token 推演,未作为验收依据。
+
+## v0.27.0 — 2026-11-04
+
+**类型**:feat(可搜索的仓库/分支切换器 + 分支名折叠成树;合并 PR #24)
+
+- **feat 仓库/分支切换器支持输入搜索**:面板顶部的仓库胶囊、分支胶囊,以及输入框工具条上的两个胶囊,现在共用同一个 `SearchPicker`。仓库按名称、绝对路径、克隆目录名或当前分支过滤,并标出每个克隆的当前分支;分支按 `/` 折成文件夹树,`fix/login`、`fix/api/timeout` 这类前缀不再挤成一排。输入即过滤,命中的目录自动展开;过滤器为空时目录可手动折叠;方向键循环、Enter 选择、Escape 关闭,输入框自动聚焦。
+- **feat 面板与输入框同一套行为**:面板的切换器走官方 `ContextMenu` 的 `body` 座位(锚点、边界夹取、点外关闭都复用原逻辑),输入框胶囊用同一个组件;两边都复用宿主已有的仓库扫描与 `branches.local`,没有新增宿主 API。
+- **fix 切换分支后仓库标签跟随 live HEAD**:面板顶部原先直接用仓库扫描缓存里的 `branch`,签出后仍显示旧分支(如 `dsh-agent-lang · main`)。现在当前仓库的扫描行会被 `branches.branch` 覆盖,标签与分支树、状态行同时更新。
+- **fix 关闭差异后作废在途请求与去重窗口**(PR #24 审阅):关掉 diff、返回历史、切换仓库或工作树视图时统一走 `resetDiff()`,同时递增 `diffSeq` 并清空 `diffLast`;已在途的旧响应不会再回写已关闭的面板,关闭后 400ms 内重开同一文件也不会被去重逻辑吞掉。
+- **合并 PR #24**(作者 wwei-github):窄栏点击变更文件立即在「差异」页签显示内容,紧凑/堆叠两种纵向布局都改成「变更在上、历史/差异页签在下」,页签切换不卸载历史列表,保留滚动位置与提交详情展开状态;重复 diff 请求与双击竞态由 `diffSeq` + `diffLast` 收口。PR 自带版本号为 0.26.3,本轮连同搜索树一起以 0.27.0 发布。
+- **同时更新**:两份 README 的输入框状态条与切换器说明、新增「仓库/分支切换器」功能行;新增 21 门词典键 `repo.filter` / `picker.empty`;`tests/smoke.mjs` 增加搜索/树折叠、`resetDiff`、仓库标签跟随 HEAD 的断言。
+- **验证**:`npm test` 129/129(0 fail / 0 skip);`node --check src/client.js`;`node scripts/ssr-check.mjs` 四项全 OK。真机用隔离实例 + 7 个临时仓库(含 `docs/readme`、`feature/ui-grid`、`fix/api/timeout`、`fix/sidebar/focus` 等斜杠分支)验证:面板仓库过滤、分支树展开/折叠、方向键与 Escape、面板切换分支、输入框胶囊过滤与签出均正常,console 无报错。
+
+## v0.26.3 — 2026-11-04
+
+**类型**:fix(代码审查 v0.25.0–v0.26.2:重复 diff 请求与页签卸载)
+
+- **重复请求与竞态**:v0.25.1 让变更行的单击就打开 diff,但行上仍绑着 `onDoubleClick` → 一次双击发三次 `diff` 请求,而 `openDiff` 没有请求序号:`setPatch(data.patch)` 谁最后回来算谁,慢响应会把 文件 A 的 patch 画到 文件 B 的标题下。现在 `openDiff` 记 `diffSeq` 序号,只有最新一次请求能写 `patch` / `error` / `patchLoading`;另加 `diffLast`(key + 时间戳,400ms 窗口)吞掉双击/连点产生的连发。
+- **页签切换会卸载历史列表**:v0.26.0/0.26.1 的页签窗是「三元式换元素」,切到差异就把 `historyPane`(以及 `CommitDetail`)从树上摘掉 → 滚动位置、虚拟列表窗口、详情展开状态全丢。现在两种纵向布局都渲染两个常驻窗格(`.dig-tab-pane`),非激活的那个只加 `.dig-tab-pane-hidden`(`display:none`);Chromium 实测 `display:none` 来回切换后 `scrollTop` 保留(300 → 0(读) → 300)。隐藏的 diff 高 0,被 `measurePanes` 的 `live > 0` 过滤,几何不受污染。
+- **未跟踪文件点开是空白(已知问题,本轮未改)**:`showDiff` 构造宿主 payload 时没带 `untracked`,未跟踪文件会走普通 `git diff -- <path>`(无索引条目 → 空 patch),差异页签置灰;宿主 `diff` 对 `untracked: true` 有 `--no-index /dev/null <file>` 分支。这是 v0.13.x 起就有的问题,不属于本轮的回归,按指示不动。
+- **验证**:`npm test` 127/127(新增 1 条 v0.26.3 测试:序号守卫 ×2、双击去重;既有的页签断言改到常驻窗格的新形状);`node --check` 通过;`/tmp/scroll-probe.mjs`(headless_shell + 裸 CDP)确认隐藏窗格保滚动。
+- 审查未改的小瑕疵:页签条只有 `data-active`,没有 `role="tablist"` / `aria-selected`;diff 失败后没有重试入口;`paneGeometry` 在分支树折叠时仍按 2 条分隔条扣高度(v0.24 之前就有)。
+
+## v0.26.2 — 2026-11-04
+
+**类型**:fix(变更头的数字回到「变更」字样后面)
+
+- **背景**:变更区标题行的计数徽标用的是共享的 `.dig-count`(带 `margin-left:auto`),于是 `变更` 在左、数字被推到行中间偏右(分支/文件夹分组行里这个右对齐是想要的,变更头不是)。用户反馈「变更后面的数字不要放中间,放到变更后面」。
+- **改动**:新增作用域覆盖 `.dig-changes-head .dig-count{margin-left:0}`,变更头里的数字紧贴标题;分支树、文件夹分组行不受影响(它们不在 `.dig-changes-head` 里)。
+- **验证**:`npm test` 126/126(新增 1 条测试:共享规则仍在、变更头覆盖存在、徽标绑的就是 `total`);纯 CSS 改动,需重启 App 后目测。
+
+## v0.26.1 — 2026-11-04
+
+**类型**:fix(堆叠布局的「历史 / 差异」也做成页签)
+
+- **背景**:v0.26.0 只把紧凑 chrome(宽 < 400px)改成页签;右侧栏最常用的「窄而高」堆叠布局(`stack`,400–600px)仍是历史列表 + 底部 diff 分屏——点变更文件时 diff 从下面挤出来,历史被压走。用户反馈「改错了」指的就是这块:提交框下面的区域应该就是「提交历史 / 差异对比」两个页签。
+- **布局**:`stack` 与 `compact` 现在共用同一个页签条构造器 `splitTabs(withCount, withTree)`(`.dig-split-tabs`)。页签「历史 | 差异」;没有 patch 时「差异」置灰并用 `title` 说明原因;点变更文件自动切到「差异」,关掉 diff 自动落回「历史」。紧凑 chrome 额外把「变更 N」计数与树开关放在这条里(它的变更头是隐藏的),堆叠 chrome 只放页签。
+- **面板几何**:`PANE_CHROME_KEYS.stack` 由 `['tree','changes','diff']` 改为 `['tree','changes']`,删掉 `stack:diff` 限制;diff 不再是一个独立窗格,而是填满页签主体(`.dig-diff-pane-fill`)。三栏 chrome 保持原样:中间栏仍是历史在上、diff 在下,分隔条可拖。
+- **同时更新**:两份 README 的布局表/功能表、`scripts/dock-probe.mjs` 的探针选择器(`.dig-compact-tabs` → `.dig-split-tabs`)、smoke 测试里「堆叠 chrome 有独立 diff 窗格」的断言改为页签断言。
+- **验证**:`npm test` 125/125(改 3 条、增 3 条断言:堆叠 chrome 的页签、pane key、diff 只剩三栏一份);`node --check src/client.js`。纯布局改动,headless 量不到真机像素,需要重启 App 后目测。
+
+## v0.26.0 — 2026-11-04
+
+**类型**:feat(窄栏改成「变更在上、历史/差异页签在下」)
+
+- **背景**:v0.25.1 让窄栏点变更文件立即出 diff,但那一版是「整块替换」——diff 一出来,变更列表就没了,历史也被顶走,想回去还得再点一次分段开关。
+- **布局**:紧凑 chrome(宽 < 400px)改成上下两段。上段是变更列表(`.dig-pane-changes-stack`,分隔条可拖、双击复位,比例与其它面板同存 `dsh-ide-git.panes.v1`);下段是 `.dig-compact-tabs` 页签条 + 内容:「历史」/「差异」两个页签,页签条左侧保留原来的「变更 {n}」计数(变更头在这个 chrome 里是隐藏的)。没有 diff 时「差异」页签置灰(`title` 给出原因);点变更文件自动切到「差异」;关掉 diff(头部 ×)自动落回「历史」。
+- **面板几何**:`PANE_CHROME_KEYS.compact` 由 `['tree','diff']` 改成 `['tree','changes']`,`PANE_LIMITS` / `PANE_DEFAULTS` 新增 `compact:changes` 并删掉 `compact:diff`,body 分隔条计数 1 → 2。旧存储里的 `compact:*` diff 比例会被 `normalizePanes()` 丢弃,不影响其它 chrome 的尺寸。
+- **同时更新**:客户端顶部那段「chrome 说明」注释、`scripts/dock-probe.mjs` 里定位树开关的选择器(`.dig-compact-bar` → `.dig-compact-tabs`)、两份 README 的布局表与功能表。
+- **验证**:`npm test` 125/125(改了 2 条旧断言,新增 4 条:差异/历史页签存在、变更列表置顶、pane key 集合);`node --check src/client.js`。纯布局改动,headless 量不到真机像素,需要重启 App 后目测。
+
+## v0.25.2 — 2026-11-04
+
+**类型**:fix(窄栏历史的时间列与上方输入框没对齐)
+
+- **fix 提交行左侧补内边距**:`.dig-commit` 的左内边距一直是 0,时间列与图谱 lane 顶着面板左缘;而上方的筛选条(文本/分支/作者/日期 `.dig-filters`)和窄栏的分段条都是 `4px 6px` 内边距——输入框左缘在 6px,提交行在 0,肉眼就是「时间没和输入框对齐」。现在提交行左内边距取同一个 6px(`padding:1px 8px 1px 6px`),时间列、图谱 lane 与输入框左缘齐平,三种 chrome(compact / stack / columns)一起生效。
+- **验证**:`npm test` 125/125;`node --check src/client.js`。纯样式改动,headless 无法测量真实像素,真机效果以重启后肉眼为准。
+
+## v0.25.1 — 2026-11-04
+
+**类型**:fix + feat(右侧栏点变更文件看不到差异)
+
+- **fix 右栏「变更」页终于有 diff 面板**:用户报告「点击变更文件没有立即展示差异」。根因是窄栏(compact)chrome 的「变更」分段只渲染变更列表——`view === 'changes'` 那一支根本没有 diff 面板,于是 patch 已经取回、状态已经更新,屏幕上却没有任何东西。现在窄栏在 `patch !== '' || patchLoading === true` 时把列表换成填满主体的 diff 面板(`.dig-diff-pane-fill`,不受 55% 分栏高度限制),头部保留文件路径与关闭按钮,关掉即回到列表;分段条仍可切到「历史」。
+- **feat 单击变更文件即打开差异**:按用户要求,变更列表的**纯单击**从「只选中」改为「选中 + 打开该文件 diff」——窄栏里列表会把整块内容换掉,只高亮一行看起来像「点了没反应」。Ctrl/Cmd/Shift 点击维持原状(只做多选,批量暂存/丢弃不受影响),忽略组(`ignored`)的行不触发 diff。
+- **fix 内嵌 diff 头部显示文件名**:`showDiff` 的内嵌分支此前没写 `selectedPath`,工作区 diff 的头部路径一直是空的;现在打开时一并写入,关闭时按原逻辑清空。
+- **验证**:`npm test` 125/125(新增一条冒烟测试锁定「单击开 diff / 窄栏渲染填充式 diff 面板 / 分栏仍消费存储尺寸 / 头部写路径」);`node --check src/client.js`。窄栏渲染由 SSR 自检覆盖不到(需要真数据),本轮未起隔离实例截图。
+
+## v0.25.0 — 2026-11-04
+
+**类型**:feat(图标悬停显示操作名)
+
+- **feat 自绘悬停提示**:动作条(竖排 / 横排)、顶部工具条、提交框、工作树、预览座位、输入框状态胶囊里的图标按钮,鼠标停留 120ms 就在指针旁弹出操作名。**竖排动作条(左侧 24px 图标列)的提示卡放在图标右侧**并跟随该行垂直居中——放在下方会盖住下面几个图标,放在左侧又会跑到面板/窗口之外;贴窗口右缘放不下时翻到图标左侧。其余座位(横排动作条、工具条、胶囊、预览)放在按钮下方,下方不够翻到上方,水平夹进取景框;长文案折行(上限 280px)。置灰的动作照样显示,并带上原因(`隐藏 · 当前状态不可用`)。
+- **feat 提示卡挂在 `document.body`**:底部工作台声明了 `contain: layout style`,面板内 `position: fixed` 后代的包含块会变成面板(不变量 13);所以卡片是 body 级单例,坐标取自锚点的视口矩形,面板怎么裁都裁不到它。只对**带 `title` 的 `button` / `[role="button"]`** 生效,因此 LineDiff 里那类只有 `aria-label`、走官方 seed Tooltip 的按钮不会叠出两层气泡。
+- **feat 不打断操作**:指针在按钮内移动不闪;扫过一排图标只在停留后显示;按住鼠标(拖拽排序、框选、拖分隔条)、滚轮、滚动、缩放、失焦、pointerleave 立即收起;触摸不触发;显示瞬间摘掉原生 `title` 压掉浏览器气泡,收起时还原(若 React 期间重渲染出新 title 则不覆盖)。
+- **fix** diff 头部关闭按钮此前只有图标、没有 `title`,补上(复用 `toast.close`,21 门词典无需新增键)。
+- **验证**:`npm test` 124/124;`node --check src/client.js`;headless Chromium 载入真实 `src/client.js`(伪造 `__ModuleLoader__` 与 ctx,面板套在 `contain: layout style` 容器里)跑 28 项断言全绿——显示与文案、竖排 rail 图标:卡片在图标右侧 6px 且与该行垂直居中、贴窗口右缘时改放图标左侧、非 rail 按钮仍在下方 +6px、贴底边时向上翻、贴右边缘水平夹取、包含块内仍按视口定位、原生 title 被摘与还原、按钮内移动不闪、禁用按钮带原因、空 title / 无 title 文字按钮不显示、面板外不显示、scroll 收起并还原、拖拽跨按钮不出卡、释放后恢复、dispose 清场,console 零报错。维护者复验:`scripts/ssr-check.mjs` 四项全 OK——最小 document stub 下悬停提示安装器直接 no-op(缺少 body / getElementById / addEventListener 时不抛错);未起隔离实例做真机截图验证(提示层已由上述探针覆盖)。
+
+## v0.24.0 — 2026-11-04
+
+**类型**:feat(拉取/推送分叉可恢复 + 宿主持久拆分)
+
+- **feat 右键「拉取」执行真正的 pull**:当前分支有 upstream 时直接 `git pull --no-rebase`(merge),不再只是 `fetch --prune`;非当前分支保持安全的 refspec fetch;无 upstream 仍只 fetch。
+- **feat 默认 pull 改为 merge**:远程与本地分叉但文件不冲突时自动合并并保留双方提交;「拉取(变基)」仍走 rebase,显式 `ff-only` 保留。
+- **feat 失败给出可操作提示**:push non-fast-forward / pull diverged / pull conflict / pull dirty 分别映射为 `push-rejected` / `pull-diverged` / `pull-conflict` / `pull-dirty`;横幅先说明怎么解决,`push-rejected` 与 `pull-diverged` 还提供「同步」按钮(先 pull merge、再 push)。21 门词典同步。
+- **refactor 宿主半拆分为 `src/host/`**:`src/index.js` 从 2385 行缩为 36 行入口,config / core / git / undo / read / write / repos / commit-message / http 各司其职;`package.json` 的 `files[]` 纳入 `src/host`,冒烟测试改为拼接入口与模块并允许自身相对 import。
+- **验证**:`npm test` 124/124;全部宿主模块 `node --check`;`npm pack --dry-run` 包含 9 个 host 模块;集成用例覆盖分叉 merge、落后远端 push 拒绝、同文件冲突与显式 ff-only 分叉。
+
+## v0.23.0 — 2026-11-01
+
+**类型**:feat(内嵌 diff 预览保留分栏 + 兼容下限回落到 0.1.6-alpha.2,#21 / #22)
+
+- **feat 内嵌 diff 预览默认优先**(#22):装了 dsh-better-sidebar 或原生预览座位时,点击文件此前会把 diff 交给外部 tab,面板自带的「左右分栏 / 自动换行」也就跟着消失了。现在默认在 Git 面板内打开(LineDiff 的 split / wrap 两个开关都在),设置卡「面板放置」新增第四个开关「在面板内预览差异」;关掉才恢复 0.22.0 的外部交接链(底座 onOpenDiff → better-sidebar 定向 right → 原生预览座位)。21 门词典同步。
+- **feat 兼容下限回落到 `>=0.1.6-alpha.2`**(#21):0.22.0 为了 alpha.2 的模型徽章把门禁抬到了 0.2.2-alpha.2,导致还在 0.2.1-rc.5 的用户无法安装、也就看不到工作树视图。现在宿主字段改为能力探测:模型徽章有数据才显示(没有保持旧外观),工作树视图只调用本地 `git worktree`、不依赖新宿主 API,行配置不可用的旧宿主设置卡显示不可用、内嵌预览保持默认。`engines.dsh`、`dsh.plugin.json` 与 peer 三处同步回落。
+- **验证**:123 项测试全绿(内嵌预览开关的字段声明、外部交接门禁、placement 行契约、21 门词典键集);`node --check` 双半通过;`scripts/ssr-check.mjs` 通过;隔离 0.2.2-alpha.2 实例真机验证:设置卡「面板放置」出现第四个开关、默认勾选;双击文件后 diff 落在面板内,LineDiff 顶部有分栏 / 换行两个工具——单侧 diff 保持 unified(与官方 `FileDiff` 的 `split && !oneSided` 一致),双侧文件(`src/client.js`)可切到左右两栏、各 450 行、无 slot error;临时把 row Config 的 `inlineDiff` 注入为 `false` 后,双击文件不再打开内嵌 pane,而是落到右侧栏「Git 预览」,恢复默认后再次落在面板内。该临时实例的宿主配置为只读(设置页提示「当前宿主把配置设为只读」),所以开关的点击写回路径由测试覆盖、未在本实例验证;未在 0.2.1-rc.5 真机复验(本机无该版本实例),宿主能力探测路径由测试覆盖。
+
+## v0.22.0 — 2026-10-30
+
+**类型**:feat(适配 DSH 0.2.2-alpha.2:Git 面板内的工作树视图 + 模型目录徽章)
+
+- **feat 动作条新增「工作树」视图**:沿用现有 Git 面板,不另开第二个标签页;列出主工作树与全部链接工作树——当前 / 主工作树 / 已锁定 / 可清理标记、分支(游离 HEAD 单独标注)、短 HEAD、完整路径。支持新建(新分支或挂载已有分支,新分支可指定起点)、在面板中打开(把面板仓库切到该工作树)、复制路径、移除(必须有确认;有未提交改动时再弹一次强制移除确认;当前 / 主工作树 / 已锁定 / 可清理记录不可移除并说明原因)、清理失效记录(prune)。与官方实验性「变更请求」面板并存,不嵌入官方组件、不在工作树里新建 DSH 会话。
+- **feat 模型选择器显示模型徽章**:AI 写提交信息旁的模型下拉现在渲染服务商目录里的 listing 徽章(如「推荐」「新」),位置与官方 ModelSelect 一致——触发钮在模型名前、菜单行在模型名后;按当前界面语言解析徽章文案(完整 tag → 主语言 → 英文),tone 映射 neutral / info / success / warning,未知 tone 回退 neutral;没有徽章的模型外观与旧版一致。
+- **chore 兼容下限抬到 `>=0.2.2-alpha.2`**:`engines.dsh`、`dsh.plugin.json` 与 `@deepseek-ai/dsh` peer 三处同步;本版跟随 alpha.2 的会话行尾座位与模型徽章字段。
+- **验证**:123 项测试全绿(新增:工作树新建 / 挂载 / 路径含空格 / 路径已存在 / 非法分支 / confirm / 当前 / 主工作树 / 锁定 / 脏工作区强制移除 / prune;模型徽章本地化与两处渲染;词典键集 21 门)。`scripts/ssr-check.mjs` 通过;布局探针在 1600→380 共 11 档宽度全部无裁切、无 pageerror;隔离 0.2.2-alpha.2 实例(mock 模型)真机验证:Git 标签页正常渲染,工作树新建 / 打开 / 复制路径 / 脏工作区二次确认移除 / 清理失效记录全部通过,顶栏仓库菜单能列出链接工作树并切回主工作树;mock 目录没有徽章数据,模型下拉保持无徽章外观、无回归。
+
+## v0.21.2 — 2026-10-29
+
+**类型**:fix(分支树与变更视图的顺手度:分支名让位、菜单前置、选中保色、跨座位即时刷新、视图模式记住)
+
+- **fix 分支名不再被上游目标挤掉**(用户反馈):本地 / HEAD 分支行右侧那截「→ origin/…」行内小字已移除——它固定占着最多 180px,长分支名因此很早就被省略号切掉。现在分支名独占整行剩余宽度,超长才省略;绑定关系仍保留在行的悬停提示里(「分支名 → 上游」),需要时一看就有。远程 / 标签行不受影响(它们本来就不显示这截)。
+- **fix 本地分支右键菜单更顺手**:「拉取」「推送」从「删除」之后提到第二、第三位(紧跟「签出」)——这两个才算高频操作,之前要滚过重命名 / 删除才点到。远程 / 标签行保持原顺序(它们的菜单是 ref 操作,不是工作区操作)。
+- **fix「更新(Fetch)」改叫「拉取」**:21 门词典同步,不再夹带英文括注。
+- **fix 当前签出的 HEAD 行选中后不再洗白**(用户反馈):HEAD 行本身是琥珀色,而通用的选中规则会把文字重置成主文字色(浅色主题近黑、深色主题纯白),于是「选中哪条」和「哪条是当前分支」互相盖掉。现在选中的 HEAD 行保持琥珀色,选中框只框不染色;深色主题下选中底色也从 58/42 的 charcoal 混合改为半透明黑(rgba(0,0,0,.55))——不再在背景图上泛出一圈亮框,壁纸照样透出来,黄字对比也足够。
+- **fix 换分支 / 换仓库后各座位即时同步**(用户反馈):输入框 Git 状态条与 Git 面板是两棵 React 树,此前一边切了分支,另一边要等 30 秒轮询才更新。现在通知带上来路:面板里每次写动作成功(签出、提交、暂存、拉取……)都会广播,输入框立刻拉新 summary;输入框切分支同样即时推面板;做出动作的一侧跳过自己的回显,不会重复刷新。
+- **fix「按目录」视图模式会被记住**(用户反馈):变更视图的「平铺 / 按目录」此前只是组件内 state,切仓库、切会话或重开面板就回落平铺。现在它有独立的 localStorage home(键 `dsh-ide-git.groupBy.v1`),挂载时读回;面板与「⋯」菜单共用同一个持久化写入器,无论从哪点都记得住。
+- **说明**:菜单项里的「拉取」执行的是 `git fetch --prune`(只取远程更新、不合并到工作区);要合并仍走工具条 / 更多菜单里的「拉取(Pull)」。
+- **验证**:120 项测试全绿(新增:行内 upstream 元素与样式清零、悬停 title 仍带上游、label 保持省略、本地菜单前置顺序、远程 / 标签尾部顺序不变、zh 文案与 21 门计数;HEAD 选中保色与深色主题半透明黑选中框、通知来源与双向跳过、面板跟随条件;视图模式的 localStorage 键、惰性初始化与共享写入器)。
+
+## v0.21.1 — 2026-10-29
+
+**类型**:fix(局域网 HTTP 直连:Git 面板误报 HTTP 405 / 403,#20)
+
+- **fix 非回环纯 HTTP 页面不再被自己的宿主拒绝**([#20](https://github.com/KannaKuron/dsh-ide-git/issues/20) by @jihaiqiang):信任判据此前只认浏览器发送的 Sec-Fetch-Site;但局域网 IP + 纯 HTTP 属于非安全上下文,Chrome/Edge/Firefox 在那里**完全不发** Sec-Fetch-* 头,页面自己的同源请求被判 403。客户端按设计回退 `/remote` 配对代理,未安装 remote-web-ui 时该路径落到 SPA 静态 fallback(405 + 空体),于是面板最终显示误导性的「HTTP 405」而不是真实原因。
+- **fix 同源 Origin / Referer 兜底**:Sec-Fetch 判据之后新增同源比较——`Origin` / `Referer` 是浏览器自己写下的 forbidden header,页面脚本无法伪造;跨站页面发来的永远是攻击者自己的 origin,比对 `Host` 仍然能挡住 CSRF。Host 未带端口时同时接受 http(80)/ https(443)两个协议默认端口。403 的 message 也从裸「forbidden」改成可操作说明(非回环请求必须同源打开,或经配对代理)。
+- **fix `/remote` 回退只采纳 JSON 应答**:此前只要代理返回的不是 401/403 就切到远程通道,405 空体因此被当成代理成功、盖掉原始拒绝;现在先用 clone 探测能否解析出 JSON 对象,空体 / HTML fallback 一律丢弃并保留原始 403 语义。
+- **说明**:边界没有放宽——没有同源信号的裸请求、跨站 Origin / Referer、opaque「null」origin、端口不同的 origin 依旧全部 403;回环地址的信任规则不变。
+- **验证**:120 项测试全绿(新增防回归:LAN 同源 Origin 通过、同源 Referer 通过、隐式端口按 http/https 归一、跨站 origin/referer/null origin/端口不符全部 403;answersJson 只认 JSON 对象、空体与 HTML fallback 不翻转 sticky 通道,旧的「非 auth 应答即切换」断言随之收紧)。真机局域网实例:curl 三态实测——无 Origin 403(新文案)、同源 Origin 200、跨站 Origin 403,`/remote` 仍 405 空体但客户端不再采纳;Chrome 从 `http://192.168.100.100:3099` 页面内直接调用插件 API 返回 200(Git 数据正常),说明浏览器真实发出的同源信号被判据接受。
+
+## v0.21.0 — 2026-10-27
+
+**类型**:feat(AI 提交信息:面板内模型/思考选择 + 全新会话自动兜底,#19)
+
+- **feat「AI 写提交信息」旁新增模型选择器**([#19](https://github.com/KannaKuron/dsh-ide-git/issues/19) by @huangmiuXyz):按钮右侧新增入口,点开是与输入框一致的两级菜单——「模型」按服务商分组列出全部可用模型,「思考」列出当前模型的推理档位(模型没有服务商默认档时给「跟随默认」项)。选择写入的就是**会话本身的模型路由**:输入框、`/model` 命令与面板三处永远一致,不会出现「面板选了 A、输入框还是 B」;悬停触发钮可看完整的「服务商/模型 · 档位」。
+- **feat 全新会话不再报 no-route**:此前没在会话里选过模型时,AI 写提交信息直接失败(`[no-route] this session has no model route yet`);现在宿主自动落到本机可用的第一个服务商×模型,响应以 `fallback` 标记来路,按钮在新会话开箱即用。宿主一个可用模型都没有时,仍以 `no-models` 拒绝并说明下一步。设置卡里显式配置的模型/思考保持最高优先,不受兜底影响。
+- **说明**:模型目录来自官方 model-directories 服务(与输入框同一数据源),不是插件私有的第二套目录;宿主过旧或会话尚未初始化模型绑定时选择器自动隐藏,不影响 AI 写提交信息本身(走兜底)。
+- **验证**:120 项测试全绿(新增防回归:host 兜底动词、`no-models` 拒绝与旧 no-route 文案清零;picker 双渲染变体挂载、目录解析、订阅、select 通道、两级菜单与「跟随默认」行、捕获态外点关闭、触发钮/菜单/错误样式;六新键 × 21 门词典);真机隔离实例全链路验证——目录经 `ctx.inject(['modelDirectories'])` 软注入(cordis 拒绝未声明的属性直读,渲染期直读会炸掉整个会话视图 slot),快照/订阅走 `directory.store`;两级菜单选模型/档位即时生效且输入框同源,新会话 AI 写提交信息带 fallback 路由真实发出(不再 no-route)。
+
+## v0.20.0 — 2026-10-24
+
+**类型**:feat(上游管理:绑定 / 解除 / 从远程建本地跟踪分支,#18)
+
+- **feat 分支右键直接管理上游**([#18](https://github.com/KannaKuron/dsh-ide-git/issues/18) by @ActionX):本地分支右键新增「设置上游…」——二级菜单列出全部远程分支、当前绑定项带选中标记,选谁就绑谁(git branch --set-upstream-to);绑定了上游的分支同时出现「取消上游」(git branch --unset-upstream)。此前改上游只能靠「发布分支」或命令行。
+- **feat 树里一眼看到绑定关系**:本地分支行的分支名右侧新增淡色小字「→ origin/main」,不用悬停提示就能看清每条分支跟的是谁;超长自动省略,不影响右侧的 ↑↓ 徽章。
+- **feat 从远程分支一键建本地跟踪分支**:远程分支右键的「从该分支新建分支」升级为「创建本地分支…」——对话框预填去远程前缀的名字,确认后 checkout -b --track 一步建好并绑定上游,不再需要「先建分支再发布」两步。
+- **feat ⋯菜单管理当前分支上游**:「分支」子菜单在「发布分支」后新增「设置当前分支上游…」「取消当前分支上游」,不选中任何分支也能改当前分支的绑定;未绑定/无远程分支时相应项置灰并说明原因。
+- **说明**:issue 第 4 条(管理 push.default / branch.<name>.merge / remote.pushDefault 等全局配置)不做——这些是用户级 git 配置,插件只操作仓库本身,不碰用户配置层;左侧竖排工具条不加按钮——上游管理是低频配置操作,且必然伴随二级选择,与分支右键完全同构,一级动作位留给高频操作。
+- **验证**:119 项测试全绿(新增防回归:host 两个 git 动词与 checkout --track 接线、branch-upstream 属写方法白名单;client 行菜单三项、more 菜单两项与置灰条件、点击时才构建远程子菜单、当前绑定高亮、对话框预填与 --track、树行内 upstream 小字与限宽样式;六新键 × 21 门词典)。
+
+## v0.19.13 — 2026-10-23
+
+**类型**:feat(输入框状态条:仓库名/分支名加长显示,超长悬停滚动)
+
+- **feat 名称显示上限 150px → 260px**:输入框 Git 状态条里的仓库名与分支名此前超过 150px 就截断省略,长分支名(如 `feature/商城后台迭代-2.x`)几乎看不到尾部;现在上限放宽到 260px,大多数分支名完整直出。
+- **feat 超长部分悬停滚动查看**:仍放不下的名字,鼠标悬停上去即从左到右无缝滚动展示全文,移开即停回开头;不悬停时保持静止省略号。滚动速度按文本宽度计算(恒定像素速度),刚超一点的名字不会慢吞吞爬完;短名字完全不走滚动逻辑(渲染后实测溢出才切换结构),外观与行为和旧版一致。滚动文本右缘带渐隐淡出,提示下方还有内容;仓库与分支两个标签同享该行为。
+- **验证**:118 项测试全绿(新增防回归:260px 上限、两个标签均走滚动组件、溢出按真实 DOM 测量、被替换/卸载的节点不再重测、webfont 落地后复测一次、滚动动画只存在于 :hover 规则、关键帧位移半程保证无缝循环、速度常量与时长按宽度折算、渐隐遮罩与接缝间距配套)。
+
+## v0.19.12 — 2026-10-21
+
+**类型**:feat(输入框 Git 状态条徽章:文件增删 + 行数综合显示)
+
+- **feat 徽章综合显示「文件数 + 行数」**:状态条未提交徽章从单纯一个「±N(文件数)」升级为「±3 +2 −1 +128 −24」——±3 仍是变更文件总数;其后的绿色小字「+2」与红色小字「−1」分别统计**新增 / 删除的文件个数**(按 git 状态字母:新增含未跟踪文件,重命名与冲突计入修改、不计入增删);行徽章「+128 −24」是未提交改动的**行数增删合计**(绿/红,与文件小字拉开一档字号)。全部为 0 的段自动隐藏:纯修改文件时外观与旧版完全一致。
+- **feat 悬停标题拼成一句话**:「未提交变更数 · 新增 2 · 删除 1 个文件 · +128 −24 行」,行数还没拉到时自动省略尾段。文案覆盖全部 21 门语言。
+- **feat 行数按需懒拉,常驻开销几乎为零**:大脏工作区上 numstat 是最贵的一步(v0.19.0 专门为此做过两阶段设计),所以 30 秒轻轮询保持原样(不含行数),行数只在「变更集路径/状态变化、HEAD 变化」或 90 秒慢地板到点时才拉一次宿主现成的只读 stats 接口;干净树直接置零、完全不碰 numstat;拉取失败静默,下轮再试;行数带仓库标记,切换仓库后旧数字不会串仓显示。
+- **验证**:117 项测试全绿(新增防回归:文件增删/行数合计/指纹三个纯函数单测——A 与未跟踪计新增、D 计删除、二态路径不重复计数、二进制行零贡献、顺序无关指纹对路径/状态/HEAD 敏感;接线断言:±chip 内嵌小字、行徽章带仓库根标记、懒拉指纹条件、干净树零调用、21 门双新键)。
+
+## v0.19.11 — 2026-10-21
+
+**类型**:fix(变更树目录链每级铺完整路径,改为 JetBrains 式链压缩)
+
+- **fix 目录行不再逐级重复完整路径**:按目录分组时,单链目录(一路只有一个子目录、自己没有文件)会在**每一层**合并成一个节点(如 `java/cn/com/pxwk/base`),只在分支点(如同时有 java 与 resources 的 `src/main`)才分层——此前压缩只发生在顶层,第二层起每级都把从仓库根开始的完整路径铺成一行,深包结构下根本没法看(用户截图:`walk-manager-modules/walk-base/src/main/java/cn/com/pxwk/base/controller` 叠了七层)。
+- **fix 目录行标签改为「相对父节点」的链段**:压缩节点只显示它在父节点之下新增的段,与 IDE 提交树(提交窗口)的显示惯例一致;展开/折叠记忆键仍用完整路径,折叠状态不受改名影响;「全部折叠」遍历与渲染同源(同一 compressed 树),折叠落点与显示完全一致。
+- **验证**:116 项测试全绿(新增防回归:树压缩纯函数单测——顶层链断在分支点、孙层自压缩(domain/vo)、count 走整棵子树、折叠 id 枚举与渲染同树;渲染器相对标签/递归传父链长度接线断言)。
+
+## v0.19.10 — 2026-10-20
+
+**类型**:fix(#17 浮动 Git 面板白屏并报 React #185)
+
+- **fix 修复 Git 面板在浮动窗格(独立窗口)里整片空白**([#17](https://github.com/KannaKuron/dsh-ide-git/issues/17) by @huangmiuXyz):面板布局依赖三个「每次渲染都重测一遍」的测量逻辑(窗格尺寸/沉浸会话判定/浮动归属),正常情况下测量值不变就原地不动;但在桌面端把 Git 拖成独立浮动窗口的瞬间,窗口创建过程中的几何与测量互相追赶,测量结果每轮都不同,状态更新嵌套刷新,触发 React 的最大更新深度保护(报错 Minified React error #185),宿主随即把这个槽位整个卸载,于是整片空白。现在这三个测量点都装了「嵌套熔断」:40 毫秒内同帧连续刷新超过 6 次即判定为循环并暂停测量一轮,合法的连续变化(拖拽分隔条、连续调窗)每 40 毫秒也有充足配额,不受影响——最坏情况只是某一帧的窗格比例冻结一下,不会再白屏。报错者的环境无法在本地完整复现(桌面浮动窗专属),本修复从报错栈定位的链条逐环封死,已通过 115 项回归与真机停靠/浮动验证。
+
+## v0.19.9 — 2026-10-19
+
+**类型**:feat(远程分支按路径折叠,与本地对称)+ fix(#16 追加:分隔条拖拽卡顿)
+
+- **feat 远程分支树按路径分组折叠**:本地分支早已按 feature/、fix/ 前缀折叠,远程分支却一直平铺;现在远程节用同一棵树,单远程仓库还会剥掉 origin/ 前缀,origin/feature/x 直接落在 feature 组里,与本地视觉对称。多远程(remote 名不一致)或混有裸名时保守地保留全名分组;折叠状态按 remote/ 命名空间记忆,与本地互不干扰;框选、Shift 范围与 Ctrl+A 的行序镜像同步走同一棵树。
+- **fix 不再显示不可操作的「裸 remote」条目**:git 对 refs/remotes/<remote>/HEAD(指向远程默认分支的符号指针)的 refname:short 会折叠成裸 remote 名,它既不可 checkout 也会让上面的前缀剥离失效;宿主现在把这类 ref 在列出前过滤掉(VS Code 等同样不显示)。
+- **fix 拖动面板分隔条「一开始很顺,突然就拖不动了」**([#16](https://github.com/KannaKuron/dsh-ide-git/issues/16) 追加评论 by @huangmiuXyz):pointermove 事件到达频率高于屏幕帧率,而旧实现每收到一个事件就同步量一次布局(getBoundingClientRect 强制 reflow)再写两次状态——事件堆积时布局争用,拖拽表现成黏在鼠标上。现在最新位置先落 ref,每帧用一次 requestAnimationFrame 交给钳制逻辑,松手时先冲刷落下的值再结束手势(手势不会停在旧尺寸上);键盘微调路径保持同步。
+- **收敛 切换页签时的布局跳动**:面板首量从 paint 后提前到 paint 前(布局期 effect)——挂载首帧直接呈现实测布局,回退布局与实测布局不再先后各画一帧;低帧率录屏里两次可见布局会被读成一次「高度动画」,这也是 [#16](https://github.com/KannaKuron/dsh-ide-git/issues/16) 附带动图中切换页签时高度渐变的候选来源之一。宿主侧经查无页签切换动画;若升级后仍能观察到,欢迎补充窗口形态(竖排/横排/浮动面板)等信息。
+- **验证**:115 项测试全绿(新增:strip 纯函数单测——单远程剥、混合/裸名/空列表不剥;分组渲染与选择镜像接线断言;host 过滤断言);拖拽真机采样——指针 30 步 ×5px 拖动,变更面板宽度 291→442(恰好指针位移)逐帧连续无回弹;挂载首帧高度采样无中间布局;零 pageerror。
 
 ## v0.19.8 — 2026-10-19
 

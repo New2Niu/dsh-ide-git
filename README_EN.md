@@ -112,7 +112,7 @@ better-sidebar wins while it is there (it also carries the bottom workbench); a 
 - Changes: conflicts / staged / changes / untracked groups (with counts and ignored counts), inline stage / unstage / discard / copy name (multi-select), group-level stage-all / unstage-all, click for diff.
 - Commit box, IDEA-shaped: **one row above the message** holds the **Amend** toggle (`--amend`) and the AI writer (amend first), the message is a multi-line textarea, and **Commit / Commit and push sit at the bottom left**. The box's **top edge drags** up and down to resize it (double-click resets, arrow keys nudge); Ctrl+Enter / Cmd+Enter commits — a bare Enter is a newline. AI generation asks before overwriting your draft and can be undone in one click.
 - File context menu: show diff, stage / unstage, discard changes, copy path, send to chat (an `@file` reference chip or the raw path).
-- Settings card: DSH's **Git tool window** card — **placement** (conversation-area Git tab, immersive mode), **composer Git status**, the **action rail** (per-action switches) and the **AI commit message** (model / reasoning effort / extra prompt; empty follows the current session).
+- Settings card: DSH's **Git tool window** card — **placement** (conversation-area Git tab, immersive mode), **composer Git status**, the **action rail** (per-action switches), the **history list** (show/hide the default tab's history window, hidden by default) and the **AI commit message** (model / reasoning effort / extra prompt; empty follows the current session).
 - **Safety and undo**: deleting a branch, dropping a stash or discarding changes pops a toast in the corner with an **Undo** action — the delete is real, and undo recreates the ref from the object id (or the file byte snapshot) recorded just before it (one-shot, valid for 30 minutes); the toolbar's undo menu keeps the recent operations too. Deleting `main` / `master` / `trunk` requires typing the branch name, destructive dialogs focus Cancel instead of the red button, writes are serialised per repository on the host, and while a merge / rebase / cherry-pick / revert / bisect is still open the affected actions are greyed out with the reason. A force push uses `--force-with-lease`.
 
 > The default tab holds the two things a day of commits needs — **changes + the commit box**. Everything marked **(explorer)** lives in the explorer tab, the panel's other face, opened by the **branch button** on the action rail.
@@ -126,7 +126,7 @@ Everything in the panel can be right-clicked into the **current session's compos
 - **File** (change rows and commit-detail file rows) → a `@path` file reference chip (DSH's native @ grammar, quoted paths included) or just the raw path;
 - **Selected diff lines**: select some text in a diff window (opened from a commit detail or the working tree), right-click → **Send selected lines to chat**: an `@file` chip plus a line note — `lines N–M (commit 47ad017 "Subject" @ branch)` for a commit, `lines N–M (worktree, staged / uncommitted)` for the working tree. Numbers are reconstructed from the diff rows under the selection against the patch's hunk headers, in **new-file numbering**; a purely deleted span reports OLD numbers and says so. If the selection cannot be pinned to diff rows the menu degrades to **Send selected snippet to chat** (text truncated at 600 characters) instead of inventing numbers, and a **Copy the selection reference** item is always there. With no selection the browser's own menu stays.
 
-Also in place: change-row and detail-file-row icons are tinted by extension (DSH's own FileTypeIcon); diff previews render through DSH's own DiffBlock (red/green rows, copy / wrap toolbar, host-consistent visuals); the diff window's height is draggable and remembered per placement; and the whole panel can live in the **main conversation area** — the Git tab next to Dialogue / Trace, switchable in the plugin settings.
+Also in place: change-row and detail-file-row icons are tinted by extension (DSH's own FileTypeIcon); diff previews render inline (red/green rows, split / wrap switches, copy toolbar) and stay inline by default even when dsh-better-sidebar or the native preview seat is installed — the settings card can hand them back to the sidebar; the diff window's height is draggable and remembered per placement; and the whole panel can live in the **main conversation area** — the Git tab next to Dialogue / Trace, switchable in the plugin settings.
 
 ## How it works
 
@@ -154,6 +154,8 @@ Follows DSH's locale setting (`ctx.locale`) and switches live. **21 dictionaries
 
 The dictionaries live in the `LOCALES` table inside `src/client.js`: one entry per language, each preceded by a `/* locale: <tag> */` marker. **The check is automatic** — a smoke test requires every dictionary to carry exactly the same key set as Chinese, because a missing key falls back to English silently and leaves the panel half-translated, which is what that test exists to catch.
 
+> **After merging main (v0.29.0)**: the host half is split into `src/index.js` + `src/host/*.js` (51 methods); the default tab stays one column (changes + commit box); main's tabbed history | diff window is **hidden by default** and can be switched on under Settings -> History list, while the branch tree, commit list and commit detail live in the explorer tab. The date column switches between relative and absolute time, the merge dialog offers `--no-ff` / `--squash` / no-commit, and worktrees, the inline-diff switch and the searchable repo/branch pickers all come from main. Single-generation settings floor: `dsh >=0.2.2-rc.1`.
+
 ## Limits / roadmap
 
 - **Former roadmap items, now done**: rubber-band multi-select and batch operations, infinite scroll, favourited branches, double-click branch browsing, line-level diff references into the chat, and the plugin's own settings (placement / action rail / AI commit message) all ship today.
@@ -171,7 +173,7 @@ The dictionaries live in the `LOCALES` table inside `src/client.js`: one entry p
 ## Development
 
 ```sh
-npm test   # four layers, 119 cases
+npm test   # five layers, 148 cases
 #   smoke: file-level invariants — manifest consistency, the client wrapper, the require
 #          whitelist, destructive-confirmation guards, the method table, the size core,
 #          and dictionary key sets (every language compared key by key with Chinese)

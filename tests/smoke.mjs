@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -18,7 +18,11 @@ const exists = (name) => existsSync(join(root, name))
 
 const pkg = JSON.parse(read('package.json'))
 const manifest = JSON.parse(read('dsh.plugin.json'))
-const host = read('src/index.js')
+const hostFiles = [
+  'src/index.js',
+  ...readdirSync(join(root, 'src/host')).filter((name) => name.endsWith('.js')).sort().map((name) => 'src/host/' + name),
+]
+const host = hostFiles.map(read).join('\n')
 const client = read('src/client.js')
 const changelog = read('CHANGELOG.md')
 const patch = read('cordis.patch.yml')
@@ -61,63 +65,18 @@ test('every published entry exists on disk', () => {
 })
 
 test('the dsh peer survives the runtime compatibility check', () => {
-  // dsh 0.1.7+ enforces peerDependencies entries named @deepseek-ai/dsh* and
-  // ignores engines.dsh entirely (packages/boot/app-boot/src/plugin-compatibility.ts),
-  // so the plugin's floor has to live in BOTH fields with the same value.
+  // dsh 0.2.2-rc.1 is the single supported generation (v0.28.0). The host
+  // reads engines.dsh when it exists (packages/boot/app-boot/src/plugin-compatibility.ts)
+  // and satisfies it with includePrerelease:true, so one open floor is enough.
   const peer = pkg.peerDependencies['@deepseek-ai/dsh']
+  assert.equal(pkg.engines.dsh, '>=0.2.2-rc.1')
   assert.equal(peer, pkg.engines.dsh, 'the dsh peer must mirror engines.dsh exactly')
-  // Open floor with a prerelease tag, NO ceiling. The floor tracks the oldest
-  // supported host (0.1.6-alpha.2 — the first one with the plugins.bundle.config
-  // seat; 0.1.6 never shipped a stable). The host gate satisfies with
-  // includePrerelease:true (app-boot plugin-compatibility.ts), so a single
-  // `>=X.Y.Z-tag` comparator is both honest and sufficient; the tag keeps a
-  // future prerelease floor expressible without a second branch.
-  const floor = /^>=(\d+)\.(\d+)\.(\d+)(-([0-9A-Za-z][0-9A-Za-z.-]*))?$/.exec(peer)
-  assert.ok(floor, 'the dsh peer must stay an open >=X.Y.Z[-tag] floor: ' + peer)
-  const required = floor.slice(1, 4).map(Number)
-  const floorTag = floor[5] || null
-  // semver prerelease identifier compare: numeric fields compare numerically,
-  // numeric < alphanumeric, longer wins when one is a prefix of the other.
-  const compareTag = (a, b) => {
-    const as = a === null ? [] : String(a).split('.')
-    const bs = b === null ? [] : String(b).split('.')
-    for (let i = 0; i < Math.max(as.length, bs.length); i += 1) {
-      const x = as[i]; const y = bs[i]
-      if (x === undefined) return -1
-      if (y === undefined) return 1
-      const xn = /^\d+$/.test(x); const yn = /^\d+$/.test(y)
-      if (xn && yn) { const d = Number(x) - Number(y); if (d !== 0) return d }
-      else if (xn !== yn) return xn ? -1 : 1
-      else if (x !== y) return x < y ? -1 : 1
-    }
-    return 0
-  }
-  // Mirror of the host gate (semver.satisfies with includePrerelease:true) at
-  // numeric + prerelease granularity.
-  const satisfies = (version) => {
-    const m = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z][0-9A-Za-z.-]*))?$/.exec(version)
-    assert.ok(m, 'unparsable version ' + version)
-    const got = m.slice(1, 4).map(Number)
-    for (let i = 0; i < 3; i += 1) {
-      if (got[i] !== required[i]) return got[i] > required[i]
-    }
-    if (floorTag === null) return true
-    if (m[4] === undefined) return true // a stable release outranks any prerelease
-    return compareTag(m[4], floorTag) >= 0
-  }
-  // Mirror of the host gate at numeric + prerelease granularity: 0.1.6-alpha.1
-  // and older hosts predate the plugins.bundle.config seat and are rejected.
-  for (const version of ['0.1.2', '0.1.5', '0.1.6-alpha.1']) {
-    assert.ok(!satisfies(version), 'the dsh peer must reject ' + version)
-  }
-  for (const version of ['0.1.6-alpha.2', '0.1.6-alpha.3', '0.1.6', '0.1.7-alpha.1', '0.1.7-rc.1', '0.2.0']) {
-    assert.ok(satisfies(version), 'the dsh peer would reject ' + version)
-  }
-  // OPTIONAL keeps the gate intact while removing the install hazard: the gate
-  // reads peerDependencies only, but a package manager with autoInstallPeers
-  // (pnpm's default) resolves the range against the registry — and every
-  // published @deepseek-ai/dsh version is a prerelease, which a plain range
-  // excludes (ERR_PNPM_NO_MATCHING_VERSION for the whole install).
+  assert.equal(pkg.engines.node, '>=24.9.0')
+  assert.match(peer, /^>=\d+\.\d+\.\d+-[0-9A-Za-z][0-9A-Za-z.-]*$/, 'the floor must carry the rc tag')
+  assert.doesNotMatch(peer, /</, 'the dsh peer must not grow an upper bound')
+  // OPTIONAL removes the pnpm autoInstallPeers hazard: registry @deepseek-ai/dsh
+  // releases are prereleases, which a plain range excludes before the host gate
+  // ever runs (ERR_PNPM_NO_MATCHING_VERSION for the whole install).
   assert.equal(pkg.peerDependenciesMeta?.['@deepseek-ai/dsh']?.optional, true)
 })
 
@@ -172,7 +131,7 @@ test('send-to-chat rides the composer facade with a guarded primitives require',
   // A host without the seed module must degrade, not throw (invariant 1's spirit).
   assert.match(client, /let UIPrimitives = null/, 'the primitives module handle must default to null')
   assert.match(client, /try \{ UIPrimitives = require\('@deepseek-ai\/dsh-client-ui-primitives'\) \} catch/, 'the require must be guarded')
-  assert.match(client, /UIPrimitives !== null && typeof UIPrimitives\.DiffBlock === 'function'/, 'the diff block must check the handle before use')
+  assert.match(client, /function DiffBody\(props\) \{\n\s*return E\(LineDiff, \{/, 'the inline diff must reuse LineDiff so split/wrap stay reachable (#22)')
   assert.match(client, /UIPrimitives === null \|\| typeof UIPrimitives\.FileTypeIcon !== 'function'/, 'the file glyph must check the handle before use')
 })
 
@@ -454,8 +413,11 @@ test('the diff pane context menu reads the selection before the menu opens (v0.1
   // (the two faces are separate tabs now), so the count is 4 — the assertion
   // still fails LOUDLY if a clear site is dropped rather than moved.
   assert.match(client, /const \[diffContext, setDiffContext\] = useState\(null\)/)
-  const clears = (client.match(/setDiffContext\(null\)/g) || []).length
-  assert.ok(clears >= 4, 'the diff context must clear wherever the patch clears (saw ' + clears + ')')
+  // v0.27: the clear moved into one resetDiff funnel so it could also bump
+  // the request stamp and drop the dedupe window; the five entry points call it.
+  assert.match(client, /const resetDiff = useCallback\(\(\) => \{[\s\S]*?setDiffContext\(null\)/)
+  const resets = (client.match(/resetDiff\(\)/g) || []).length
+  assert.ok(resets >= 5, 'the diff context must clear wherever the patch clears (saw ' + resets + ' resetDiff calls)')
   // v0.14: the open verbs moved into ONE funnel, showDiff (external preview
   // first, inline pane as the fallback). The context contract survives
   // verbatim inside the funnel's inline legs.
@@ -468,7 +430,17 @@ test('the diff pane context menu reads the selection before the menu opens (v0.1
   // and the external ref carries the repo root both ways (worktree + repoRoot)
   // so a multi-root workspace cannot land the diff in the wrong repository.
   assert.match(client, /if \(previewDiff\(seed\) === true\) return/,
-    'every diff verb goes through the external-first funnel')
+    'every diff verb goes through the preview funnel')
+  // Issue #22: inline-first is the default so the panel's own split / wrap
+  // switches survive installing dsh-better-sidebar; the switch flips it back.
+  assert.match(client, /if \(inlineDiffEnabled\(\) === true\) return false/,
+    'the inline preview switch must gate the external hand-off chain')
+  assert.match(client, /function inlineDiffEnabled\(\) \{/,
+    'the inline preview switch reads one row-Config field')
+  assert.match(client, /function reviewRowSpanOf\(body, fromRow, toRow\)/,
+    'selections inside the review renderer read the printed line numbers')
+  assert.match(client, /span = reviewRowSpanOf\(from\.body, from\.row, to\.row\)/,
+    'the review branch must be wired into resolveDiffSelection')
   assert.match(client, /worktree: repoRoot, repoRoot: repoRoot/,
     'the external diff ref pins the repository root')
 
@@ -544,7 +516,7 @@ test('client API base is mount-relative (sub-path support, issue #4)', () => {
   )
 })
 
-test('plugin API calls fall back to the remote pairing proxy on auth rejection (issue #9)', () => {
+test('plugin API calls fall back to the remote pairing proxy on auth rejection (issue #9)', async () => {
   // dsh-remote-web-ui's browser channel rewrites only the host's own /api/,
   // /sidebar/, /git/ and /pet/ prefixes onto its /remote/ proxy — a
   // plugin-owned route is not on the list, so from a paired remote client the
@@ -561,7 +533,7 @@ test('plugin API calls fall back to the remote pairing proxy on auth rejection (
   // pathname (mount prefix included) + search — resolved through the same
   // base the direct fetch used (document.baseURI, which honours <base href>).
   const helpers = new Function('window', 'document', core
-    + '\nreturn { remoteFallbackUrl: remoteFallbackUrl, isAuthRejection: isAuthRejection }')
+    + '\nreturn { remoteFallbackUrl: remoteFallbackUrl, isAuthRejection: isAuthRejection, answersJson: answersJson }')
   const atMount = helpers({ location: { href: 'http://dsh.internal/dsh/session' } },
     { baseURI: 'http://dsh.internal/dsh/' })
   assert.equal(atMount.remoteFallbackUrl('dsh-ide-git/api/resolve'),
@@ -585,13 +557,38 @@ test('plugin API calls fall back to the remote pairing proxy on auth rejection (
   // never masked by a second request.
   for (const status of [401, 403]) assert.equal(bare.isAuthRejection(status), true)
   for (const status of [200, 400, 404, 422, 500]) assert.equal(bare.isAuthRejection(status), false)
+  // Only a proxy answer that parses as a JSON object may take over the channel
+  // (issue #20: with no remote-web-ui the SPA fallback answers 405 with an
+  // EMPTY body — adopting it surfaced a bare 'HTTP 405' instead of the real
+  // 403 refusal).
+  assert.equal(await bare.answersJson({ clone: () => ({ json: async () => ({ ok: false, error: { code: 'forbidden' } }) }) }),
+    true, 'a JSON answer is a proxy answer')
+  assert.equal(await bare.answersJson({ clone: () => ({ json: async () => { throw new SyntaxError('Unexpected end of JSON input') } }) }),
+    false, 'an empty 405 body proves there is no proxy here')
+  assert.equal(await bare.answersJson({ clone: () => ({ json: async () => { throw new SyntaxError('Unexpected token <') } }) }),
+    false, 'an HTML fallback page is not a proxy answer')
+  assert.equal(await bare.answersJson({ clone: () => ({ json: async () => null }) }), false, 'a JSON null is not the route envelope')
   // The retry is sticky: once the proxy answered, later calls skip the doomed
   // direct round trip; a retry that is ITSELF an auth rejection never flips
   // the switch (a genuine cross-site refusal cannot be masked).
   const request = client.slice(client.indexOf('async function request(method, payload)'), client.indexOf('/* ============================== storage'))
   assert.match(request, /viaRemoteChannel === true/, 'sticky mode short-circuits the direct call')
-  assert.match(request, /if \(isAuthRejection\(retried\.status\) !== true\) \{\n\s+viaRemoteChannel = true/, 'only a non-rejection from the proxy flips the sticky switch')
+  assert.match(request, /if \(isAuthRejection\(retried\.status\) !== true && \(await answersJson\(retried\)\) === true\) \{\n\s+viaRemoteChannel = true/, 'only a JSON, non-auth answer from the proxy flips the sticky switch')
   assert.match(request, /const retried = await fetch\(remoteFallbackUrl\(direct\), init\)/, 'the retry reuses the same init (method, headers, body)')
+  // Host side of issue #20: a plain-HTTP LAN page is not a secure context and
+  // sends no Sec-Fetch-* header, so the fence falls back to comparing the
+  // browser-written Origin/Referer against Host; the 403 now explains the
+  // rule instead of saying 'forbidden'.
+  assert.match(host, /function authorityKey\(value, protocol\)/, 'authority normalization exists')
+  assert.match(host, /function sameOriginOf\(req, host\)/, 'the same-origin fallback exists')
+  const trusted = host.slice(host.indexOf('function sameOriginOf(req, host)'), host.indexOf('function isTrusted(req)'))
+  assert.match(trusted, /headerOf\(req, 'origin'\)/, 'the fallback reads Origin')
+  assert.match(trusted, /headerOf\(req, 'referer'\)/, 'the fallback reads Referer')
+  assert.match(trusted, /candidates\.add\(authorityKey\(host, 'https:'\)\)/, 'an implicit Host port accepts either scheme default')
+  const fence = host.slice(host.indexOf('function isTrusted(req)'), host.indexOf('function isTrusted(req)') + 900)
+  assert.match(fence, /if \(site === 'same-origin' \|\| site === 'same-site'\) return true/, 'the Sec-Fetch path still comes first')
+  assert.match(fence, /return sameOriginOf\(req, host\)/, 'the fallback closes the fence')
+  assert.match(host, /non-loopback request must be same-origin/, 'the 403 explains the fence')
 })
 
 /** One rule out of the client half's injected stylesheet, by exact selector. */
@@ -767,7 +764,7 @@ test('host half is an ESM cordis plugin with argv-only git calls', () => {
   assert.match(host, /spawn\(gitBinary\(\), args, \{ cwd/)
   assert.doesNotMatch(host, /(^|[^.\w])exec\(/m, 'no shell exec')
   assert.doesNotMatch(host, /execSync\(|shell:\s*true/, 'no shell exec / shell:true')
-  assert.doesNotMatch(host, /from '(?!node:)/, 'host half may only import node: builtins')
+  assert.doesNotMatch(host, /from '(?!node:|\.\/)/, 'host half may only import node: builtins or its own relative modules')
 })
 
 test('host half keeps the destructive-confirm guards', () => {
@@ -783,15 +780,34 @@ test('host half keeps the destructive-confirm guards', () => {
 })
 
 test('host half exposes the method table the client calls', () => {
-  const methods = ['summary', 'stats', 'branches', 'log', 'me', 'merge-point', 'commitDetail', 'diff', 'compare', 'repos', 'stage', 'unstage', 'discard', 'commit', 'checkout', 'branchCreate', 'branchRename', 'branchDelete', 'merge', 'rebase', 'cherryPick', 'revert', 'reset', 'fetch', 'pull', 'push', 'stashList', 'stashPush', 'stashApply', 'stashDrop', 'tagCreate', 'tagDelete', 'tagDeleteRemote', 'pushTags', 'clone', 'gitLogs', 'remoteAdd', 'remoteRemove', 'branchDeleteRemote', 'rebaseAbort', 'stashClear', 'undoList', 'undoApply', 'version']
+  const methods = ['summary', 'stats', 'branches', 'log', 'me', 'merge-point', 'commitDetail', 'diff', 'compare', 'repos', 'stage', 'unstage', 'discard', 'commit', 'checkout', 'branchCreate', 'branchRename', 'branch-upstream', 'branchDelete', 'worktreeAdd', 'worktreeRemove', 'worktreePrune', 'merge', 'mergeAbort', 'rebase', 'cherryPick', 'revert', 'reset', 'fetch', 'pull', 'push', 'stashList', 'stashPush', 'stashApply', 'stashDrop', 'tagCreate', 'tagDelete', 'tagDeleteRemote', 'pushTags', 'clone', 'gitLogs', 'remoteAdd', 'remoteRemove', 'branchDeleteRemote', 'rebaseAbort', 'stashClear', 'undoList', 'undoApply', 'version']
   for (const method of methods) {
     if (method === 'merge-point') { assert.match(host, /^  'merge-point': mergePoint,$/m, 'host method missing: merge-point'); continue }
+    if (method === 'branch-upstream') { assert.match(host, /^  'branch-upstream': branchUpstream,$/m, 'host method missing: branch-upstream'); continue }
     assert.match(host, new RegExp('^  ' + method + ',$', 'm'), 'host method missing: ' + method)
   }
   for (const call of client.match(/request\('([a-zA-Z]+)'/g) || []) {
     const method = call.slice(call.indexOf("'") + 1, call.length - 1)
     assert.ok(methods.includes(method), 'client calls an unregistered method: ' + method)
   }
+})
+
+test('history scope and merge modes follow issue #25', () => {
+  // Scope: the client maps '*' to a host BOOLEAN, and the host turns that into
+  // --branches --remotes — never a caller-supplied list of refs.
+  assert.ok(client.includes("if (browseRev === '*') payload.allBranches = true"), 'client must map the all-branches scope')
+  assert.ok(host.includes("if (payload.allBranches === true) args.push('--branches', '--remotes')"), 'host must widen the log to every branch + remote')
+  assert.ok(client.includes("label: t('history.scope')"), 'history must expose the scope filter')
+  assert.ok(client.includes('branches: branches, scope: browseRev, onScopeChange: setHistoryScope'), 'the panel must hand branches + scope to the list')
+  // Merge: both entry points open the mode dialog; the flag pair is exact.
+  assert.ok(client.includes('function MergeDialog(props) {'), 'merge must ask for a mode')
+  assert.equal((client.match(/run\('merge', \{ branch: entry\.name \}\)/g) || []).length, 0, 'no merge entry may skip the mode dialog')
+  assert.ok(client.includes("else if (mode === 'noCommit') { payload.noFf = true; payload.noCommit = true }"), '--no-commit must ride with --no-ff')
+  assert.ok(host.includes("if (payload.noCommit === true) args.push('--no-commit')"), 'host must pass --no-commit')
+  // A stopped merge needs a way out; the abort is a write method like rebaseAbort.
+  assert.ok(host.includes('async function mergeAbort(payload) {'), 'host must offer mergeAbort')
+  assert.ok(host.includes("'merge', 'mergeAbort', 'rebase'"), 'mergeAbort must join the write queue')
+  assert.ok(client.includes("run: () => { void run('mergeAbort', {}) }"), 'the more menu must expose Abort merge')
 })
 
 test('host half serialises writes and refuses the dangerous cases', () => {
@@ -880,8 +896,9 @@ test('the tree toggle is reachable again after it was folded', () => {
   // treeOpen is persisted, so a header button that only rendered while the tree
   // was OPEN left a folded tree with no way back (a workspace could only be
   // repaired by clearing localStorage). The header button is two-way now, and the
-  // rail carries the action for the chromes that have no header button.
-  const bar = client.slice(client.indexOf("className: 'dig-compact-bar'"), client.indexOf("className: 'dig-compact-bar'") + 1400)
+  // rail carries the action for the chromes that have no header button. v0.26.1
+  // moved it into the shared tab-strip builder (compact passes withTree=true).
+  const bar = client.slice(client.indexOf("className: 'dig-split-tabs'"), client.indexOf("className: 'dig-split-tabs'") + 1800)
   assert.match(bar, /'data-action': 'tree'/, 'the compact header keeps a tree control')
   assert.match(bar, /onClick: \(\) => foldTree\(!treeOpen\)/, 'and it toggles BOTH ways')
   assert.match(bar, /'aria-pressed': treeOpen \? 'true' : 'false'/)
@@ -889,11 +906,21 @@ test('the tree toggle is reachable again after it was folded', () => {
   assert.doesNotMatch(client, /treeOpen \? E\('button'/, 'no chrome may render its tree control only while the tree is open')
 
   const specs = client.slice(client.indexOf('const RAIL_SPECS = ['), client.indexOf('const RAIL_IDS ='))
-  for (const id of ['tree', 'float', 'split', 'fullscreen']) {
+  for (const id of ['tree', 'worktrees', 'float', 'split', 'fullscreen']) {
     assert.match(specs, new RegExp("\\{ id: '" + id + "'"), 'RAIL_SPECS must carry the ' + id + ' action')
   }
-  assert.match(client, /const RAIL_VIEW_IDS = \['tree', 'float', 'split', 'fullscreen'\]/,
+  assert.match(client, /const RAIL_VIEW_IDS = \['tree', 'worktrees', 'float', 'split', 'fullscreen'\]/,
     'view actions must stay clickable while a git command runs')
+  // A linked worktree is a root the workspace scan never listed; opening one
+  // used to leave the top bar naming the primary checkout.
+  assert.match(client, /headerRepos = repoOptions\.concat\(\[\{/,
+    'the current root stays a header option even when the workspace scan does not know it')
+  assert.match(client, /repo\.path === repoRoot && branches !== null \? Object\.assign\(\{\}, repo, \{ branch: branches\.branch \}\) : repo/,
+    'the repo label follows the live HEAD after a checkout instead of the branch the scan listed')
+  assert.match(client, /t: t, repos: headerRepos, value: repoRoot/,
+    'the repo switcher reads the header options, not the raw scan')
+  assert.match(client, /body-worktrees/,
+    'the worktree view has its own body class for the layout probe and styles')
   assert.match(client, /action\.available !== false/, 'an action this mount cannot perform is not rendered at all')
 })
 
@@ -1087,16 +1114,17 @@ test('the pane clamps hold at both ends and never shrink a pane below its own bo
   // ceiling and the diff takes exactly what the log above it can spare.
   const stored = core.normalizePanes({ panes: { 'stack:tall': { tree: 0.9, changes: 0.9, diff: 0.9 } } })
   const geo = core.paneGeometry('stack', tall, stored)
-  assert.equal(geo.overrides.tree, 420, 'the tree stops at its own ceiling')
-  assert.equal(geo.overrides.diff, 344, 'the diff is handed what the log above it does not need')
-  assert.equal(geo.limits.diff.max, 344)
-  assert.ok(tall.height - geo.overrides.tree - geo.overrides.diff - core.PANE_GUTTER_PX >= core.PANE_MAIN_FLOOR_PX,
-    'the middle pane keeps at least its hard floor when the stacked panes are maxed')
+  assert.equal(geo.overrides.changes, 440, 'the changes pane stops where the middle pane begins')
+  assert.equal(geo.overrides.tree, 324, 'the tree gives way to the pane it shares the column with')
+  assert.equal(geo.overrides.diff, undefined, 'the stacked chrome no longer splits a diff pane out (v0.26.1)')
+  assert.equal(geo.limits.diff, undefined, 'and it announces no diff divider')
+  assert.equal(tall.height - geo.overrides.tree - geo.overrides.changes - 2 * core.PANE_GUTTER_PX, core.PANE_MAIN_FLOOR_PX,
+    'the middle pane keeps exactly its hard floor when both stacked panes are maxed')
 
   // Tiny stored ratios clamp UP to the minimums, never to 0.
   const tiny = core.paneGeometry('stack', tall, core.normalizePanes({ panes: { 'stack:tall': { tree: 0.001, changes: 0.001 } } }))
   assert.equal(tiny.overrides.tree, core.PANE_LIMITS['stack:tree'].min)
-  assert.equal(tiny.overrides.changes, undefined, 'no stacked chrome draws a changes pane, so no size is kept for one')
+  assert.equal(tiny.overrides.changes, core.PANE_LIMITS['stack:changes'].min, 'a tiny stored ratio clamps up to the changes pane minimum')
 
   // A huge container still stops at the absolute maxima...
   const roomy = core.paneGeometry('columns', { width: 3000, height: 400 },
@@ -1124,7 +1152,10 @@ test('the pane clamps hold at both ends and never shrink a pane below its own bo
     'the relaxed tier still keeps the middle pane its floor')
 
   // A folded tree frees its room instead of reserving it, and has no override.
-  const folded = core.paneGeometry('stack', tall, core.normalizePanes({ treeOpen: false, panes: { 'stack:tall': { tree: 1, diff: 0.5 } } }))
+  /* The explorer face still sizes a diff pane in the stacked chrome (the
+     changes face hands that key to the tabbed window instead), so the folded
+     tree case drives paneGeometry with the explorer's active key list. */
+  const folded = core.paneGeometry('stack', tall, core.normalizePanes({ treeOpen: false, panes: { 'stack:tall': { tree: 1, diff: 0.5 } } }), null, ['tree', 'diff'])
   assert.equal(folded.overrides.tree, undefined)
   assert.equal(folded.limits.tree, undefined, 'a folded pane has no divider to drag')
   assert.equal(folded.overrides.diff, 450, 'and the diff takes the freed room')
@@ -1153,7 +1184,7 @@ test('a divider only exists when it can move something', () => {
   // diff pane, so its diff window (fixed max-height:55%) could not be resized
   // at all — user report. Every chrome now hands out a real diff window; the
   // diff keeps measuring HEIGHT even where the chrome runs sideways.
-  assert.match(client, /className: 'dig-diff-pane', 'data-pane': 'diff', style: paneStyle\('diff'\)/,
+  assert.match(client, /const diffPaneOf = \(fill\) => [^\n]*style: fill === true \? null : paneStyle\('diff'\)/,
     'the diff pane must actually consume the stored size')
   assert.match(client, /if \(limit === undefined \|\| limit\.max <= limit\.min\) return null/,
     'no pane in this chrome, or no travel in either direction, means no divider element')
@@ -1164,9 +1195,10 @@ test('a divider only exists when it can move something', () => {
   const columns = core.paneGeometry('columns', { width: 700, height: 400 }, core.normalizePanes(null), { diff: 150 })
   assert.ok(columns.limits.diff !== undefined && columns.limits.diff.max > columns.limits.diff.min,
     'the columns chrome hands out a real diff window')
+  assert.deepEqual(core.PANE_CHROME_KEYS.stack, ['tree', 'changes'],
+    'the stacked chrome puts history and diff in one tabbed window (v0.26.1)')
   const stacked = core.paneGeometry('stack', { width: 700, height: 800 }, core.normalizePanes(null), { diff: 150 })
-  assert.ok(stacked.limits.diff !== undefined && stacked.limits.diff.max > stacked.limits.diff.min,
-    'while the stacked chrome hands out a real diff window')
+  assert.equal(stacked.limits.diff, undefined, 'so it hands out no diff divider at all')
 
   // The columns diff divides the body HEIGHT, not the chrome's own width
   // dimension: 0.5 of a 400px-tall body lands at 200px even in a 1000px-wide
@@ -1174,6 +1206,20 @@ test('a divider only exists when it can move something', () => {
   const wide = core.paneGeometry('columns', { width: 1000, height: 400 },
     core.normalizePanes({ panes: { 'columns:wide': { diff: 0.5 } } }), { diff: 150 })
   assert.equal(wide.overrides.diff, 200, 'a columns diff ratio converts against the body height')
+})
+
+test('the changes header keeps its count right after the title (v0.26.2)', () => {
+  // User report: the number after "变更" floated in the middle of the header row.
+  // `.dig-count` pins itself to the right edge (that is right for the branch /
+  // folder groups), so the changes head opts back out of that for its own badge.
+  assert.match(client, /'\.dig-count\{margin-left:auto;opacity:\.6;font-weight:400\}'/,
+    'the shared badge still right-aligns in the group rows')
+  assert.match(client, /'\.dig-changes-head \.dig-count\{margin-left:0\}'/,
+    'the changes header pulls its own count back beside the title')
+  const head = client.slice(client.indexOf("const head = props.hideHeader === true ? null : E('div', { className: 'dig-section-head dig-changes-head' }"),
+    client.indexOf("const head = props.hideHeader === true ? null : E('div', { className: 'dig-section-head dig-changes-head' }") + 700)
+  assert.match(head, /E\('span', \{ className: 'dig-count' \}, String\(total\)\)/,
+    'and the header badge is the changes total it sits beside')
 })
 
 test('a rail switch writes exactly its own field, and a refused write rolls back', () => {
@@ -1189,21 +1235,17 @@ test('a rail switch writes exactly its own field, and a refused write rolls back
   //     that stays flipped while the Host still holds the old value.
   const core = client.slice(client.indexOf('/* ---- rail config core'), client.indexOf('/* ---- end rail config core'))
   const helpers = new Function('RAIL_IDS', core
-    + '\nreturn { railFieldOf: railFieldOf, railIdOfField: railIdOfField }')(['refresh', 'tree', 'float', 'newBranch'])
-  for (const id of ['refresh', 'tree', 'float', 'newBranch']) {
-    assert.equal(helpers.railIdOfField(helpers.railFieldOf(id)), id, 'railIdOfField must invert railFieldOf for ' + id)
-  }
-  assert.equal(helpers.railIdOfField('railNope'), null, 'a field no action owns must not become a row-Config key')
-  assert.equal(helpers.railIdOfField('rail'), null)
+    + '\nreturn { railFieldOf: railFieldOf }')(['refresh', 'tree', 'float', 'newBranch'])
+  assert.equal(helpers.railFieldOf('newBranch'), 'railNewBranch')
 
   const writer = client.slice(client.indexOf('function writeRailFields('), client.indexOf('/* One-shot move of the pre-settings rail config'))
   assert.ok(writer.length > 300, 'writeRailFields must exist')
   assert.match(writer, /active\.mutate\(ops\)/, 'a burst is submitted as ONE atomic mutation')
   assert.match(writer, /if \(ready\.writable !== true \|\| typeof active\.mutate !== 'function'\) return \{ sent: false, reason: 'read-only' \}/,
     'a read-only document must refuse instead of pretending')
-  assert.match(writer, /if \(railForm !== null\) return \{ sent: false, reason: 'not-ready' \}/,
-    'a config surface that has not answered yet must refuse rather than fall through to the legacy home')
-  assert.match(writer, /railIdOfField\(String\(op\.path\[0\]\)\)/, 'the legacy branch addresses ids through the inverse map')
+  assert.match(writer, /return \{ sent: false, reason: 'not-ready' \}/,
+    'a config surface that has not answered yet must refuse instead of writing anywhere else')
+  assert.doesNotMatch(writer, /railIdOfField|window\.localStorage/, 'the retired localStorage fallback must not come back')
   assert.match(client, /function writeRailField\(field, value, form\) \{\n\s+return writeRailFields\(\[\{ op: 'set', path: \[field\], value: value \}\], form\)/,
     'the single-field writer is a wrapper over the batched one')
 
@@ -1249,7 +1291,7 @@ test('a rail switch writes exactly its own field, and a refused write rolls back
   assert.match(card, /'data-placement-row': field/, 'the placement row is addressable')
   assert.match(card, /const field = 'conversationTab'/, 'one row-Config field backs the switch')
   assert.match(card, /values\[field\] !== false/, 'an absent value means the default: shown')
-  assert.match(host, /shape\.conversationTab = live\(schema\.boolean\(\)\.default\(true\)\)/,
+  assert.match(host, /shape\.conversationTab = schema\.boolean\(\)\.default\(true\)\.volatile\(\)/,
     'the host schema declares the field with default true')
   // The immersive switch (issue #8 round 3): the SAME contract, and the SAME
   // trap — a client-side field the host schema does not declare is rejected by
@@ -1257,14 +1299,19 @@ test('a rail switch writes exactly its own field, and a refused write rolls back
   // fails without any console noise, and the switch silently rolls back. Both
   // halves must declare the field; both defaults must be true.
   assert.match(card, /const field = 'immersive'/, 'the immersive switch is backed by its own row-Config field')
-  assert.match(host, /shape\.immersive = live\(schema\.boolean\(\)\.default\(true\)\)/,
+  assert.match(host, /shape\.immersive = schema\.boolean\(\)\.default\(true\)\.volatile\(\)/,
     'the host schema declares the immersive field with default true')
   // The composer-status switch (v0.19.0) shipped WITHOUT its host field and the
   // Host refused every write: the card rolled the switch back and said "设置没写
   // 进去" (v0.19.7 user report). It is the same contract as the two above.
   assert.match(card, /const field = 'composerStatus'/, 'the composer pill switch is backed by its own row-Config field')
-  assert.match(host, /shape\.composerStatus = live\(schema\.boolean\(\)\.default\(true\)\)/,
+  assert.match(host, /shape\.composerStatus = schema\.boolean\(\)\.default\(true\)\.volatile\(\)/,
     'the host schema declares the composerStatus field with default true')
+  // Issue #22 (inline diff): the fourth placement switch keeps the plugin's own
+  // split / wrap pane reachable when an external diff tab is installed.
+  assert.match(card, /const field = 'inlineDiff'/, 'the inline preview switch is backed by its own row-Config field')
+  assert.match(host, /shape\.inlineDiff = schema\.boolean\(\)\.default\(true\)\.volatile\(\)/,
+    'the host schema declares the inlineDiff field with default true')
   // Generic guard, so the NEXT field cannot repeat the v0.19.7 bug: every
   // row-Config field the card writes must be declared volatile in the host
   // schema. Rail fields are covered by the RAIL_CONFIG_IDS parity test above.
@@ -1273,7 +1320,7 @@ test('a rail switch writes exactly its own field, and a refused write rolls back
   for (const match of card.matchAll(/(?:textRow|selectRow)\('([A-Za-z]+)'/g)) writtenFields.add(match[1])
   assert.ok(writtenFields.size >= 5, 'the card should still write the placement and commit fields')
   for (const field of writtenFields) {
-    assert.match(host, new RegExp('shape\\.' + field + ' = live\\(schema\\.'),
+    assert.match(host, new RegExp('shape\\.' + field + ' = schema\\.'),
       'the host schema must declare the row-Config field the card writes: ' + field)
   }
   // The label click must INVERT what is on screen. The old spelling of the
@@ -1288,14 +1335,15 @@ test('a rail switch writes exactly its own field, and a refused write rolls back
   const cardCode = card.replace(/\/\*[\s\S]*?\*\//g, '')
   assert.doesNotMatch(cardCode, /values\[field\] !== false\) !== true/,
     'the precedence trap must not come back: parenthesize the whole fallback')
-  for (const field of ['conversationTab', 'immersive', 'composerStatus']) {
+  for (const field of ['conversationTab', 'immersive', 'composerStatus', 'inlineDiff']) {
     assert.match(card, new RegExp("const field = '" + field + "'\\n\\s+const inputId = 'dig-placement-' \\+ field\\n\\s+const shown = placementShown\\(field\\)"),
       field + ' must read its switch state through placementShown')
   }
   assert.match(card, /const wanted = placementTarget\(field, fromControl\)/,
     'every placement toggle derives its target from the shared helper')
   for (const key of ['settings.placement.title', 'settings.placement.tab', 'settings.placement.tabHint',
-    'settings.placement.immersive', 'settings.placement.immersiveHint']) {
+    'settings.placement.immersive', 'settings.placement.immersiveHint',
+    'settings.diff.inline', 'settings.diff.inlineHint']) {
     const occurrences = client.split("'" + key + "'").length - 1
     assert.ok(occurrences >= 22, key + ' must ship in ZH + EN + every LOCALES entry (saw ' + occurrences + ')')
   }
@@ -1337,10 +1385,11 @@ test('the ai commit message keeps the model honest and the input bounded', async
   //  3. the user's own instructions are DATA in the user message, never the system
   //     prompt, and they are capped;
   //  4. the reply is cleaned of the wrappers models habitually add.
-  const start = host.indexOf('const COMMIT_MAX_PROMPT_CHARS')
-  const end = host.indexOf('const METHODS = {')
+  const commitHost = read('src/host/commit-message.js')
+  const start = commitHost.indexOf('const COMMIT_MAX_PROMPT_CHARS')
+  const end = commitHost.indexOf('export function setCommitServices')
   assert.ok(start >= 0 && end > start, 'the ai commit block must keep its bounds')
-  const block = host.slice(start, end)
+  const block = commitHost.slice(start, end)
   const api = new Function(block + '\nreturn { collectCommitStream, commitInputOf, commitMessagesOf, cleanupCommitMessage, COMMIT_MAX_PROMPT_CHARS, COMMIT_TOTAL_BYTES, COMMIT_FILE_BYTES, COMMIT_FILE_LINES, COMMIT_MAX_FILES }')()
 
   // 1 — the finish is reported, whichever way the adapter failed.
@@ -1530,22 +1579,27 @@ test('the settings entry draws a gear, not a sunburst', () => {
   assert.match(client, /E\(Icon, \{ name: 'settings', size: 18 \}\)/, 'the rail settings button still uses it')
 })
 
-test('the rail settings live in the row Config, with localStorage only as the legacy home', () => {
-  // One document, one editor. dsh >= 0.1.7 persists a plugin's settings as the
-  // row Config and serves it through ctx.configForms; the settings card on the
-  // plugin's page edits it, the rail reads it, and the pre-0.9 localStorage value
-  // is migrated once. An older host has no such service — there the localStorage
-  // home and the in-panel editor stay.
+test('the rail settings live in the row Config, and the order is persisted there too', () => {
+  // One document, one home. dsh >= 0.2.2-rc.1 serves a plugin's row Config
+  // through ctx.configForms; the settings card toggles visibility, the panel's
+  // gear editor reorders, and both write the same document. The old
+  // localStorage home is read once by the migration and never written again.
   const start = client.indexOf('/* ---- rail config core')
   const end = client.indexOf('/* ---- end rail config core')
   assert.ok(start >= 0 && end > start, 'the rail config core must keep its markers')
   const core = new Function('RAIL_IDS', client.slice(start, end)
-    + '\nreturn { railFieldOf: railFieldOf, railConfigOfValues: railConfigOfValues, railValuesOfConfig: railValuesOfConfig }')(['refresh', 'tree', 'float'])
+    + '\nreturn { railFieldOf: railFieldOf, railOrderOf: railOrderOf, railOrderText: railOrderText, railConfigOfValues: railConfigOfValues, railValuesOfConfig: railValuesOfConfig }')(['refresh', 'tree', 'float'])
   assert.equal(core.railFieldOf('newBranch'), 'railNewBranch')
   assert.equal(core.railFieldOf('float'), 'railFloat')
-  assert.deepEqual(core.railConfigOfValues({ railRefresh: true, railTree: false }), { order: ['refresh', 'tree', 'float'], hidden: ['tree'] })
+  assert.deepEqual(core.railConfigOfValues({ railRefresh: true, railTree: false, railOrder: 'float,refresh' }),
+    { order: ['float', 'refresh', 'tree'], hidden: ['tree'] },
+    'a stored permutation wins, unknown ids are dropped and missing ones are appended')
   assert.deepEqual(core.railConfigOfValues(null).hidden, [], 'a missing field means the default, which is shown')
-  assert.deepEqual(core.railValuesOfConfig({ hidden: ['float'] }), { railRefresh: true, railTree: true, railFloat: false })
+  assert.equal(core.railOrderText(['tree', 'refresh', 'float']), 'tree,refresh,float')
+  assert.equal(core.railOrderText(['refresh', 'tree', 'float']), '', 'the code order is the schema default, stored as empty')
+  assert.equal(core.railOrderText(['nope', 'float', 'float', 'tree']), 'float,tree,refresh', 'duplicates and unknown ids are removed')
+  assert.deepEqual(core.railValuesOfConfig({ hidden: ['float'], order: ['float', 'refresh', 'tree'] }),
+    { railRefresh: true, railTree: true, railFloat: false, railOrder: 'float,refresh,tree' })
 
   // The host schema mirrors the client rail ids — a new action must not be
   // silently missing from the settings surface.
@@ -1554,7 +1608,7 @@ test('the rail settings live in the row Config, with localStorage only as the le
   const specIds = [...client.slice(client.indexOf('const RAIL_SPECS = ['), client.indexOf('const RAIL_IDS =')).matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1])
   assert.ok(specIds.length >= 12, 'RAIL_SPECS should still be the action authority')
   assert.deepEqual(schemaIds, specIds, 'the host row Config must mirror RAIL_SPECS exactly (and in order)')
-  assert.match(host, /shape\['rail' \+ id\.charAt\(0\)\.toUpperCase\(\) \+ id\.slice\(1\)\] = live\(schema\.boolean\(\)\.default\(true\)\)/,
+  assert.match(host, /shape\['rail' \+ id\.charAt\(0\)\.toUpperCase\(\) \+ id\.slice\(1\)\] = schema\.boolean\(\)\.default\(true\)\.volatile\(\)/,
     'every action is a volatile boolean defaulting to shown')
   assert.match(host, /export const Config = Schema === null \? undefined : railConfigSchema\(Schema\)/,
     'an unresolvable schema module must only disable the surface, never the row')
@@ -1571,20 +1625,20 @@ test('the rail settings live in the row Config, with localStorage only as the le
   for (const match of cardSource.matchAll(/const field = '([A-Za-z]+)'/g)) cardFields.add(match[1])
   for (const match of cardSource.matchAll(/(?:textRow|selectRow)\('([A-Za-z]+)'/g)) cardFields.add(match[1])
   for (const field of cardFields) {
-    assert.match(host, new RegExp('shape\\.' + field + ' = live\\(schema\\.(?:boolean|string)\\(\\)'),
+    assert.match(host, new RegExp('shape\\.' + field + ' = schema\\.(?:boolean|string)\\(\\)'),
       'the host row Config must declare the field the settings card writes: ' + field)
   }
   assert.ok(cardFields.has('composerStatus'), 'the composer pill switch is part of the write surface')
 
-  // Invariant 2, amended: the host half still imports only node: builtins; the
-  // single non-node module it may REACH (lazily, guarded) is the host-provided
-  // schema module every sibling plugin uses to declare its row Config.
+  // Invariant 2, amended: the host half imports only node: builtins and its own
+  // relative modules; the single outside module it may REACH (lazily, guarded)
+  // is the host-provided schema module every sibling plugin uses for row Config.
   const dynamicImports = [...host.matchAll(/await import\('([^']+)'\)/g)].map((match) => match[1])
   assert.deepEqual(dynamicImports, ['@deepseek-ai/schemastery'], 'the only allowed non-node reach, and it must stay dynamic')
-  assert.doesNotMatch(host, /from '(?!node:)/, 'host half may only import node: builtins')
+  assert.doesNotMatch(host, /from '(?!node:|\.\/)/, 'host half may only import node: builtins or its own relative modules')
 
-  // Client wiring: the detail-page seat (the legacy Settings → Plugins seat went
-  // away with the raised host floor), soft services, one-shot migration.
+  // Client wiring: the detail-page seat, the rc.1 configForms service, one-shot
+  // migration, and a gear that always opens the editor with the reorder controls.
   assert.match(client, /const SETTINGS_BUNDLE = 'dsh-ide-git'/)
   assert.match(client, /const RAIL_NS = 'ide-git'/)
   assert.match(client, /slots\.inject\('plugins\.bundle\.config'/)
@@ -1592,12 +1646,12 @@ test('the rail settings live in the row Config, with localStorage only as the le
   assert.doesNotMatch(client, /settings\.plugin\.item/, 'the legacy settings-list seat must stay gone')
   assert.match(client, /ctx\.inject\(\['configForms'\]/)
   assert.match(client, /const RAIL_MIGRATED_KEY = 'dsh-ide-git\.rail\.v1\.migrated'/)
-  assert.match(client, /navigation\.openBundle\(SETTINGS_BUNDLE\)/, 'the gear opens the plugin page when the host has one')
-  assert.match(client, /const openSettings = navigation !== undefined && navigation !== null && typeof navigation\.openBundle === 'function'/,
-    'pluginNavigation is read at RENDER time and soft (it may be undefined)')
-  // The in-panel editor exists only where the row Config does not.
-  assert.match(client, /railForm === null \|\| props\.openSettings === null \|\| props\.openSettings === undefined \? 'panel' : 'page'/,
-    'the gear falls back to the in-panel editor only without the config/navigation pair')
+  assert.match(client, /const scope = railForm/, 'the card reads the module configForms handle directly')
+  assert.match(client, /onClick: \(\) => setRailSettings\(true\)/, 'the gear always opens the in-panel editor')
+  assert.doesNotMatch(client, /railSettingsTarget|settings\.plugin\.item/,
+    'rc.1 keeps the legacy settings-list seat gone')
+  assert.match(client, /typeof navigation\.openBundle === 'function'/,
+    'the optional plugin-page door stays capability-gated')
 })
 
 test('every overlay is clamped to the panel it lives in', () => {
@@ -1814,7 +1868,7 @@ test('the repository pill is back behind its own placement switch (user request)
   assert.match(client, /t\('settings\.placement\.repoPillHint'\)/, 'with its hint')
   assert.ok((client.split("'settings.placement.repoPill'").length - 1) >= 21, 'the row label ships in every dictionary')
   assert.ok((client.split("'settings.placement.repoPillHint'").length - 1) >= 21, 'the hint ships in every dictionary')
-  assert.match(host, /shape\.composerRepoPill = live\(schema\.boolean\(\)\.default\(true\)\)/,
+  assert.match(host, /shape\.composerRepoPill = schema\.boolean\(\)\.default\(true\)\.volatile\(\)/,
     'the host declares the field, and defaults it ON')
 
   // What stays untouched either way: the branch pill and the counters.
@@ -1837,16 +1891,17 @@ test('the panel is two faces: 变更+提交框, and an IDE explorer in its own t
   // The default face renders ONE column — the changes pane — and no branch tree
   // or history, in every chrome. The chrome class still rides along so the
   // layout probes keep reporting the real chrome.
-  const changesFace = client.slice(client.indexOf('} else if (explore !== true) {'), client.indexOf('} else if (compact) {'))
+  const changesFace = client.slice(client.indexOf('/* ---------- DEFAULT face'), client.indexOf('/* ---------- overlays ---------- */'))
   assert.ok(changesFace.length > 0, 'the changes-face body must exist')
   assert.match(changesFace, /'dig-body dig-body-' \+ chrome \+ ' dig-body-changes'/, 'it keeps the chrome class and marks itself')
-  assert.match(changesFace, /changesPane, diffGutter, diffPane/, 'it draws the changes list, the commit box and the diff fallback')
-  assert.doesNotMatch(changesFace, /BranchTree|logPane|historyPane/, 'no branch tree and no history in the default face')
+  assert.match(changesFace, /className: 'dig-pane dig-pane-changes-stack'[\s\S]*?changesPane\)/, 'it draws the changes list and the commit box in one column')
+  assert.match(changesFace, /splitTabs\(compact, false\)/, 'and main keeps its tabbed history | diff window below it')
+  assert.doesNotMatch(changesFace, /BranchTree|logPane/, 'no branch tree and no raw log pane in the default face')
 
   // The explorer draws the log AND the detail side by side in the columns
   // chrome, and the swapping pane everywhere else.
-  const explorerColumnsStart = client.indexOf("'dig-body dig-body-columns'")
-  const explorerColumns = client.slice(explorerColumnsStart, client.indexOf('} else {', explorerColumnsStart))
+  const explorerColumnsStart = client.indexOf("'dig-body dig-body-columns dig-body-explore'")
+  const explorerColumns = client.slice(explorerColumnsStart, client.indexOf('} else if (compact) {', explorerColumnsStart))
   assert.match(explorerColumns, /logPane, diffGutter, diffPane/, 'the middle column is the commit list')
   assert.match(explorerColumns, /detailColumn\)\)/, 'the right column is the commit detail')
   assert.match(client, /const historyPane = view === 'detail' \? detailPane\(true\) : logPane/,
@@ -1877,8 +1932,9 @@ test('the panel is two faces: 变更+提交框, and an IDE explorer in its own t
 
   // The removed chrome vocabulary must not creep back: no segmented switch (the
   // default face has nothing to switch to) and no stacked changes pane.
-  assert.doesNotMatch(client, /dig-seg/, 'the changes/history segmented control is gone')
-  assert.doesNotMatch(client, /dig-pane-changes-stack/, 'no stacked changes pane is left')
+  assert.match(client, /function MergeDialog\(props\)/, 'the segmented control that remains is the merge-mode picker')
+  assert.match(client, /className: 'dig-split-tabs'/, 'the default face uses the tab strip, not a segmented switch')
+  assert.match(client, /dig-pane-changes-stack/, 'the default face stacks the changes pane above the tabbed window')
   assert.match(client, /stack: \['tree', 'diff'\]/, 'the stacked chrome draws the tree and the log only')
   for (const key of ['rail.explore', 'explore.title', 'explore.description', 'detail.pickHint']) {
     assert.ok((client.split("'" + key + "'").length - 1) >= 21,
@@ -1983,4 +2039,444 @@ test('the commit box is resizable from its own top edge (user request)', () => {
   assert.match(client, /\.dig-textarea\{[^}]*resize:none/,
     'the corner grip is gone: one gesture, one axis')
   assert.match(client, /\.dig-textarea\{[^}]*flex:1 1 auto/, 'the message absorbs whatever the box was given')
+})
+test('the remote branch tree folds by path like the local one (v0.19.9)', () => {
+  // The strip is module-level and pure: a single remote name strips its
+  // "<remote>/" prefix so the tree groups feature/…, fix/… directly; mixed
+  // remotes, a bare name beside prefixed ones, or an empty list keep full
+  // names (grouping under one folder named after the remote is noise).
+  const start = client.indexOf('function remoteTreeStripOf(')
+  assert.ok(start >= 0, 'remoteTreeStripOf must exist at module level')
+  const end = client.indexOf('\n    function ', start + 10)
+  assert.ok(end > start, 'remoteTreeStripOf must be followed by a sibling function')
+  const strip = new Function(client.slice(start, end) + '; return remoteTreeStripOf')()
+  assert.equal(strip(['origin/feature/a', 'origin/feature/b', 'origin/main', 'origin/fix/c']), 'origin/')
+  assert.equal(strip(['origin/a', 'upstream/b']), '', 'mixed remotes keep full names')
+  assert.equal(strip(['origin/main', 'main']), '', 'a bare name beside prefixed ones keeps full names')
+  assert.equal(strip([]), '')
+  // Wiring: the remote section joins the grouped renderer under its own fold
+  // namespace (its folder state stays independent of the local one), and the
+  // visible-leaves mirror walks the SAME tree so Shift-ranges and Ctrl+A
+  // follow the rendered order exactly.
+  assert.match(client, /section\('remote', t\('branches\.remote'\), remotes, \(entry\) => Object\.assign\(\{\}, entry, \{ remote: true \}\), true, 'remote', remoteNameOf\)/,
+    'the remote section renders through the grouped tree under the remote namespace')
+  assert.match(client, /flatLeaves\(forestOf\(remotes\.map\(\(entry\) => Object\.assign\(\{\}, entry, \{ remote: true \}\)\), remoteNameOf\), 'remote', 0, visibleLeaves\)/,
+    'the selection mirror walks the same namespaced tree')
+  assert.match(client, /const forestOf = \(entries, nameOf\) =>/, 'forestOf accepts a name override')
+  assert.match(client, /rowsOf\(forestOf\(entries\.map\(\(entry\) => decorate\(entry\)\), nameOf\), ns \|\| '', 0\)/,
+    'the grouped renderer threads ns and nameOf through')
+  // The remote HEAD symbolic ref arrives from git as a BARE "<remote>" name
+  // (%(refname:short) of refs/remotes/<remote>/HEAD collapses that way); the
+  // host drops it before it ever becomes a row — otherwise it pollutes the
+  // tree AND defeats the single-remote prefix strip above.
+  assert.match(host, /\/\^refs\\\/remotes\\\/\[\^\/\]\+\\\/HEAD\$\/\.test\(parts\[0\]\) === false\) remote\.push\(entry\)/,
+    'the host filters <remote>/HEAD before listing remote branches')
+})
+
+test('the changes tree condenses single-dir chains at every level with relative labels (issue #18)', () => {
+  // buildDirForest always had a compress() pass, but it only ever ran on the
+  // TOP-level roots: the recursion below level one handed back raw
+  // single-child chains, so a deep package path repeated its full prefix on
+  // every row (the reporter's walk-manager-modules/.../controller stack).
+  const start = client.indexOf('function buildDirForest(')
+  assert.ok(start >= 0, 'buildDirForest must exist at module level')
+  const end = client.indexOf('\n    /* ==============================', start + 10)
+  assert.ok(end > start, 'buildDirForest must precede the commit-graph section')
+  // dirName is a module-level sibling helper the forest builder leans on.
+  const helper = client.slice(client.indexOf('function dirName('), client.indexOf('\n    }', client.indexOf('function dirName(')) + 6)
+  const build = new Function(helper + '\n' + client.slice(start, end) + '; return buildDirForest')()
+  const item = (path) => ({ path: path })
+  // JetBrains shape: chains of single-child, file-less directories merge into
+  // one node (path = the whole chain); any branch point stays its own level.
+  const forest = build([
+    item('walk-main/java/cn/com/pxwk/base/controller/Todo.java'),
+    item('walk-main/java/cn/com/pxwk/base/domain/vo/A.java'),
+    item('walk-main/java/cn/com/pxwk/base/domain/vo/B.java'),
+    item('walk-main/java/cn/com/pxwk/base/enums/E.java'),
+    item('walk-main/resources/mapper/base/M.xml'),
+  ], 'untracked')
+  assert.equal(forest.roots.length, 1, 'the top chain stops at the java/resources branch')
+  assert.equal(forest.roots[0].path.join('/'), 'walk-main')
+  const kids = forest.sortedChildren(forest.roots[0])
+  assert.deepEqual(kids.map((n) => n.path.join('/')).sort(), ['walk-main/java/cn/com/pxwk/base', 'walk-main/resources/mapper/base'].sort(), 'chains below the branch condense into one node each')
+  assert.equal(forest.countOf(kids.map((n) => n.path.join('/').endsWith('mapper/base') ? n : n) && kids[1] !== undefined ? kids[0] : kids[0]), 4, 'the count walks the condensed subtree (1+2+1)')
+  const base = kids.map((n) => n.path.join('/')).indexOf('walk-main/java/cn/com/pxwk/base')
+  const baseKids = forest.sortedChildren(kids[base])
+  assert.deepEqual(baseKids.map((n) => n.path.join('/')).sort(), ['walk-main/java/cn/com/pxwk/base/controller', 'walk-main/java/cn/com/pxwk/base/domain/vo', 'walk-main/java/cn/com/pxwk/base/enums'].sort(), 'grandchildren compress their own chains (domain/vo merges)')
+  // The renderer prints the chain RELATIVE to the parent (fold ids stay the
+  // full path, so expanded/collapsed state survives the relabeling).
+  assert.match(client, /renderFolder = \(node, depth, parentLen\) =>/, 'renderFolder takes the parent chain length')
+  assert.match(client, /node\.path\.slice\(typeof parentLen === 'number' \? parentLen : 0\)\.join\('\/'\)/, 'the folder label is the chain below the parent')
+  assert.match(client, /renderFolder\(child, depth \+ 1, node\.path\.length\)/, 'the recursion threads the parent chain length')
+  // Fold-all walks exactly the nodes the renderer shows.
+  const ids = []
+  const walk = (nodes) => { for (const n of nodes) { ids.push('untracked|' + n.path.join('/')); walk(forest.sortedChildren(n)) } }
+  walk(forest.roots)
+  assert.deepEqual(forest.ids, ids, 'collect() enumerates the same compressed tree the renderer shows')
+})
+
+test('the composer badge splits files added/deleted and lazily sums uncommitted lines (v0.19.12)', () => {
+  // Three module-level pure helpers carry the badge. FileSplit reads the
+  // status letters the summary ALREADY has (no extra git call): A anywhere
+  // (index or worktree) is an addition, D is a deletion, untracked entries
+  // ARE additions (git's ?? = to-be-added), renames/conflicts count as
+  // neither. Lines sum the packed numstat rows over BOTH passes.
+  const sliceOf = (name) => {
+    const start = client.indexOf('function ' + name + '(')
+    assert.ok(start >= 0, name + ' must exist at module level')
+    const end = client.indexOf('\n    function ', start + 10)
+    assert.ok(end > start, name + ' must be followed by a sibling function')
+    return new Function(client.slice(start, end) + '; return ' + name)()
+  }
+  const split = sliceOf('composerFileSplitOf')
+  const entry = (index, worktree) => ({ path: 'f', index: index, worktree: worktree })
+  const changes = { staged: [entry('A', ' '), entry('M', 'M'), entry('D', ' ')], unstaged: [entry(' ', 'D'), entry(' ', 'M')], untracked: ['q1', 'q2', 'q3'], conflicted: [entry('U', 'U')] }
+  assert.deepEqual(split({ changes: changes }), { added: 4, deleted: 2 }, 'A/untracked count as additions, D as deletions, M/R-conflict as neither')
+  assert.deepEqual(split({ changes: { staged: [], unstaged: [], untracked: [], conflicted: [] } }), { added: 0, deleted: 0 }, 'a clean tree splits to zeros')
+  assert.deepEqual(split(null), { added: 0, deleted: 0 })
+  // An "added to index, then deleted in the worktree" pair is ONE path —
+  // first match wins so the file is never counted twice.
+  assert.deepEqual(split({ changes: { staged: [entry('A', 'D')], unstaged: [], untracked: [], conflicted: [] } }), { added: 1, deleted: 0 })
+
+  const linesOf = sliceOf('composerStatsLinesOf')
+  const pack = { unstaged: [['a', 1, 2, false], ['b', 0, 3, true]], staged: [['c', 10, 0, false]] }
+  assert.deepEqual(linesOf(pack), { additions: 11, deletions: 5 }, 'both passes sum; binary rows carry zeros and add nothing')
+  assert.deepEqual(linesOf(null), { additions: 0, deletions: 0 })
+
+  const fingerprint = sliceOf('composerFingerprintOf')
+  const head = { head: 'abc123' }
+  const fp = (c) => fingerprint(Object.assign({ changes: c }, head))
+  const clean = { staged: [entry('M', ' ')], unstaged: [], untracked: [], conflicted: [] }
+  assert.ok(fp(clean) !== '', 'a dirty tree has a fingerprint')
+  assert.equal(fp(clean), fp({ staged: [entry('M', ' ')], unstaged: [], untracked: [], conflicted: [] }), 'order does not matter (rows sort)')
+  assert.ok(fp(clean) !== fp({ staged: [entry('M', ' ')], unstaged: [entry(' ', 'M')], untracked: [], conflicted: [] }), 'a new dirty file invalidates line counts')
+  assert.ok(fp(clean) !== fp(Object.assign({ changes: clean }, { head: 'def456' })), 'a new HEAD invalidates line counts (checkout/pull)')
+  assert.equal(fingerprint(null), '')
+
+  // Wiring: the ± chip embeds the small +n −n file split; the line badges
+  // render only for the CURRENT repository (stale numbers from a repo the
+  // pill just left must not leak in) and the tooltip reads as one sentence.
+  assert.match(client, /composerFileSplitOf\(summary\)/, 'the render computes the file split from the live summary')
+  assert.match(client, /className: 'dig-cs-split dig-cs-add'/, 'added FILES ride inside the ± chip in green')
+  assert.match(client, /className: 'dig-cs-split dig-cs-del'/, 'deleted FILES ride inside the ± chip in red')
+  assert.match(client, /lineStats !== null && lineStats\.root === repoRoot \? lineStats : null/, 'line stats carry the repository root and only live for it')
+  assert.match(client, /fill\(t\(\'composer\.fileHint'\)\, \{ a: fileSplit\.added, d: fileSplit\.deleted \}\)/, 'the tooltip names added/deleted file counts')
+  assert.match(client, /fill\(t\(\'composer\.linesHint'\)\, \{ ins: linesLive\.additions, del: linesLive\.deletions \}\)/, 'the tooltip sums the line churn')
+  // Lazy fetch: never on the ambient tick — only when the fingerprint moves
+  // or the slow floor elapses; a clean tree skips numstat entirely.
+  assert.match(client, /const COMPOSER_STATS_MS = 90000/, 'the slow floor for in-place line edits exists')
+  assert.match(client, /stamp !== statsStampRef\.current \|\| now - statsAtRef\.current >= COMPOSER_STATS_MS/, 'lines refetch on fingerprint move or slow floor only')
+  assert.match(client, /if \(count === 0\) \{[\s\S]*?setLineStats\(\{ root: repoRoot, additions: 0, deletions: 0 \}\)/, 'a clean tree zeroes the line badges without a git call')
+  assert.match(client, /await request\('stats', \{ cwd: cwd, repoRoot: repoRoot \}\)/, 'the fetch reuses the host read-only stats method')
+  assert.match(client, /setLineStats\(Object\.assign\(\{ root: repoRoot \}, composerStatsLinesOf\(pack\)\)\)/, 'the result is tagged with its root before it reaches state')
+  // CSS: two visual levels — 11px file split inside the chip, full-size line
+  // badges in their own group with the wider group gap.
+  assert.match(cssRule('.dig-cs-split'), /font-size:11px/, 'the file split is one step down from the badge digits')
+  assert.match(cssRule('.dig-cs-add'), /var\(--dsw-alias-state-success-primary\)/, 'additions are green in both groups')
+  assert.match(cssRule('.dig-cs-del'), /var\(--dsw-alias-state-error-primary\)/, 'deletions are red in both groups')
+  assert.match(cssRule('.dig-cs-lines'), /margin-left:5px/, 'the line-badge group keeps its own gap from the file chip')
+  // 21 gates carry both new keys (the key-set equality test pins the rest).
+  assert.equal((client.match(/'composer\.fileHint':/g) || []).length, 21)
+  assert.equal((client.match(/'composer\.linesHint':/g) || []).length, 21)
+})
+
+test('long pill names widen to 260px and scroll only on hover, seamlessly (v0.19.13)', () => {
+  // The cap widens 150→260; past it the label switches to a duplicated-chunk
+  // structure measured after paint, and ONLY :hover starts the marquee —
+  // short names keep the plain ellipsis and never animate.
+  assert.match(client, /max-width:260px/, 'the label cap is widened to 260px')
+  assert.equal((client.match(/ComposerMarqueeName, \{ text:/g) || []).length, 2, 'both pill labels (repo + branch) use the marquee name')
+  assert.match(client, /function ComposerMarqueeName\(/, 'the marquee name component exists')
+  // Overflow detection happens on the real DOM after paint (scrollWidth vs
+  // clientWidth); a replaced/unmounted node never re-measures.
+  assert.match(client, /box\.scrollWidth > box\.clientWidth \+ 1/, 'overflow is measured against the real box')
+  assert.match(client, /if \(boxRef\.current !== box\) return/, 'a replaced node never re-measures')
+  assert.match(client, /fonts\.ready/, 'webfont landing re-measures once')
+  // The animation lives ONLY in the :hover rule (non-hovering labels are
+  // static); duration follows the text width via the CSS custom property.
+  assert.match(client, /\.dig-cs-mrun:hover \.dig-cs-run\{animation:dig-cs-marquee var\(--dig-cs-marquee-dur,10s\) linear infinite\}/, 'hover alone starts the scroll')
+  assert.equal((client.match(/animation:dig-cs-marquee/g) || []).length, 1, 'no non-hover animation rule exists')
+  assert.match(client, /@keyframes dig-cs-marquee\{from\{transform:translateX\(0\)\}to\{transform:translateX\(-50%\)\}\}/, 'the loop translates half the duplicated run (seamless)')
+  assert.match(client, /const MARQUEE_PX_PER_S = 28/, 'the scroll speed is a named constant')
+  assert.match(client, /box\.scrollWidth \/ 2 : box\.scrollWidth/, 'duration divides the doubled run back to one chunk')
+  // CSS: the running label clips (no stale ellipsis) with a right-fade mask
+  // hinting at more text; chunks stay on one line with a seam gap.
+  assert.match(cssRule('.dig-cs-mrun'), /mask-image:linear-gradient/, 'the running label fades at its right edge')
+  assert.match(cssRule('.dig-cs-mrun .dig-cs-chunk'), /padding-right:28px/, 'the seam gap equals the mask fade')
+  assert.match(cssRule('.dig-cs-mrun .dig-cs-run'), /will-change:transform/, 'the scroll rides the compositor')
+})
+
+
+test('panel model picker rides the official model directories (v0.21.0, issue #19)', () => {
+  // Host: a blank session (no model route yet) no longer fails the panel
+  // button — the first served provider/model becomes the route, the response
+  // names it, and a served-empty catalog still refuses with a next step.
+  assert.match(host, /async function fallbackRouteOf\(/, 'the served fallback exists')
+  assert.match(host, /const fallback = await fallbackRouteOf\(\)/, 'no-route falls back before failing')
+  assert.match(host, /source: 'fallback'/, 'the fallback route names itself')
+  assert.match(host, /'no-models'/, 'an empty catalog refuses with a next step')
+  assert.doesNotMatch(host, /this session has no model route yet/, 'the old no-route text is gone')
+  // Client: the picker binds to the official modelDirectories resolver —
+  // soft-injected at apply time into a module ref (a bare ctx property read
+  // throws "without inject" on a real host: cordis gates EVERY property read
+  // behind an inject declaration), resolves the SESSION directory, subscribes,
+  // loads on mount, and every choice goes through directory.select — the same
+  // state the composer pill and /model write, so the three can never disagree.
+  // An older host (or a session with no binding) hides the picker instead of
+  // throwing.
+  assert.match(client, /function ModelRoutePicker\(/, 'the picker component exists')
+  assert.equal((client.match(/E\(ModelRoutePicker, \{ sessionId: props\.sessionId, t: t, ctx: props\.ctx \}\)/g) || []).length, 2, 'both composer variants mount the picker with the locale context')
+  assert.match(client, /function modelBadgeTextOf\(ctx, badge\)/, 'listing badges resolve their active language')
+  assert.ok(client.includes('t: t, ctx: props.ctx, summary: summary'), 'the panel passes the real context prop into the changes pane')
+  assert.ok(!client.includes('t: t, ctx: ctx, summary: summary'), 'the panel never reads a bare ctx variable (crashes the whole view)')
+  assert.match(client, /const routeBadge = badgeOf\(routeModel\)/, 'the trigger finds the current model badge')
+  assert.match(client, /badgeNode\(model\)/, 'every model row can render its badge')
+  assert.match(client, /ctx\.inject\(\['modelDirectories'\], \(mdCtx\) => \{/, 'the resolver arrives through a declared inject')
+  assert.match(client, /let modelDirectoriesRef = null/, 'the resolver ref starts hidden')
+  assert.match(client, /modelDirectorySubs\.add\(bump\)/, 'mounted pickers re-render when the inject lands')
+  assert.match(client, /const resolver = modelDirectoriesRef/, 'the picker reads the injected ref')
+  assert.match(client, /resolver\.directoryFor\(sessionId\)/, 'the picker resolves the session directory')
+  assert.match(client, /dir\.store\.subscribe\(\(\) => setState\(dir\.store\.getSnapshot\(\)\)\)/, 'the picker subscribes on dir.store after snapshotting')
+  assert.match(client, /directory\.load\(\)\.catch/, 'the catalog loads on mount without throwing')
+  assert.match(client, /void directory\.select\(selection\)/, 'choices go through directory.select')
+  assert.match(client, /ok !== true \|\| directory === null\) return null/, 'an unreachable service hides the picker')
+  // Two-level menu: model rows choose provider/model (effort rides the
+  // official default), effort rows keep the current route and follow the
+  // official effortChoices rule (a 'follow default' row exists exactly when
+  // the model has no provider default).
+  assert.match(client, /choose\(\{ provider: group\.id, model: model\.id \}\)/, 'model rows choose provider/model only')
+  assert.match(client, /choose\(\{ provider: current\.provider, model: current\.model, reasoningEffort: level\.effort \}\)/, 'effort rows keep the current route')
+  assert.match(client, /reasoning\.defaultEffort === undefined \? \[\{ key: 'provider-default', effort: undefined/, "a 'follow default' row exists only without a provider default")
+  assert.match(client, /setPane\('model'\)/, 'the menu drills into models')
+  assert.match(client, /setPane\('effort'\)/, 'the menu drills into reasoning')
+  // Outside close rides pointerdown in capture phase (the v0.19.2 lesson:
+  // the change list captures pointerdown for the rubber band).
+  assert.match(client, /document\.addEventListener\('pointerdown', close, true\)/, 'outside close is a capturing pointerdown')
+  // CSS: the menu reuses the pill menu card (.dig-cs-menu) and the trigger
+  // carries the picker-specific chrome.
+  assert.match(cssRule('.dig-mrp-trigger'), /max-width:220px/, 'the trigger cap exists')
+  assert.match(cssRule('.dig-mrp-menu'), /max-width:300px/, 'the menu narrows to the panel')
+  assert.match(cssRule('.dig-mrp-error'), /word-break:break-word/, 'errors wrap instead of overflowing')
+  // Dictionary: the six picker keys exist in every gate (21 × 6).
+  assert.equal((client.match(/'modelRoute\.[\w.]+':/g) || []).length, 126, 'the six picker keys exist in all 21 gates')
+})
+
+
+test('upstream management: bind, drop and create-tracking from menus (v0.20.0, issue #18)', () => {
+  // Host: set/unset go through branch --set-upstream-to / --unset-upstream on
+  // a validated ref; creating from a remote ref with track:true rides
+  // checkout -b --track so binding happens in the same breath.
+  assert.match(host, /git\(root, \['branch', '--set-upstream-to=' \+ upstream, branch\]\)/, 'the set verb uses branch --set-upstream-to')
+  assert.match(host, /git\(root, \['branch', '--unset-upstream', branch\]\)/, 'the unset verb uses branch --unset-upstream')
+  assert.match(host, /payload\.track === true && start !== undefined\) args\.push\('--track'\)/, 'checkout -b gains --track for remote starts')
+  // The write is serialised like every other mutating method.
+  assert.match(host, /'stage', 'unstage', 'discard', 'commit', 'checkout', 'branchCreate', 'branchRename', 'branch-upstream',/, 'branch-upstream is a declared write method')
+  // Branch-row menu: local rows bind/drop, remote rows create a local branch.
+  assert.match(client, /id: 'setUpstream'/, 'branch rows can set an upstream')
+  assert.match(client, /id: 'unsetUpstream'/, 'branch rows can drop an upstream')
+  assert.match(client, /id: 'createTracking'/, 'remote rows offer create-local-branch')
+  // The submenu is built at click time (branches.remote), never at render
+  // time — the useCallback deps must not grow a later-defined binding.
+  assert.match(client, /run: \(event\) => openMenuAt\(event, branches\.remote\.map/, 'the remote picker is built inside run() at click time')
+  assert.match(client, /active: entry\.upstream === remoteEntry\.name/, 'the current upstream is marked active in the submenu')
+  // More menu carries the same verbs for the CURRENT branch.
+  assert.match(client, /id: 'br-upstream'/, 'the more menu can set the current branch upstream')
+  assert.match(client, /id: 'br-unset-upstream'/, 'the more menu can drop the current branch upstream')
+  assert.match(client, /disabled: headBranch === '' \|\| remoteBranches\.length === 0 \|\| blocked/, 'set-head verb is gated on a branch and remotes existing')
+  assert.match(client, /disabled: headBranch === '' \|\| tracked !== true \|\| blocked/, 'unset-head verb only makes sense when tracking')
+  // The dialog prefills the bare branch name and creates with --track.
+  assert.match(client, /kind === 'createTracking' \? dialog\.name/, 'the tracking dialog prefills the local name')
+  assert.match(client, /startPoint: state\.from, track: true \}\); return \}/, 'the tracking dialog creates with --track')
+  // v0.21.2: the tree no longer prints the binding inline — the "→ upstream"
+  // text starved the label, so long branch names cut off early. The row title
+  // still carries "name → upstream" (one hover away), and the label itself
+  // keeps the full remaining width with an ellipsis.
+  assert.doesNotMatch(client, /className: 'dig-row-upstream'/, 'local rows no longer print the upstream inline')
+  assert.doesNotMatch(client, /\.dig-row-upstream\{/, 'the inline rule is gone with it')
+  assert.match(client, /const where = entry\.upstream === null \|\| entry\.upstream === undefined \? entry\.name : entry\.name \+ ' → ' \+ entry\.upstream/, 'the hover title still carries the binding')
+  assert.match(cssRule('.dig-row-label'), /text-overflow:ellipsis/, 'the label ellipsises instead of yielding width to a second column')
+  // v0.21.2: on a local row the two high-frequency verbs sit 2nd/3rd (right
+  // under 签出) instead of past 删除, and the fetch verb is spelled 拉取.
+  assert.match(client, /isLocal \? updateItem : null,\n\s+isLocal \? pushItem : null,/, 'local rows put 拉取/推送 right under 签出')
+  assert.match(client, /isLocal \? null : updateItem,\n\s+isLocal \? null : pushItem,/, 'remote/tag rows keep the tail placement')
+  assert.match(client, /'action\.update': '拉取',/, 'the zh menu label is 拉取')
+  assert.equal((client.match(/'action\.update':/g) || []).length, 21, '21 gates carry action.update')
+  // v0.21.2: selection paints a frame, never a recolour — the checked-out row
+  // keeps its amber; and both seats learn about a switch immediately instead
+  // of waiting for the 30s poll.
+  assert.match(client, /\.dig-row-head\.dig-row-selected\{color:var\(--dsw-alias-state-warn-primary/, 'a selected HEAD row keeps the amber label')
+  assert.match(client, /body\[data-ds-dark-theme\] \.dig-row-selected\{background:rgba\(0,0,0,\.55\)\}/, 'the dark theme paints a black selection frame')
+  assert.match(client, /function notifyBranchSwitched\(sessionId, repoRoot, source\)/, 'the branch notifier names the acting seat')
+  assert.match(client, /notifyBranchSwitched\(sessionId, repoRoot, 'panel'\)/, 'in-panel writes refresh the composer pill')
+  assert.match(client, /notifyBranchSwitched\(sessionId, repoRoot, 'composer'\)/, 'a composer checkout refreshes the panel')
+  assert.match(client, /if \(sid !== sessionId \|\| source === 'panel'\) return/, 'the panel skips its own broadcast')
+  assert.match(client, /if \(sid !== sessionId \|\| source === 'composer'\) return/, 'the composer skips its own broadcast')
+  assert.match(client, /if \(repoRoot === null \|\| root !== repoRoot\) return/, 'the panel only follows a branch move in the repo on screen')
+  // v0.21.2: the flat/by-directory view is a habit, not tab state — one
+  // localStorage home read on mount, both writers go through the wrapper.
+  assert.match(client, /const CHANGES_GROUP_KEY = 'dsh-ide-git\.groupBy\.v1'/, 'the changes view mode has its own localStorage home')
+  assert.match(client, /useState\(readChangesGroupBy\)/, 'the mode is seeded from that home on every mount')
+  assert.match(client, /setGroupByState\(value\)\n\s+rememberChangesGroupBy\(value\)/, 'every writer persists the mode')
+  assert.match(client, /onGroupBy: setGroupBy/, 'the panel and the ⋯ menu share the persisting writer')
+  // Dictionary: 21 gates for all six new keys (key-set equality test pins parity).
+  for (const key of ['action.setUpstream', 'action.unsetUpstream', 'action.createLocalBranch', 'prompt.createTracking', 'more.setUpstreamHead', 'more.unsetUpstreamHead']) {
+    assert.equal((client.match(new RegExp("'" + key.replace(/\./g, '\\.') + "':", 'g')) || []).length, 21, '21 gates carry ' + key)
+  }
+})
+
+test('clicking a changed file shows its diff in every chrome (v0.25.1)', () => {
+  // User report (right column): clicking a changed file did nothing visible.
+  // The row handler only selected, and the compact chrome had no diff pane at
+  // all, so the patch that was already fetched had nowhere to render.
+  assert.match(client, /if \(group !== 'ignored' && props\.onDiff !== undefined\) props\.onDiff\(item, group\)/,
+    'a plain click on a changed file opens its diff')
+  assert.match(client, /'dig-diff-pane' \+ \(fill === true \? ' dig-diff-pane-fill' : ''\)/,
+    'the compact chrome can render a filling diff pane')
+  assert.match(client, /const diffActive = splitTab === 'diff' && fillDiff !== null/,
+    'the compact diff is a tab beside the history window (v0.26.0)')
+  // v0.26.3: switching tabs must not unmount the history list — it used to lose
+  // its scroll position and the commit detail its expanded state.
+  assert.match(client, /const tabPane = \(active, node\) => node === null \? null : E\('div', \{ className: 'dig-tab-pane' \+ \(active === true \? '' : ' dig-tab-pane-hidden'\) \}, node\)/,
+    'both tab bodies stay mounted, the inactive one just hides')
+  assert.match(client, /'\.dig-tab-pane\{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0\}'/,
+    'the pane wrapper fills the tab window')
+  assert.match(client, /'\.dig-tab-pane-hidden\{display:none\}'/,
+    'and the hidden pane keeps its scrollTop')
+  assert.match(client, /'data-action': 'diff-tab'/, 'the compact chrome has a diff tab')
+  assert.match(client, /'data-action': 'history-tab'/, 'and a history tab next to it')
+  assert.match(client, /E\('div', \{ className: 'dig-pane dig-pane-changes-stack', 'data-pane': 'changes', style: paneStyle\('changes'\) \}, changesPane\)/,
+    'the changes list keeps the top of the compact chrome')
+  assert.match(client, /compact: \['tree', 'changes'\]/,
+    'the compact chrome hands its divider to the changes list, not the tabbed diff')
+  // v0.26.1: the stacked chrome (400–600px, the native right sidebar's bread and
+  // butter) got the same treatment — the diff is a TAB there too, not a window
+  // squeezed in at the bottom under a shrinking history list.
+  assert.match(client, /stack: \['tree', 'changes'\]/,
+    'the stacked chrome hands its divider to the changes list as well')
+  assert.match(client, /dig-body-changes[\s\S]{0,1400}splitTabs\(compact, false\)/,
+    'the single-column default face renders the shared tab strip above the history window')
+  assert.equal((client.match(/className: 'dig-pane dig-pane-main' \}, historyPane, diffGutter, diffPane/g) || []).length, 2,
+    'only the explorer stacked chromes split the diff out under the history')
+  assert.match(client, /const diffPaneOf = \(fill\) => [^\n]*style: fill === true \? null : paneStyle\('diff'\)/,
+    'the split pane still consumes the stored size')
+  assert.match(client, /setSelectedPath\(seed\.path === undefined \? null : seed\.path\)/,
+    'the inline diff header names the file it shows')
+})
+
+test('the diff request is single-flight, and untracked files keep their patch (v0.26.3)', () => {
+  // v0.25.1 made the row's single click open the diff, but the row still had
+  // onDoubleClick wired to the same handler: a double click fired three
+  // requests and the responses raced (an older patch could land last and paint
+  // the wrong file under the new title).
+  assert.match(client, /const diffSeq = useRef\(0\)/, 'each diff request gets a stamp')
+  assert.match(client, /if \(key === diffLast\.current\.key && now - diffLast\.current\.at < 400\) return/,
+    'the burst a double click produces is deduped')
+  assert.equal((client.match(/if \(diffSeq\.current !== run\) return/g) || []).length, 2,
+    'a stale response may not write the patch nor the error')
+  assert.match(client, /if \(diffSeq\.current === run\) setPatchLoading\(false\)/,
+    'and only the newest request clears the spinner')
+})
+
+test('repo and branch switchers search on type and fold slash namespaces (v0.27.0)', () => {
+  // User report: with many clones and many fix/… branches the two pills were
+  // flat, unsearchable lists. SearchPicker is the shared body of BOTH the
+  // panel header switchers and the composer pills, so the tree/filter logic
+  // lives once and every entry point gets it.
+  const start = client.indexOf('function SearchPicker(props)')
+  assert.ok(start >= 0, 'SearchPicker must exist at module level')
+  const end = client.indexOf('\n    /* Lets the user choose', start)
+  assert.ok(end > start, 'SearchPicker must precede the rail settings')
+  const picker = client.slice(start, end)
+  assert.match(picker, /const mode = props\.mode === 'branch' \? 'branch' : 'repo'/, 'one component serves both kinds')
+  assert.match(picker, /matches\(repo\.path\) === false && matches\(repo\.sub\) === false && matches\(repo\.branch\) === false/,
+    'repositories match by name, path, clone directory and branch')
+  assert.match(picker, /String\(entry\.name\)\.split\('\/'\)/, 'branches split on / into folders')
+  assert.match(picker, /const open = query !== '' \|\| folded\[id\] !== true/, 'typing forces every folder open so matches cannot hide')
+  assert.match(picker, /event\.key === 'ArrowDown' \|\| event\.key === 'ArrowUp'/, 'arrow keys move the active row')
+  assert.match(picker, /event\.key === 'Enter'/, 'Enter picks the active row')
+  assert.match(picker, /'aria-label': mode === 'repo'/, 'the search field is labelled for screen readers')
+  // Wiring: both header pills open through openPickerAt, both composer pills
+  // render SearchPicker with their own key (so switching mode remounts state).
+  assert.match(client, /openPickerAt\(event, 'repo'\)/, 'the header repo pill opens the picker')
+  assert.match(client, /openPickerAt\(event, 'branch'\)/, 'the header branch pill opens the picker')
+  assert.match(client, /body: E\(SearchPicker, \{/, 'the panel picker rides the context-menu surface')
+  assert.match(client, /key: 'composer-repo'/, 'the composer repo pill has its own picker instance')
+  assert.match(client, /key: 'composer-branch'/, 'the composer branch pill has its own picker instance')
+  // 21 gates: the two new keys must not exist only in zh/en.
+  for (const key of ['repo.filter', 'picker.empty']) {
+    assert.equal((client.match(new RegExp("'" + key.replace(/\./g, '\\.') + "':", 'g')) || []).length, 21, '21 gates carry ' + key)
+  }
+  // v0.27.1: the composer picker rides dsh-any-background's input-tier fill.
+  // v0.27.2: the menu must not re-declare --dsw-alias-bg-layer-* (it inherits
+  // into the search field and pins it opaque), and the field itself paints no
+  // fill so it fades with the popover like the panel's commit box.
+  // A low-alpha fill alone is too ghostly over a busy wallpaper, so the picker
+  // stacks the plugin fill one extra time. The second layer is transparent
+  // without the plugin, leaving the stock opaque fallback untouched. It must
+  // not depend on html.dab-input-frost: the user can keep input blur at 0
+  // while still wanting a readable menu surface.
+  const pickerCard = cssRule('.dig-cs-menu.dig-cs-picker')
+  assert.match(pickerCard, /background-color:var\(--dsh-any-op-menu-cordis,var\(--dsw-static-neutral-bluish-00,#fff\)\)/,
+    'the picker keeps the plugin transparency variable and a theme-safe fallback')
+  assert.match(pickerCard, /background-image:linear-gradient\(var\(--dsh-any-op-menu-cordis,transparent\),var\(--dsh-any-op-menu-cordis,transparent\)\)/,
+    'the picker stacks the plugin fill once so a low-alpha menu still reads as a surface')
+  assert.doesNotMatch(pickerCard, /backdrop-filter/,
+    'the picker must not install a second backdrop root; data-cordis-panel already blurs')
+  assert.equal(client.includes("'.dab-input-frost .dig-cs-menu.dig-cs-picker{"), false,
+    'the surface must not depend on the input-frost marker (blur can be 0)')
+  const menuCard = cssRule('.dig-cs-menu')
+  assert.doesNotMatch(menuCard, /--dsw-alias-bg-layer-[12]:/,
+    'the menu must not pin the host layer tokens into every child')
+  assert.match(menuCard, /background-color:var\(--dsh-any-op-menu-cordis,var\(--dsw-static-neutral-bluish-00,#fff\)\)/,
+    'the menu surface falls back to the light static token, not a child-pinned alias')
+  const menuDark = cssRule('body[data-ds-dark-theme] .dig-cs-menu')
+  assert.match(menuDark, /--dsw-static-neutral-bluish-850/,
+    'the dark menu keeps its own static fallback (issue #15)')
+  const pickSearch = cssRule('.dig-pick-search')
+  assert.match(pickSearch, /background:transparent/, 'the sticky search strip paints no extra surface')
+  const pickInput = cssRule('.dig-pick-input')
+  assert.match(pickInput, /background:transparent/, 'the search field is glass over the menu, not a white box')
+})
+
+test('closing a diff invalidates the in-flight response and the dedupe window (v0.27.0)', () => {
+  // PR #24's diff pane cleared the patch but not diffSeq/diffLast: a response
+  // already in flight could repaint the closed pane, and reopening the same
+  // file inside the 400ms guard was silently swallowed.
+  assert.match(client, /const resetDiff = useCallback\(\(\) => \{\s*diffSeq\.current \+= 1\s*diffLast\.current = \{ key: '', at: 0 \}/,
+    'resetDiff bumps the request stamp and clears the double-click window')
+  assert.match(client, /onBack: \(\) => \{ setView\('history'\); setSelectedPath\(null\); resetDiff\(\) \}/,
+    'leaving commit detail cancels a pending patch request')
+  assert.match(client, /onClick: \(\) => \{ resetDiff\(\); setSelectedPath\(null\); setSplitTab\('history'\) \}/,
+    'closing the diff pane cancels a pending patch request')
+  assert.match(client, /entry\.run = \(\) => \{ resetDiff\(\); setView\(view === 'worktrees'/, 'switching views does too')
+  assert.doesNotMatch(client, /entry\.run = \(\) => \{ setPatch\(''\)/, 'no clear path bypasses resetDiff')
+})
+
+test('the default face hides its history window by default (user request 2026-11-06)', () => {
+  // The tabbed history | diff window used to eat most of the default tab. It is
+  // now a row-Config switch (showHistory), default OFF, so the default face
+  // goes back to changes + commit box with the inline diff fallback. Profiles
+  // written by older versions have no field and stay hidden.
+  assert.match(host, /shape\.showHistory = schema\.boolean\(\)\.default\(false\)\.volatile\(\)/,
+    'the host declares the field, defaulting to hidden')
+  assert.match(client, /function showHistoryEnabled\(\)/, 'the client has a reader for it')
+  assert.match(client, /const showHistory = showHistoryEnabled\(\)/, 'the default face reads it at render time')
+  assert.match(client, /showHistory === true\s*\? E\('div', \{ className: 'dig-pane dig-pane-changes-stack'/,
+    'ON draws the changes pane above the tabbed window')
+  assert.match(client, /: E\('div', \{ className: 'dig-pane dig-pane-main' \}, changesPane, diffGutter, diffPane\)/,
+    'OFF keeps changes + commit box + the inline diff fallback')
+  assert.match(client, /const field = 'showHistory'/, 'the settings card carries the row')
+  assert.match(client, /: values\[field\] === true/, 'and renders it unchecked by default')
+  assert.match(client, /t\('settings\.history\.visible'\)/, 'with its label')
+  assert.match(client, /t\('settings\.history\.visibleHint'\)/, 'and its hint')
+  for (const key of ['settings.history.visible', 'settings.history.visibleHint']) {
+    assert.ok((client.split("'" + key + "'").length - 1) >= 21, key + ' ships in every dictionary')
+  }
+  // The switch is a BODY of the history fold. Closing the fold right after the
+  // date-format row left it as a bare card child (screenshot 2026-11-06), with
+  // no dig-stack wrapper and the hint colliding with the next section.
+  const historyFold = client.slice(client.indexOf("fold('settings.history.title'"), client.indexOf('/* Section 4 — the AI commit message'))
+  assert.match(historyFold, /t\('settings\.history\.visible'\)/, 'the switch row lives inside the history fold')
+  assert.ok(historyFold.lastIndexOf('})()),') > historyFold.indexOf("t('settings.history.visible')"),
+    'the fold closes after the switch row, not before it')
 })
