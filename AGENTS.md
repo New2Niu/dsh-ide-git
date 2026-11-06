@@ -113,6 +113,8 @@
 20. **窗格几何按面启用,存储按并集**(合并 main v0.19.9~v0.29.0 后):`PANE_CHROME_KEYS` 是默认面的键(stacked = `tree`/`changes`),`PANE_FACE_KEYS` 是 explorer 面的键(stacked = `tree`/`diff`),`paneGeometry(chrome, box, config, laidOut, activeKeys)` 用第 5 个参数只量当前面真正渲染的窗格——`paneKeysOf()` 在默认面返回 `[]`,在 explorer 面返回 `PANE_FACE_KEYS[chrome]`。不传第 5 参数(纯函数切片测试)按 `PANE_CHROME_KEYS` 走。`PANE_LIMITS` 必须同时有两面的键(含 `stack:diff` / `compact:diff`),否则 explorer 的 diff 分隔条会因 `spec.max` 缺失而崩。改这两套键时同步 `tests/smoke.mjs` 的尺寸核心断言。
 21. **默认面历史窗口默认隐藏**(用户要求 2026-11-06):row Config 字段 `showHistory` 默认 `false`,声明在 `src/host/config.js`(`schema.boolean().default(false).volatile()`)。**缺省即关**与「面板放置」那些缺省即开的开关相反,所以设置卡片那一行不能用 `placementShown()`(它把 `undefined` 读成开),必须自己写 `: values[field] === true`。读取走模块级 `showHistoryEnabled()`(Panel 每次 render 读,靠 `subscribeRailConfig` 实时重绘);关掉时**必须把 `diffGutter` / `diffPane` 放回变更列下方**当内嵌 diff 兜底,否则点变更文件没地方看差异。设置行必须是 `fold('settings.history.title', ...)` 的**第二个 body**(闭合 `})()),` 要放在它后面)——写成折叠条外的顶层子节点会没有缩进地裸露在卡片里(2026-11-06 截图)。21 门词典的 `settings.history.visible` / `visibleHint` 必须同步补齐,且词典值一律用单引号(含撇号的译文转义成 `\'`),否则 `tests/smoke.mjs` 的 `keyLines` 扫描器认不出那一行。
 
+22. **「在右侧栏打开」只属于内嵌 diff,且是第二视图而不是替换**(issue #28)。按钮在外层 `dig-diff-head` 的路径右侧、关闭左侧,不进 `LineDiff` 的 split/wrap 工具条;右侧栏自己的 diff tab 不显示它(避免递归)。多文件补丁的路径以 `LineDiff` 的 `onActiveFile` 上报为准(`diffPath`),外层头部与按钮都跟随它。better-sidebar 的原生 diff 页按会话单实例复用,标题必须是通用 `diff.codeLabel`——传文件名会在下一个目标时留下旧文件名;commit 文件优先原生 hash+path,worktree 优先 better-sidebar,二者都不可用时提示 `diff.sidebar.failed`。文案四键(`diff.sidebar.open/unavailable/loading/failed`)必须 21 门同步。
+
 ## 文档规范
 
 - **README 顶部顺序:标题 → 收录徽章 → 中英互切链接 → 简介引用块**,语言切换照生态惯例写:`简体中文 | [English](README_EN.md)`(英文页 `[简体中文](README.md) | English`)。

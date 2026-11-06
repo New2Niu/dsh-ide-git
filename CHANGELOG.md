@@ -5,6 +5,16 @@
 
 ## Unreleased
 
+**类型**:chore(把 main v0.30.0 合进 fork,保留两面设计)
+
+- **合并范围**:`main`(420c01d,v0.30.0,比 fork 多 1 个提交)合入 `fork`(db17fd1,8 个独有提交);合并前打了本地备份分支 `backup/fork-before-merge-main-v0.30.0-20261106`(db17fd1)。
+- **冲突 3 处,都在文档**:`CHANGELOG.md` / `README.md` / `README_EN.md`。两份 README 采用 fork 重排后的结构(工作原理代码块、安装提前、功能一览按两面重写),把 main 新增的「在右侧栏打开」说明并入各自的 diff 行;**不**回退到 main 那段旧的单面章节,也不恢复旧的 `dsh plugin add dsh-ide-git` 安装命令(对外只写仓库地址安装)。CHANGELOG 两段都保留:fork 的 `Unreleased` 在上,main 的 `v0.30.0` 紧随其后,再接 `v0.29.0`,维持倒序。
+- **自动合并的语义修正**:`AGENTS.md` 里 main 新增的不变量编号 18 与 fork 已有的 18(提交框上边框)撞号,顺延为 **22**;`v0.30.0` 历史条目里「新增不变量 18」是当时 main 的记录,原文不改。
+- **版本号**:`package.json` 自动合并同时保住 fork 的 `@deepseek-ai/schemastery` devDependency 与 main 的 `0.30.0`,`dsh.plugin.json` 采纳 main 的 `0.30.0`,两者一致(冒烟测试强制校验)。`src/client.js` / `tests/smoke.mjs` 三方自动合并,issue #28 的按钮、helper、21 门词典与两侧断言都在。
+- **验证**:`npm test` **149/149**(0 fail / 0 skip;首次因 120 秒工具超时被掐断,重跑完整通过);`node --check src/client.js src/host/config.js` OK;`git diff --check` OK、无冲突标记残留;`scripts/ssr-check.mjs` 因本机 profile 解析不到 `react` 主动 skip(脚本自带降级,不是失败),本次未取得渲染判据。
+- **待真机复核**:`diffPaneOf()` 现在同时服务默认面的内嵌 diff 兜底(`showHistory` 默认关)与 explorer 面,「在右侧栏打开」按钮在两面的可见性与右栏复用行为需要隔离实例跑 `layout-probe` / `panes-probe` / `conversation-probe` 复核(不碰用户自己的 `dsh web`)。
+- 相关:issue [#28](https://github.com/KannaKuron/dsh-ide-git/issues/28)。
+
 **类型**:fix(历史开关别裸露在折叠条外)
 
 - **症状**(用户 2026-11-06 截图):「在默认面显示历史列表」开关连说明一起掉在「历史列表」折叠条**外面**,没有 `dig-stack` 容器与缩进,hint 直接压到下一节上。
@@ -85,6 +95,19 @@
 - 行为变化:提交信息在两种 chrome 下都是多行文本,**回车只换行**,提交走 `Ctrl+Enter`(macOS `Cmd+Enter`)——窄栏此前是「回车即提交」,多行消息与 `--amend` 需要这个改动;占位符文案本就写着 `(Ctrl+Enter)`。文本框自己右下角的拖拽手柄(`resize`)随之取消:同一根轴只留一个手势(拖动框的上边框)。
 - 回归:**119 项测试全绿**(新增守卫:两种 chrome 的排布、共用 `commitButtons()`、消息不再是 `<input>`、`.dig-commit-actions .dig-btn-primary{margin-left:0}`、中文标签恰为 `Amend`;分块尺寸核心里 `commitBox` 的读写与范围校验,以及「窗格拖动不丢盒子尺寸、盒子拖动不丢窗格比例」;分隔条就在提交框上方、`side: 'next'`、`vertical: false`、没有行程就整根不渲染)。**探针**:`conversation-probe` 新增一步(会话区 Git 标签页是必经的默认面)——定位 `.dig-changes-body .dig-gutter`、往上拖、断言盒子真的长高而**面板没长高**、`pointerup` 落盘 `commitBox`、双击复位并删除;`panes-probe` 不涉及(它在 explorer 面量窗格,默认面的分隔条不参与)。新文案键 `pane.commitBox` 21 门一次补齐。
 - **真机复验**:拖提交框**上边框**改高(双击复位、方向键微调)、勾 Amend 提一次确认走 `--amend`、回车换行 + `Ctrl+Enter` 提交、提交按钮贴在左下角。
+## v0.30.0 — 2026-11-06
+
+**类型**:feat(issue #28:内嵌 diff 增加「在右侧栏打开」)
+
+- **同一份差异的第二视图**:内嵌 diff 头部、路径右侧、关闭左侧新增「在右侧栏打开」按钮(24px 图标按钮,自绘右栏图标)。点击后右侧栏出现同一份差异,内嵌面板保持打开;可随时在两侧之间切换,不是替换、不是 toggle,也不会清掉当前文件。
+- **右侧栏复用页**:better-sidebar 优先走 `target: 'right'` 的 diff tab;右侧栏收起时会自动展开。原生 `sidebarRight` 预览作为回退;两侧都不可用时按钮禁用并在悬停/无障碍名称里说明原因,差异仍在加载时同样禁用。打开失败会在面板内显示提示,不会静默。
+- **标题不跟随旧文件**:better-sidebar 的原生 diff 页按会话单实例复用,标题只在首次创建时捕获;因此使用通用标题「差异」(`diff.codeLabel`),内容随目标更新,不再出现「标题是 list.js、内容是 toolbar.js」。commit 文件优先原生 hash+path(避免整个提交),worktree 文件优先 better-sidebar 的 diff 面;同一目标重复点击只复用右栏页,不堆 tab。
+- **多文件补丁路径同步**:`LineDiff` 上报当前文件,外层头部与按钮都跟随 `diffPath`;内嵌 diff 的 worktree 上下文补上 `untracked`,未跟踪文件也能精确打开。右侧栏自己的 diff tab 不再显示该按钮,避免递归。
+- **文案**:21 门词典新增 `diff.sidebar.open` / `unavailable` / `loading` / `failed`;中英文与所有 `LOCALES` 同步。
+- **文档**:中英文 README 的 diff 窗行说明按钮与禁用原因;AGENTS.md 新增不变量 18(按钮位置、路径来源、通用标题、两侧优先级、四键同步)。
+- **验证**:`npm test` 143/143(0 fail / 0 skip;含 issue #28 的 helper/路由/路径/禁用/词典断言);`node --check src/client.js src/host/config.js`;`scripts/ssr-check.mjs` 四项 OK。隔离实例(dsh-better-sidebar 0.30.1,dsh 0.2.2-rc.1)真机:打开 list.js/toolbar.js 的差异,右栏出现「差异」Tab,内嵌保留,标题不串文件,重复点击不重复开 tab,收起右栏后再点会重新展开,零 pageerror。
+- 相关:issue [#28](https://github.com/KannaKuron/dsh-ide-git/issues/28)。
+
 ## v0.29.0 — 2026-11-05
 
 **类型**:feat(合并 PR #27:提交列表日期列相对/绝对时间切换)+ fix(收尾)
