@@ -5,6 +5,15 @@
 
 ## Unreleased
 
+**类型**:chore(把 main v0.31.0 合进 fork,保留两面设计)
+
+- **合并范围**:`main`(4376443,v0.31.0,比 fork 多 1 个提交)合入 `fork`(891d821,9 个独有提交);合并前打了本地备份分支 `backup/fork-before-merge-main-20261109`(891d821)。
+- **冲突 5 处**:`AGENTS.md` / `CHANGELOG.md` / `README.md` / `README_EN.md` / `src/client.js`(1 处),其余 8 个文件(`src/host/*.js`、`tests/*.mjs`、`package.json`、`dsh.plugin.json`)三方自动合并。
+- **AGENTS.md 编号顺延**:main 新增的不变量 19(仓库根取顶层,issue #30)与 20(未合并分支删除二次确认)在 fork 里已占号,逐条顺延为 **23** / **24**;main 的「在右侧栏打开」(原 18)按 fork 的编号写成 **22**。v0.31.0 的历史记录里仍写 19/20,是上游当时的编号,原文不改。
+- **版本号**:采用 main 的 `0.31.0`(`package.json` / `dsh.plugin.json` 一致,冒烟测试强制);fork 的 `@deepseek-ai/schemastery` devDependency 与仓库地址安装说明保留。
+- **验证**:`npm test` 全绿;`node --check` 覆盖两端改动文件;`git diff --check` 干净、无冲突标记残留。真机观感(尤其「手动打开其他仓库」入口在两面里的位置)仍需隔离实例复核,不碰用户自己的 `dsh web`。
+- 相关:issue [#29](https://github.com/KannaKuron/dsh-ide-git/issues/29)、[#30](https://github.com/KannaKuron/dsh-ide-git/issues/30)、[#31](https://github.com/KannaKuron/dsh-ide-git/issues/31)、[#32](https://github.com/KannaKuron/dsh-ide-git/issues/32)。
+
 **类型**:chore(把 main v0.30.0 合进 fork,保留两面设计)
 
 - **合并范围**:`main`(420c01d,v0.30.0,比 fork 多 1 个提交)合入 `fork`(db17fd1,8 个独有提交);合并前打了本地备份分支 `backup/fork-before-merge-main-v0.30.0-20261106`(db17fd1)。
@@ -95,6 +104,19 @@
 - 行为变化:提交信息在两种 chrome 下都是多行文本,**回车只换行**,提交走 `Ctrl+Enter`(macOS `Cmd+Enter`)——窄栏此前是「回车即提交」,多行消息与 `--amend` 需要这个改动;占位符文案本就写着 `(Ctrl+Enter)`。文本框自己右下角的拖拽手柄(`resize`)随之取消:同一根轴只留一个手势(拖动框的上边框)。
 - 回归:**119 项测试全绿**(新增守卫:两种 chrome 的排布、共用 `commitButtons()`、消息不再是 `<input>`、`.dig-commit-actions .dig-btn-primary{margin-left:0}`、中文标签恰为 `Amend`;分块尺寸核心里 `commitBox` 的读写与范围校验,以及「窗格拖动不丢盒子尺寸、盒子拖动不丢窗格比例」;分隔条就在提交框上方、`side: 'next'`、`vertical: false`、没有行程就整根不渲染)。**探针**:`conversation-probe` 新增一步(会话区 Git 标签页是必经的默认面)——定位 `.dig-changes-body .dig-gutter`、往上拖、断言盒子真的长高而**面板没长高**、`pointerup` 落盘 `commitBox`、双击复位并删除;`panes-probe` 不涉及(它在 explorer 面量窗格,默认面的分隔条不参与)。新文案键 `pane.commitBox` 21 门一次补齐。
 - **真机复验**:拖提交框**上边框**改高(双击复位、方向键微调)、勾 Amend 提一次确认走 `--amend`、回车换行 + `Ctrl+Enter` 提交、提交按钮贴在左下角。
+
+## v0.31.0 — 2026-11-09
+
+**类型**:feat(issue #29 手动仓库定位;未合并分支删除二次确认)+ fix(issue #30 / #31 / #32)
+
+- **手动指定仓库(issue #29)**:仓库选择器新增「手动 / 打开其他仓库…」入口——输入绝对路径后由宿主 `openRepo` 用 `git rev-parse --show-toplevel` 校验并解析到仓库顶层,作为 `kind: 'manual'` 行加入当前列表并选中;不是仓库时返回 409 `not-a-repo`。手动路径按会话记在 `dsh-ide-git.manualRepos.v1`(去重、最多 8 条),`repos` 请求通过 `extraPaths` 带回;扫描已发现的同一路径保留原来的 workspace / nested 行,不重复。单仓库工作区也保留入口,不再因为只有一行而藏掉菜单。
+- **子目录会话绑定仓库顶层(issue #30)**:`isRepo` 只表示 cwd 在工作树内,不等于 cwd 就是仓库根。会话 cwd 位于仓库子目录时,面板、预热和输入框胶囊三处现在都从 `repos` 的 `kind: 'workspace'` 行取顶层作为仓库根,不再把子目录当根;差异路径相对顶层生成,未跟踪文件和已跟踪文件都能出 patch,「显示差异」不再空白。
+- **非 ASCII 路径的补丁头(issue #31)**:宿主 `runGit` 默认注入 `GIT_CONFIG_COUNT=1` / `core.quotePath=false`(调用方已自行设置 `GIT_CONFIG_COUNT` 时不覆盖),非 ASCII 文件名不再被 C 转义成八进制;客户端 `splitPatchFiles` 仍保留 `unquotePatchPath` 兜底,解码 `\345\216\237` 这类八进制字节、`\t` 等 C 转义与 `\"` / `\\`,再剥 `a/` `b/` 前缀。这样即使宿主是旧 git 或调用方覆盖了配置,右侧栏也不会拿转义串去请求一个不存在的路径。
+- **合并提交的差异(issue #32)**:`diff` 的 hash 分支改为 `git show -m --first-parent …`。没有 `-m` 时 git 对合并提交只打印头、不输出 patch,差异窗因此打不开;`--first-parent` 与 `commitDetail` 的 numstat 口径一致,普通单父提交上 `-m` 不改变输出。
+- **未合并分支删除二次确认**:普通删除不再只靠 `git branch -d` 失败后报错。宿主先按 git 的口径预检(有 upstream 比 upstream,否则比 `HEAD`),仍有未合并/未推送提交时返回 409 `branch-unmerged` 且不删除任何分支;客户端捕获该 code 后弹出第二个确认框,明确告知删除后只能从撤回浮窗恢复,确认后带 `force: true` 删除并照常保留 undo toast。批量删除同样先整体预检,不会删掉已合并的再失败;第一次拒绝不会落到全局错误横幅。首次确认文案同步改为「若还有未合并提交会再确认一次」,21 门词典新增 `delete.unmerged`。
+- **测试**:`npm test` 150/150(0 fail / 0 skip)。新增 issue #30 子目录仓库行、#29 `openRepo` / `extraPaths` 去重、#31 非 ASCII 补丁头与 `unquotePatchPath`、#32 merge diff、未合并分支单删/批删二次确认的用例;`node --check` 覆盖改动文件。
+- 相关:issue [#29](https://github.com/KannaKuron/dsh-ide-git/issues/29)、[#30](https://github.com/KannaKuron/dsh-ide-git/issues/30)、[#31](https://github.com/KannaKuron/dsh-ide-git/issues/31)、[#32](https://github.com/KannaKuron/dsh-ide-git/issues/32)。
+
 ## v0.30.0 — 2026-11-06
 
 **类型**:feat(issue #28:内嵌 diff 增加「在右侧栏打开」)
