@@ -5,6 +5,16 @@
 
 ## Unreleased
 
+**类型**:chore(把 main v0.32.0 合进 fork,保留两面设计)
+
+- **合并范围**:`main`(ea6e45e,v0.32.0,比 fork 多 1 个提交:慢加载诊断与进度条)合入 `fork`(d6de7c3);合并前打了本地备份分支 `backup/fork-before-merge-main-20261111`(d6de7c3)。
+- **冲突 3 处,都在文档**:`CHANGELOG.md` / `README.md` / `README_EN.md`。两份 README 保留 fork 重排后的结构,把 main 新增的诊断条说明并入「它解决什么」的 bullet 列表(中文在「操作要够全」之后、英文在「Actions have to be complete」之后),方法表 `53 → 54` 并在示例里补上 `diagnostics`;**不**再引入 main 那份重复的「工作原理」章节。CHANGELOG 两段都保留:fork 的 `Unreleased` 在上(本条记录置顶),main 的 `v0.32.0` 紧随其后,再接 `v0.31.0`。
+- **自动合并的语义修正**:`AGENTS.md` 里 main 新增的不变量(原编号 21,慢加载诊断只读旁路)与 fork 已有的 21(默认面历史窗口默认隐藏)撞号,顺延为 **25**;v0.32.0 历史条目里「不变量 21」是上游当时的编号,原文不改。
+- **客户端半**:`src/client.js` 三方自动合并——`LoadTrace` 组件接在 `.dig-root` 内、`.dig-shell` 之上,所以**两个面**(默认「变更 + 提交框」与 explorer)都能看到诊断条;两面共用的顶栏 / 动作条结构未受影响,13 个 `load.*` 文案键在 21 门词典中齐全。
+- **版本号**:采用 main 的 `0.32.0`(`package.json` / `dsh.plugin.json` 一致,冒烟测试强制);fork 的 `@deepseek-ai/schemastery` devDependency 与仓库地址安装说明保留。
+- **验证**:`npm test` **158/158** 全绿(含 main 新增的 diagnostics 路由、活动调用生命周期、诊断条阈值 / 所有权 / 超时 / 21 门键集断言);`node --check` 覆盖 `src/client.js` / `src/host/git.js` / `src/host/http.js` / `src/index.js`;`git diff --check` 干净、无冲突标记残留;`scripts/ssr-check.mjs` 因本机 profile 解析不到 `react` 主动 skip(脚本自带降级,不是失败)。真机观感(诊断条在两面里的位置、慢 status 的进度推进)仍需隔离实例复核,不碰用户自己的 `dsh web`。
+- 相关:issue [#33](https://github.com/KannaKuron/dsh-ide-git/issues/33)。
+
 **类型**:chore(把 main v0.31.0 合进 fork,保留两面设计)
 
 - **合并范围**:`main`(4376443,v0.31.0,比 fork 多 1 个提交)合入 `fork`(891d821,9 个独有提交);合并前打了本地备份分支 `backup/fork-before-merge-main-20261109`(891d821)。
@@ -104,6 +114,18 @@
 - 行为变化:提交信息在两种 chrome 下都是多行文本,**回车只换行**,提交走 `Ctrl+Enter`(macOS `Cmd+Enter`)——窄栏此前是「回车即提交」,多行消息与 `--amend` 需要这个改动;占位符文案本就写着 `(Ctrl+Enter)`。文本框自己右下角的拖拽手柄(`resize`)随之取消:同一根轴只留一个手势(拖动框的上边框)。
 - 回归:**119 项测试全绿**(新增守卫:两种 chrome 的排布、共用 `commitButtons()`、消息不再是 `<input>`、`.dig-commit-actions .dig-btn-primary{margin-left:0}`、中文标签恰为 `Amend`;分块尺寸核心里 `commitBox` 的读写与范围校验,以及「窗格拖动不丢盒子尺寸、盒子拖动不丢窗格比例」;分隔条就在提交框上方、`side: 'next'`、`vertical: false`、没有行程就整根不渲染)。**探针**:`conversation-probe` 新增一步(会话区 Git 标签页是必经的默认面)——定位 `.dig-changes-body .dig-gutter`、往上拖、断言盒子真的长高而**面板没长高**、`pointerup` 落盘 `commitBox`、双击复位并删除;`panes-probe` 不涉及(它在 explorer 面量窗格,默认面的分隔条不参与)。新文案键 `pane.commitBox` 21 门一次补齐。
 - **真机复验**:拖提交框**上边框**改高(双击复位、方向键微调)、勾 Amend 提一次确认走 `--amend`、回车换行 + `Ctrl+Enter` 提交、提交按钮贴在左下角。
+
+## v0.32.0 — 2026-11-10
+
+**类型**:feat(issue #33 调查配套:慢加载诊断与进度条)
+
+- **加载诊断**:客户端加载超过 2 秒时,面板顶部出现诊断条,显示已等待时间与分段进度(fetch / summary / stats / branches / log;仓库扫描为 repos)。每段有等待 / 进行中 / 完成 / 跳过 / 失败状态,进度条按已完成段推进;加载完成后自动消失。后台 12 秒轮询不显示,正常刷新不打扰。
+- **卡在哪**:加载期间每秒调用新增的只读宿主方法 `diagnostics`,返回进行中的 git 子命令、cwd 与已运行时长;诊断条优先显示「git status 已运行 N 秒」,没有活动 git 时显示「宿主无响应」,并把当前阶段名拼在末尾。诊断请求 2.5 秒未返回也视为宿主无响应,晚到响应不覆盖超时提示。
+- **复制诊断**:诊断条提供「复制诊断」,复制 JSON(时间、kind、已等待、各阶段状态、活动 git、宿主诊断、cwd / repoRoot),方便贴到 issue;不包含完整 argv、提交信息或远程 URL。
+- **宿主**:`src/host/git.js` 记录 `activeGit`(只在 spawn 成功后登记,timeout / error / close 三条路径清理);`src/host/http.js` 新增只读方法 `diagnostics`(方法表 53→54),未加入 `WRITE_METHODS`。
+- **文案**:21 门词典新增 13 个 `load.*` 键,诊断条与复制按钮全部本地化。
+- **验证**:`npm test` 152/152(新增 diagnostics 路由、活动调用生命周期、诊断条阈值 / 所有权 / 超时 / 复制与 21 门键集断言);`node --check` 三文件;隔离 Web(dsh 0.2.2-rc.1)慢 status 4 秒时 2.3 秒出现诊断条、进度 50%、显示「git status 已运行 2.0s」,4 秒后消失;真实 git 无诊断条;诊断路由被人为延迟 10 秒时显示「宿主无响应」;复制 JSON 含 phases 与 cwd;零 pageerror。macOS 无法覆盖 Windows 慢 `git.exe`,作为环境差异保留。
+- 相关:issue [#33](https://github.com/KannaKuron/dsh-ide-git/issues/33)。
 
 ## v0.31.0 — 2026-11-09
 
