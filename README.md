@@ -63,7 +63,10 @@ DSH 侧栏的「插件」页认同一个仓库地址:把 `git+https://github.com
 
 ### 兼容性
 
-- `engines.dsh` 声明为 **`>=0.1.2-0`** ——0.1.2 起的全部版本都算,包括 `0.1.5-rc` / `0.1.6-alpha` 这类**预发布**(纯 semver 下预发布默认不匹配任何范围,所以起点写成了 `-0`)。**同一个值也是 `@deepseek-ai/dsh` 的 peerDependencies**:dsh 0.1.7 起会强制执行 peer 里的 `@deepseek-ai/dsh*` 范围(不满足就不加载),而 `engines` 没有任何读取方——写进 peer 才算数。范围是**开放下界、不封顶**,所以 0.1.7 起的任何宿主(含 rc / alpha 预发布)都不会因此被禁用;0.1.0–0.1.6 没有这套检查,完全不受影响。
+- `engines.dsh` 与 `@deepseek-ai/dsh` 的 peerDependencies 自 v0.28.0 起都声明为 **`>=0.2.2-rc.1`**,范围是**开放下界、不封顶**。兼容门禁实际优先读 `engines.dsh`(存在时忽略 peer),peer 同步声明并标 optional,是给包管理器与排障看的第二份声明。
+- 设置面单代:`>=0.2.2-rc.1` 的 `ctx.configForms` 是唯一来源,行 Config 的每个字段都可写;设置卡负责逐动作显隐、面板放置、日期格式与 AI 提交信息,排序由面板齿轮里的编辑器写 `railOrder`。旧的 `localStorage` 配置只在升级时读取一次,写路径已删除;加载中显示加载态,只有表单不可用时才显示不可用。模型徽章等宿主可选数据仍按能力探测,不按版本号分支。
+- **dsh 0.2.2-rc.1(v0.27.3)**:右侧栏新增的 `direction` / `isFloating` 字段与工作区菜单内部迁移不影响本插件使用的能力;`sidebarRight.openTab` / `openResource` / `float` / `dock`、composer 槽与官方 `contextMenus` 均按原契约工作。
+- **dsh 0.2.2-rc.2**:官方 `Menu` 删除 `getAnchorRect`,改用 `anchorRef`(元素锚点)与 `anchorPoint`(坐标锚点);仓库/分支选择器走的仍是保留的 `anchor` 节点路径,无需改代码。`ui-workspace` 删除的 `openWorkspaceMenu` / `openSessionMenu` 注入本插件未使用,`contextMenus.open` 新增的可选 `{button}` 向后兼容。`sidebarRight`、composer 槽与 `contextMenus` 契约未变。
 - 只依赖三样长期契约:宿主半的 `webServer.register({ kind: 'prefix' })` 路由、客户端半的 `window.__ModuleLoader__.load({ id, factory })`、以及客户端的 `slots` 服务。**图标全是自带 SVG**(不引用 `ui-primitives` 的图标集),所以宿主删改图标不会波及本插件;diff 正文优先用宿主自带的 `DiffBlock` 组件渲染,拿不到就退回自绘行。
 - 底座是**可选** peer:没装、装坏了、或它自己要等上游修,都不影响本插件挂到原生右侧栏。
 

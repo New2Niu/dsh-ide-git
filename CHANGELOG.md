@@ -5,6 +5,15 @@
 
 ## Unreleased
 
+**类型**:chore(把 main v0.33.0 合进 fork,保留两面设计)
+
+- **合并范围**:`main`(fbf4d24,v0.33.0,比 fork 多 1 个提交:dsh 0.2.2-rc.2 兼容复核)合入 `fork`(7c9a705);合并前打本地备份分支 `backup/fork-before-merge-main-20261112`(7c9a705)。
+- **冲突 3 处,都在文档**:`CHANGELOG.md` / `README.md` / `README_EN.md`。v0.33.0 只是复核性 chore(无代码改动),两份 README 保留 fork 结构、无新说明需要并入;CHANGELOG 在顶部记录本次合并,main 的 `v0.33.0` 段紧随其后,再接 fork 的原 Unreleased 内容,维持倒序。
+- **版本号**:采用 main 的 `0.33.0`(`package.json` / `dsh.plugin.json` 一致,冒烟测试强制);fork 的 `@deepseek-ai/schemastery` devDependency 与仓库地址安装说明保留。
+- **验证**:见下方合并后记录;真机复核(隔离实例)不碰用户自己的 `dsh web`。
+
+---
+
 **类型**:chore(把 main v0.32.0 合进 fork,保留两面设计)
 
 - **合并范围**:`main`(ea6e45e,v0.32.0,比 fork 多 1 个提交:慢加载诊断与进度条)合入 `fork`(d6de7c3);合并前打了本地备份分支 `backup/fork-before-merge-main-20261111`(d6de7c3)。
@@ -114,6 +123,14 @@
 - 行为变化:提交信息在两种 chrome 下都是多行文本,**回车只换行**,提交走 `Ctrl+Enter`(macOS `Cmd+Enter`)——窄栏此前是「回车即提交」,多行消息与 `--amend` 需要这个改动;占位符文案本就写着 `(Ctrl+Enter)`。文本框自己右下角的拖拽手柄(`resize`)随之取消:同一根轴只留一个手势(拖动框的上边框)。
 - 回归:**119 项测试全绿**(新增守卫:两种 chrome 的排布、共用 `commitButtons()`、消息不再是 `<input>`、`.dig-commit-actions .dig-btn-primary{margin-left:0}`、中文标签恰为 `Amend`;分块尺寸核心里 `commitBox` 的读写与范围校验,以及「窗格拖动不丢盒子尺寸、盒子拖动不丢窗格比例」;分隔条就在提交框上方、`side: 'next'`、`vertical: false`、没有行程就整根不渲染)。**探针**:`conversation-probe` 新增一步(会话区 Git 标签页是必经的默认面)——定位 `.dig-changes-body .dig-gutter`、往上拖、断言盒子真的长高而**面板没长高**、`pointerup` 落盘 `commitBox`、双击复位并删除;`panes-probe` 不涉及(它在 explorer 面量窗格,默认面的分隔条不参与)。新文案键 `pane.commitBox` 21 门一次补齐。
 - **真机复验**:拖提交框**上边框**改高(双击复位、方向键微调)、勾 Amend 提一次确认走 `--amend`、回车换行 + `Ctrl+Enter` 提交、提交按钮贴在左下角。
+
+## v0.33.0 — 2026-11-12
+
+**类型**:chore(适配 dsh 0.2.2-rc.2 的复核)
+
+- **Menu 锚点**:官方 `Menu` 删除了 `getAnchorRect`,改用 `anchorRef`(元素锚点)与 `anchorPoint`(坐标锚点)。仓库/分支选择器继续走保留的 `anchor` 节点路径,右键菜单是自绘实现,两处均无需改代码。
+- **其余契约**:`ui-workspace` 删除的 `openWorkspaceMenu` / `openSessionMenu` 注入本插件未使用;`contextMenus.open` 新增的可选 `{button}` 向后兼容;`sidebarRight` 的 `openTab` / `openResource` / `float` / `dock`、composer 槽与右侧栏 `direction` / `isFloating` 字段均未变化。
+- **验证**:`npm test` **152/152**;源码逐项复核无行为回归。
 
 ## v0.32.0 — 2026-11-10
 
